@@ -132,6 +132,10 @@ done
 shift $((OPTIND-1))
 
 
+
+module load /home/lmnp/knut0297/software/modulesfiles/rclone/1.53.2
+
+
 if [[ ! $remote ]]
 then
     echo "The '--remote' option must be specified." >&2
@@ -144,6 +148,9 @@ then
 fi
 
 
+# Test if bucket and remote exist
+rclone ls ${remote}: || echo "Rclone remote does not exist: $remote"; exit 27
+rclone ls ${remote}:${bucket} --max-depth 1 || echo "Rclone bucket does not exist: $bucket"; exit 28
 
 
 # ---------------------------------------------------------------------
@@ -201,7 +208,7 @@ fi
 # Check to make sure this input dir does NOT already exist on ceph.
 # ---------------------------------------------------------------------
 
-module load /home/lmnp/knut0297/software/modulesfiles/rclone/1.53.2
+
 
 # Count the number of ceph objects (files) listed under the input archive dir. If there are any files under this dir name already, stop.
 remote_root_path_dir_filenumber=$(rclone lsf ${remote}:${bucket}$(dirname ${root_path_dir})/$(basename ${root_path_dir}) --max-depth 1 | wc -l)
