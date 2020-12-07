@@ -149,7 +149,7 @@ fi
 
 
 # Test if bucket and remote exist
-rclone ls ${remote}: || echo "Rclone remote does not exist: $remote"; exit 27
+rclone ls ${remote}: --max-depth 1 || echo "Rclone remote does not exist: $remote"; exit 27
 rclone ls ${remote}:${bucket} --max-depth 1 || echo "Rclone bucket does not exist: $bucket"; exit 28
 
 
