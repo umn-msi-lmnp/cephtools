@@ -357,7 +357,7 @@ module load /home/lmnp/knut0297/software/modulesfiles/rclone/1.53.2
 
 
 # Copy the files to ceph
-rclone copy \$dry_run \$verbose_mode / \${remote}:\${bucket} --files-from-raw "\${myprefix}.filelist.txt" --transfers \$threads --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "/" "\${remote}:\${bucket}" --files-from-raw "\${myprefix}.filelist.txt" \$dry_run \$verbose_mode --transfers \$threads --s3-chunk-size 50M --s3-upload-concurrency 10
 
 if [ ! \$? -eq 0 ]
 then
@@ -615,7 +615,7 @@ rclone lsf -R \${remote}:\${bucket} --max-depth 1 > /dev/null
 
 
 # Copy the files from ceph back to panfs
-rclone copy \$dry_run \$verbose_mode \${remote}:\${bucket}\$root_path_dir \$root_path_dir --transfers \$threads --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "\${remote}:\${bucket}\$root_path_dir" "\$root_path_dir" \$dry_run \$verbose_mode --transfers \$threads --s3-chunk-size 50M --s3-upload-concurrency 10
 
 
 if [ ! \$? -eq 0 ]
