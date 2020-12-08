@@ -17,6 +17,7 @@ The script does not actually transfer any data. It simply examines a single inpu
 The slurm jobscripts must be launched manually. This allows for time to review the readme, scripts, and file list.
 
 
+
 ## Details
 
 * All data is copied using `rclone`, which uses MD5 checksums and auto retries on every file transfer to ensure data integrity. 
@@ -37,6 +38,11 @@ The slurm jobscripts must be launched manually. This allows for time to review t
 
 * If an input dir already exists on `ceph` in the bucket you provide, the program will stop. This is to ensure you do not accidentally overwrite any data on `ceph`.
 * If you try to restore data from `ceph` back to `panfs` and the input dir still exists on `panfs`, the program will stop. This is to ensure you do not accidentally overwrite any data on `panfs`.
+
+
+## How to install
+
+I have created a module on `panfs` that is accessible by anyone at MSI. You can simply load the module (see below) or clone the GitHub repo and use the script.
 
 
 ## Usage Example
@@ -67,3 +73,6 @@ panfs2ceph --remote todds_umn_ceph --bucket todd ~/test
 
 If you have any questions or discover bugs, please let me know! Send email to Todd Knutson [knut0297@umn.edu](knut0297@umn.edu) or post an issue on the GitHub repo: [https://github.umn.edu/knut0297org/panfs2ceph](https://github.umn.edu/knut0297org/panfs2ceph)
 
+## Disclaimer
+
+This "software" has not been extensively tested. Please be careful and review all scripts and files. Please report any problems. Thanks!
