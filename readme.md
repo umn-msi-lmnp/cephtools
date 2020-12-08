@@ -30,7 +30,7 @@ The slurm jobscripts must be launched manually. This allows for time to review t
 * If a bucket does not already exist on `ceph`, it will get created automatically.
 * In my experience, creating a unique bucket for each group I work with (e.g. `groupname_knut0297` allows me to separate my archived data and (possibly) apply different access control to each bucket.
 * After the data is transferred to `ceph`, the files are verified. Files on `ceph` are listed by rclone and compared against the original input file list. If differences occur, an error will occur. This process occurs at the end of the "copy" jobscript.
-* 
+
 
 
 ## Potential safeguards
