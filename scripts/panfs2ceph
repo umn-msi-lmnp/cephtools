@@ -383,12 +383,12 @@ echo "[panfs2ceph "\$(date)"] Starting verification..."
 echo "[panfs2ceph "\$(date)"] Getting file list from ceph..."
 
 # Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
-rclone lsf -R \${remote}: --max-depth 1 > /dev/null
-rclone lsf -R \${remote}:\${bucket} --max-depth 1 > /dev/null
+#rclone lsf -R \${remote}: --max-depth 1 > /dev/null
+#rclone lsf -R \${remote}:\${bucket} --max-depth 1 > /dev/null
 
 
 # Get a file list from ceph (after the transfer)
-rclone lsf -R \$dry_run \$verbose_mode \${remote}:\${bucket}\${root_path_dir} > \$myprefix.filelist_from_ceph.txt
+rclone lsf -R \${remote}:\${bucket}\${root_path_dir} > \$myprefix.filelist_from_ceph.txt
 
 # myprefix the files with full pathname
 sed -i -e "s|^|\$root_path_dir/|" \$myprefix.filelist_from_ceph.txt
