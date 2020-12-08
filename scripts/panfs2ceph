@@ -611,7 +611,7 @@ fi
 # ---------------------------------------------------------------------
 
 # Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
-rclone lsf \${remote}:\${bucket} --max-depth 1 2> /dev/null
+rclone lsf -R \${remote}:\${bucket} --max-depth 1 > /dev/null
 
 
 # Copy the files from ceph back to panfs
