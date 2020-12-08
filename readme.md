@@ -16,6 +16,9 @@ The script does not actually transfer any data. It simply examines a single inpu
 
 The slurm jobscripts must be launched manually. This allows for time to review the readme, scripts, and file list.
 
+## Demo
+
+View a screencast (8 min, 40 sec) that runs through a quick example. [https://drive.google.com/file/d/13XLwfxSnc5iDATLdAaEmmm2FxTl7_mKH/view](https://drive.google.com/file/d/13XLwfxSnc5iDATLdAaEmmm2FxTl7_mKH/view)
 
 
 ## Details
