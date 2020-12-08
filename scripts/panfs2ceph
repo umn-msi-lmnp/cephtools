@@ -343,7 +343,7 @@ threads=$threads
 # Load software
 # ---------------------------------------------------------------------
 
-
+cd \$myprefix_dir
 
 module load /home/lmnp/knut0297/software/modulesfiles/rclone/1.53.2
 
@@ -378,11 +378,13 @@ fi
 # Sleep for a short time to allow rclone to properly list files. If done without
 # a short break, rclone lsf seems fail.
 echo "[panfs2ceph "\$(date)"] Starting verification..."
-echo "[panfs2ceph "\$(date)"] Waiting for 30 sec to allow ceph to index files..."
-sleep 30
+#echo "[panfs2ceph "\$(date)"] Waiting for 30 sec to allow ceph to index files..."
+#sleep 30
 echo "[panfs2ceph "\$(date)"] Getting file list from ceph..."
 
-
+# Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
+rclone lsf -R \${remote}: --max-depth 1 > /dev/null
+rclone lsf -R \${remote}:\${bucket} --max-depth 1 > /dev/null
 
 
 # Get a file list from ceph (after the transfer)
@@ -403,7 +405,7 @@ comm -13 <(sort \$myprefix.filelist.txt) <(sort \$myprefix.filelist_from_ceph.tx
 if [[ ! -s \$myprefix.files_on_panfs_but_not_ceph.txt ]]
 then
    # The file above is empty.
-   echo "[panfs2ceph "\$(date)"] There are no files in the *.filelist.txt that are missing from ceph."
+   #echo "[panfs2ceph "\$(date)"] There are no files in the *.filelist.txt that are missing from ceph."
    rm -rf \$myprefix.files_on_panfs_but_not_ceph.txt
 else
     echo "[panfs2ceph "\$(date)"] There are files listed in *.filelist.txt that are not found on ceph. Review: \$myprefix.files_on_panfs_but_not_ceph.txt" >&2
@@ -413,7 +415,7 @@ fi
 if [[ ! -s \$myprefix.files_on_ceph_but_not_panfs.txt ]]
 then
    # The file above is empty.
-   echo "[panfs2ceph "\$(date)"] There are no files on ceph that are not listed in *.filelist.txt."
+   #echo "[panfs2ceph "\$(date)"] There are no files on ceph that are not listed in *.filelist.txt."
    rm -rf \$myprefix.files_on_ceph_but_not_panfs.txt
 else
     echo "[panfs2ceph "\$(date)"] There are files on ceph that are not listed in *.filelist.txt. Review: \$myprefix.files_on_ceph_but_not_panfs.txt" >&2
@@ -488,6 +490,7 @@ verbose_mode=$verbose_mode
 # Software
 # ---------------------------------------------------------------------
 
+cd \$myprefix_dir
 
 module load /home/lmnp/knut0297/software/modulesfiles/rsync/3.1.2
 
