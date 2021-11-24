@@ -1,0 +1,110 @@
+# ---------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------
+
+
+
+describe "example" <<HEREDOC
+Usage:
+  ${_ME} example [<name>] [--farewell]
+
+Options:
+  --farewell  Print "Goodbye, World!"
+
+Description:
+  Print "Hello, World!"
+HEREDOC
+example() {
+  local _arguments=()
+  local _greeting="Hello"
+  local _name=
+
+  for __arg in "${@:-}"
+  do
+    case ${__arg} in
+      --farewell)
+        _greeting="Goodbye"
+        ;;
+      -*)
+        _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
+        ;;
+      *)
+        if _blank "${_name}"
+        then
+          _name="${__arg}"
+        else
+          _arguments+=("${__arg}")
+        fi
+        ;;
+    esac
+  done
+
+
+  if [[ "${_name}" == "Moon" ]]
+  then
+    printf "%s, Luna!\\n" "${_greeting}"
+  elif [[ -n "${_name}" ]]
+  then
+    printf "%s, %s!\\n" "${_greeting}" "${_name}"
+  else
+    printf "%s, World!\\n" "${_greeting}"
+  fi
+}
+
+
+
+
+describe "panfs2ceph" <<HEREDOC
+Usage:
+  ${_ME} panfs2ceph --remote=<remote_name> --bucket=<bucket_name> path
+
+Options:
+  --remote       Name of the rclone remote to be used for the transfer. Rclone remotes
+                 must be set up using `rclone init` and can be viewed at:
+                 ~/.config/rclone/rclone.config.
+
+  --bucket       Name of the ceph bucket that data should be used for the transfer.
+                 
+
+Description:
+  Print "Hello, World!"
+HEREDOC
+panfs2ceph() {
+  local _arguments=()
+  local _greeting="Hello"
+  local _name=
+
+  for __arg in "${@:-}"
+  do
+    case ${__arg} in
+      --farewell)
+        _greeting="Goodbye"
+        ;;
+      -*)
+        _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
+        ;;
+      *)
+        if _blank "${_name}"
+        then
+          _name="${__arg}"
+        else
+          _arguments+=("${__arg}")
+        fi
+        ;;
+    esac
+  done
+
+
+  if [[ "${_name}" == "Moon" ]]
+  then
+    printf "%s, Luna!\\n" "${_greeting}"
+  elif [[ -n "${_name}" ]]
+  then
+    printf "%s, %s!\\n" "${_greeting}" "${_name}"
+  else
+    printf "%s, World!\\n" "${_greeting}"
+  fi
+}
+
+
+
