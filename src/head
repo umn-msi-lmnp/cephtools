@@ -58,7 +58,7 @@ _ME="$(basename "${0}")"
 
 # Manually set this to to current version of the program. Adhere to the
 # semantic versioning specification: http://semver.org
-_VERSION="0.1.0-alpha"
+_VERSION="0.1.0"
 
 
 # The subcommand to be run by default, when no subcommand name is specified.
