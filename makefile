@@ -1,22 +1,27 @@
-SHELL:="/bin/bash"
-PREFIX="./build"
+SHELL:=/bin/bash
+PREFIX=./build
+DESTDIR=
+BUILD=$(DESTDIR)$(PREFIX)
 
-all: cephtools doc
+# Generate file paths for some targets
+MAN_NAMES:=cephtools.1 cephtools-panfs2ceph.1
+MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
 
-cephtools: src/head src/subcommands* src/main
-	mkdir -p "$(DESTDIR)$(PREFIX)/bin"
-	cat $^ > "$(DESTDIR)$(PREFIX)/bin/$@"
-	chmod u+x "$(DESTDIR)$(PREFIX)/bin/$@"
+.PHONY: all
+#all: $(BUILD)/bin/cephtools $(BUILD)/share/man/man1/cephtools.1 $(BUILD)/share/man/man1/cephtools-panfs2ceph.1
+all: $(BUILD)/bin/cephtools $(MAN_TARGETS)
 
-doc: doc/*
-	mkdir -p "$(DESTDIR)$(PREFIX)/share/man/man1"
-	# Convert markdown to man page format
+# Combine all the bash fragments into a single script
+$(BUILD)/bin/cephtools: src/head src/subcommands* src/main
+	mkdir -p $(BUILD)/bin
+	cat $^ > $@
+	chmod u+x $@
+
+# Convert markdown (ronn format) to man page format
+$(BUILD)/share/man/man1/%: doc/%.ronn
+	mkdir -p $(BUILD)/share/man/man1; \
 	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load ronn-ng; \
-	ronn $^ --output-dir "$(DESTDIR)$(PREFIX)/share/man/man1"
-	mkdir -p "$(DESTDIR)$(PREFIX)/share/man_html"
-	mv $(DESTDIR)$(PREFIX)/share/man/man1/*html "$(DESTDIR)$(PREFIX)/share/man_html"
+	ronn --roff $^ --output-dir $(BUILD)/share/man/man1
 
 clean:
-	rm -rf "$(DESTDIR)$(PREFIX)"
-
-.PHONY: all clean doc
+	rm -rf $(BUILD)
