@@ -1,7 +1,11 @@
-# ---------------------------------------------------------------------
+#######################################################################
 # Subcommands
-# ---------------------------------------------------------------------
+#######################################################################
 
+
+# ---------------------------------------------------------------------
+# example
+# ---------------------------------------------------------------------
 
 
 describe "example" <<HEREDOC
@@ -54,57 +58,184 @@ example() {
 
 
 
+
+
+
+# ---------------------------------------------------------------------
+# panfs2ceph
+# ---------------------------------------------------------------------
+
 describe "panfs2ceph" <<HEREDOC
+---------------------------------------------------------------------
 Usage:
-  ${_ME} panfs2ceph --remote=<remote_name> --bucket=<bucket_name> path
+    ${_ME} panfs2ceph [options] --remote <REMOTE> --bucket <BUCKET> <DIR>
 
 Options:
-  --remote       Name of the rclone remote to be used for the transfer. Rclone remotes
-                 must be set up using `rclone init` and can be viewed at:
-                 ~/.config/rclone/rclone.config.
-
-  --bucket       Name of the ceph bucket that data should be used for the transfer.
-                 
+    --remote <STRING>       Rclone remote name. (use "rclone listremotes" for available remotes). 
+                            Rclone remotes must be set up using "rclone init" and can be viewed 
+                            at: ~/.config/rclone/rclone.config.
+                            
+    --bucket <STRING>       Name of the ceph bucket that data should be used for the transfer.
+    
+    --dry_run               Dry run. Nothing transfered or deleted.
+    
+    --verbose               Verbose mode.
+    
+    --delete_empty_dirs     Do NOT transfer empty dirs on panfs to ceph. [Default is to create 
+                            a hidden file (".empty_dir") inside all empty dirs so they get 
+                            transfered to ceph. Setting this flag will not create the 
+                            ".empty_dir" files, thus empty dirs will not get copied to ceph.]
+                            
+    --threads <INT>         Threads to use for uploading. [Default = 1].
+    
+    --help                  Print this help screen.
 
 Description:
-  Print "Hello, World!"
+  Archiving tool to copy a single directory from tier 1 (panfs) storage to tier 2 (ceph).
+
+Version: ${_VERSION}
+Questions: Todd Knutson (knut0297@umn.edu)
+GitHub: https://github.umn.edu/knut0297org/cephtools
+---------------------------------------------------------------------
 HEREDOC
+
 panfs2ceph() {
-  local _arguments=()
-  local _greeting="Hello"
-  local _name=
+    # echo ALL ARGS:
+    # echo "${@:-}"
 
-  for __arg in "${@:-}"
-  do
-    case ${__arg} in
-      --farewell)
-        _greeting="Goodbye"
-        ;;
-      -*)
-        _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
-        ;;
-      *)
-        if _blank "${_name}"
-        then
-          _name="${__arg}"
-        else
-          _arguments+=("${__arg}")
-        fi
-        ;;
-    esac
-  done
+    # Parse Options ###############################################################
+
+    # Initialize program option variables.
+    local _PRINT_HELP=0
+    local _USE_DEBUG=0
+
+    # Initialize additional expected option variables.
+    local _BUCKET_OPTION=
+    local _REMOTE_OPTION=
+    local _PATH_OPTION=
+    local _DRY_RUN_OPTION=
+    local _VERBOSE_MODE_OPTION=
+    local _DELETE_EMPTY_DIRS_OPTION="FALSE"
+    local _THREADS_OPTION=1
+
+    # __get_option_value()
+    #
+    # Usage:
+    #   __get_option_value <option> <value>
+    #
+    # Description:
+    #  Given a flag (e.g., -e | --example) return the value or exit 1 if value
+    #  is blank or appears to be another option.
+    __get_option_value() {
+      local __arg="${1:-}"
+      local __val="${2:-}"
+
+      if [[ -n "${__val:-}" ]] && [[ ! "${__val:-}" =~ ^- ]]
+      then
+        printf "%s\\n" "${__val}"
+      else
+        _exit_1 printf "%s requires a valid argument.\\n" "${__arg}"
+      fi
+    }
+
+    while ((${#}))
+    do
+      __arg="${1:-}"
+      __val="${2:-}"
+
+      case "${__arg}" in
+        -h|--help)
+          _PRINT_HELP=1
+          ;;
+        --debug)
+          _USE_DEBUG=1
+          ;;
+        -b|--bucket)
+          _BUCKET_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+          shift
+          ;;
+        -r|--remote)
+          _REMOTE_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+          shift
+          ;;
+        -p|--path)
+          _PATH_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+          shift
+          ;;
+        -d|--dry_run)
+          _DRY_RUN_OPTION="TRUE"
+          shift
+          ;;
+        -v|--verbose_mode)
+          _VERBOSE_MODE_OPTION="-v"
+          shift
+          ;;
+        -e|--delete_empty_dirs)
+          _DELETE_EMPTY_DIRS_OPTION="TRUE"
+          shift
+          ;;
+        -t|--threads)
+          _THREADS_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+          shift
+          ;;
+        --endopts)
+          # Terminate option parsing.
+          break
+          ;;
+        -*)
+          _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
+          ;;
+        *)
+          describe --get panfs2ceph
+          _exit_1 printf "Unexpected positional arg: %s\\n" "${__arg}"
+          ;;
+      esac
+
+      shift
+    done
 
 
-  if [[ "${_name}" == "Moon" ]]
-  then
-    printf "%s, Luna!\\n" "${_greeting}"
-  elif [[ -n "${_name}" ]]
-  then
-    printf "%s, %s!\\n" "${_greeting}" "${_name}"
-  else
-    printf "%s, World!\\n" "${_greeting}"
-  fi
+    echo $_PRINT_HELP
+    echo $_USE_DEBUG
+    echo $_BUCKET_OPTION
+    echo $_REMOTE_OPTION
+    echo $_PATH_OPTION
+    echo $_DRY_RUN_OPTION
+    echo $_VERBOSE_MODE_OPTION
+    echo $_DELETE_EMPTY_DIRS_OPTION
+    echo $_THREADS_OPTION
+
+
+
+    _print_input_args() {
+      _debug printf ">> Input args...\\n"
+
+      if ((_DRY_RUN_OPTION))
+      then
+        printf "Perform a simple operation with --dry_run.\\n"
+      else
+        printf "Perform a simple operation without --dry_run.\\n"
+      fi
+      if [[ -n "${_PATH_OPTION}" ]]
+      then
+        printf "path option value: %s\\n" "${_PATH_OPTION}"
+      fi
+      if [[ -n "${_BUCKET_OPTION}" ]]
+      then
+        printf "bucket option value: %s\\n" "${_BUCKET_OPTION}"
+      fi
+    }
+
+    _print_input_args
+
+    # TODO 
+    # Test to make sure only one path is given (required) and valid
+
+
 }
+
+
+
 
 
 
