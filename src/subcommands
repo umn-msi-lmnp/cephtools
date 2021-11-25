@@ -1,63 +1,3 @@
-#######################################################################
-# Subcommands
-#######################################################################
-
-
-# ---------------------------------------------------------------------
-# example
-# ---------------------------------------------------------------------
-
-
-describe "example" <<HEREDOC
-Usage:
-  ${_ME} example [<name>] [--farewell]
-
-Options:
-  --farewell  Print "Goodbye, World!"
-
-Description:
-  Print "Hello, World!"
-HEREDOC
-example() {
-  local _arguments=()
-  local _greeting="Hello"
-  local _name=
-
-  for __arg in "${@:-}"
-  do
-    case ${__arg} in
-      --farewell)
-        _greeting="Goodbye"
-        ;;
-      -*)
-        _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
-        ;;
-      *)
-        if _blank "${_name}"
-        then
-          _name="${__arg}"
-        else
-          _arguments+=("${__arg}")
-        fi
-        ;;
-    esac
-  done
-
-
-  if [[ "${_name}" == "Moon" ]]
-  then
-    printf "%s, Luna!\\n" "${_greeting}"
-  elif [[ -n "${_name}" ]]
-  then
-    printf "%s, %s!\\n" "${_greeting}" "${_name}"
-  else
-    printf "%s, World!\\n" "${_greeting}"
-  fi
-}
-
-
-
-
 
 
 
@@ -230,7 +170,7 @@ panfs2ceph() {
 
     # TODO 
     # Test to make sure only one path is given (required) and valid
-
+    # Update help message
 
 }
 
