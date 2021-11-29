@@ -8,30 +8,40 @@
 describe "panfs2ceph" <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} panfs2ceph [options] --remote <REMOTE> --bucket <BUCKET> <DIR>
+    ${_ME} panfs2ceph [options] --remote <REMOTE> --bucket <BUCKET> --path <DIR_PATH>
 
 Options:
-    --remote <STRING>       Rclone remote name. (use "rclone listremotes" for available remotes). 
-                            Rclone remotes must be set up using "rclone init" and can be viewed 
-                            at: ~/.config/rclone/rclone.config.
+    -r|--remote <STRING>    Rclone remote name. (use "rclone listremotes" for available
+                            remotes). Rclone remotes must be set up using "rclone init"
+                            and can be viewed at: ~/.config/rclone/rclone.config.
                             
-    --bucket <STRING>       Name of the ceph bucket that data should be used for the transfer.
+    -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
+                            transfer.
     
-    --dry_run               Dry run. Nothing transfered or deleted.
+    -p|--path <STRING>      Absolute or relative path to the directory that should be 
+                            transfered.
     
-    --verbose               Verbose mode.
+    -d|--dry_run_rclone     Dry run option will be applied to rclone commands. Nothing 
+                            transfered or deleted when scripts run.
     
-    --delete_empty_dirs     Do NOT transfer empty dirs on panfs to ceph. [Default is to create 
-                            a hidden file (".empty_dir") inside all empty dirs so they get 
-                            transfered to ceph. Setting this flag will not create the 
-                            ".empty_dir" files, thus empty dirs will not get copied to ceph.]
+    -v|--verbose_rclone     Verbose mode will be applied to rclone commands.
+    
+    -e|--delete_empty_dirs  Do NOT transfer empty dirs on panfs to ceph. [Default is to 
+                            create a hidden file (".empty_dir") inside all empty dirs so 
+                            they get transfered to ceph. Setting this flag will not create
+                            the ".empty_dir" files, thus empty dirs will not get copied to
+                            ceph.
                             
-    --threads <INT>         Threads to use for uploading. [Default = 1].
+    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 1].
     
-    --help                  Print this help screen.
+    --debug                 Print additional info when running this command (like verbose 
+                            mode). 
 
 Description:
   Archiving tool to copy a single directory from tier 1 (panfs) storage to tier 2 (ceph).
+  
+Help (print this screen):
+    ${_ME} help panfs2ceph
 
 Version: ${_VERSION}
 Questions: Todd Knutson (knut0297@umn.edu)
@@ -40,23 +50,23 @@ GitHub: https://github.umn.edu/knut0297org/cephtools
 HEREDOC
 
 panfs2ceph() {
-    # echo ALL ARGS:
-    # echo "${@:-}"
+#     echo ALL ARGS:
+#     echo "${@:-}"
+#     echo "${#}"
 
+
+    
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _PRINT_HELP=0
     local _USE_DEBUG=0
-
-    # Initialize additional expected option variables.
     local _BUCKET_OPTION=
     local _REMOTE_OPTION=
     local _PATH_OPTION=
-    local _DRY_RUN_OPTION=
-    local _VERBOSE_MODE_OPTION=
-    local _DELETE_EMPTY_DIRS_OPTION="FALSE"
-    local _THREADS_OPTION=1
+    local _DRY_RUN_RCLONE_OPTION=0
+    local _VERBOSE_RCLONE_OPTION=0
+    local _DELETE_EMPTY_DIRS_OPTION=0
+    local _THREADS_OPTION="1"
 
     # __get_option_value()
     #
@@ -69,7 +79,7 @@ panfs2ceph() {
     __get_option_value() {
       local __arg="${1:-}"
       local __val="${2:-}"
-
+      
       if [[ -n "${__val:-}" ]] && [[ ! "${__val:-}" =~ ^- ]]
       then
         printf "%s\\n" "${__val}"
@@ -78,104 +88,215 @@ panfs2ceph() {
       fi
     }
 
+
+    # For flags (i.e. no corresponding value), do not shift inside the case testing
+    # statement. For options with required value, shift inside case testing statement, 
+    # so the loop moves twice. 
     while ((${#}))
     do
-      __arg="${1:-}"
-      __val="${2:-}"
+        __arg="${1:-}"
+        __val="${2:-}"
 
-      case "${__arg}" in
-        -h|--help)
-          _PRINT_HELP=1
-          ;;
+        case "${__arg}" in
         --debug)
-          _USE_DEBUG=1
-          ;;
-        -b|--bucket)
-          _BUCKET_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
-          shift
-          ;;
-        -r|--remote)
-          _REMOTE_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
-          shift
-          ;;
-        -p|--path)
-          _PATH_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
-          shift
-          ;;
-        -d|--dry_run)
-          _DRY_RUN_OPTION="TRUE"
-          shift
-          ;;
-        -v|--verbose_mode)
-          _VERBOSE_MODE_OPTION="-v"
-          shift
-          ;;
+            _USE_DEBUG=1
+            ;;
+        -d|--dry_run_rclone)
+            _DRY_RUN_RCLONE_OPTION="--dry-run"
+            ;;
+        -v|--verbose_rclone)
+            _VERBOSE_RCLONE_OPTION="-v"
+            ;;
         -e|--delete_empty_dirs)
-          _DELETE_EMPTY_DIRS_OPTION="TRUE"
-          shift
-          ;;
+            _DELETE_EMPTY_DIRS_OPTION="TRUE"
+            ;;
+        -b|--bucket)
+            _BUCKET_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
+        -r|--remote)
+            _REMOTE_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
+        -p|--path)
+            _PATH_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         -t|--threads)
-          _THREADS_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
-          shift
-          ;;
+            _THREADS_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         --endopts)
-          # Terminate option parsing.
-          break
-          ;;
+            # Terminate option parsing.
+            break
+            ;;
         -*)
-          _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
-          ;;
+            _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
+            ;;
         *)
-          describe --get panfs2ceph
-          _exit_1 printf "Unexpected positional arg: %s\\n" "${__arg}"
-          ;;
-      esac
+            describe --get panfs2ceph
+            _exit_1 printf "Unexpected positional arg: %s\\n" "${__arg}"
+            ;;
+        esac
 
-      shift
+        shift
     done
 
 
-    echo $_PRINT_HELP
-    echo $_USE_DEBUG
-    echo $_BUCKET_OPTION
-    echo $_REMOTE_OPTION
-    echo $_PATH_OPTION
-    echo $_DRY_RUN_OPTION
-    echo $_VERBOSE_MODE_OPTION
-    echo $_DELETE_EMPTY_DIRS_OPTION
-    echo $_THREADS_OPTION
+    # ---------------------------------------------------------------------
+    # Check and print input options
+    # ---------------------------------------------------------------------
+
+    printf -- "Program options used:\\n"
+    printf -- "--debug: %s\\n" "$_USE_DEBUG"
+    printf -- "--bucket: %s\\n" "$_BUCKET_OPTION"
+    printf -- "--remote: %s\\n" "$_REMOTE_OPTION"
+    printf -- "--path: %s\\n" "$_PATH_OPTION"
+    printf -- "--dry_run_rclone: %s\\n" "$_DRY_RUN_RCLONE_OPTION"
+    printf -- "--verbose_rclone: %s\\n" "$_VERBOSE_RCLONE_OPTION"
+    printf -- "--delete_empty_dirs: %s\\n" "$_DELETE_EMPTY_DIRS_OPTION"
+    printf -- "--threads: %s\\n" "$_THREADS_OPTION"
+
+
+    # If required options are empty or null, exit.
+    if [ -z "${_REMOTE_OPTION}" ]
+    then
+        _exit_1 printf "The '--remote' option must be specified and not be empty or null."
+    fi
+    if [ -z "${_BUCKET_OPTION}" ]
+    then
+        _exit_1 printf "The '--bucket' option must be specified and not be empty or null."
+    fi
+    if [ -z "${_PATH_OPTION}" ]
+    then
+        _exit_1 printf "The '--path' option must be specified and not be empty or null."
+    fi
+    
+
+    _root_path_dir=$(readlink -m "${_PATH_OPTION}")
+    if [ ! -d "${_root_path_dir}" ]
+    then
+        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_PATH_OPTION}"
+    fi
+    
+
+    # ---------------------------------------------------------------------
+    # Check rclone specific info
+    # ---------------------------------------------------------------------
+    if command -v rclone &> /dev/null
+    then
+        printf "Using rclone found in PATH:\\n"
+        printf "%s\\n" "$(command -v rclone)"
+        printf "%s\\n" "$(rclone --version)" 
+    else
+        printf "rclone could not be found in PATH, so using the MSI module: %s\\n" "/panfs/roc/soft/modulefiles.common/rclone/1.54"
+        module load rclone/1.54
+        printf "%s\\n" "$(command -v rclone)"
+        printf "%s\\n" "$(rclone --version)" 
+    fi
+
+    # Make sure the remote exists
+    if ! rclone listremotes | grep -q "^$_REMOTE_OPTION:\$"
+    then
+        printf "Rclone remote does not exist: %s\\n" "$_REMOTE_OPTION"
+        _exit_1 printf "Check available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n"
+    fi
 
 
 
-    _print_input_args() {
-      _debug printf ">> Input args...\\n"
+    # ---------------------------------------------------------------------
+    # Check to make sure this input dir does NOT already exist on ceph.
+    # ---------------------------------------------------------------------
 
-      if ((_DRY_RUN_OPTION))
-      then
-        printf "Perform a simple operation with --dry_run.\\n"
-      else
-        printf "Perform a simple operation without --dry_run.\\n"
-      fi
-      if [[ -n "${_PATH_OPTION}" ]]
-      then
-        printf "path option value: %s\\n" "${_PATH_OPTION}"
-      fi
-      if [[ -n "${_BUCKET_OPTION}" ]]
-      then
-        printf "bucket option value: %s\\n" "${_BUCKET_OPTION}"
-      fi
-    }
 
-    _print_input_args
+    # Count the number of ceph objects (files) listed under the input archive dir. If there are any files under this dir name already, stop.
+    remote_root_path_dir_filenumber=$(rclone lsf ${_REMOTE_OPTION}:${_BUCKET_OPTION}$(dirname ${_root_path_dir})/$(basename ${_root_path_dir}) --max-depth 1 2> /dev/null | wc -l)
 
-    # TODO 
-    # Test to make sure only one path is given (required) and valid
-    # Update help message
+
+    if [[ $remote_root_path_dir_filenumber -gt 0 ]]
+    then
+        _exit_1 printf "Tier 2 (ceph) already has files saved under this input 'directory name' (%s) in this bucket (%s). To prevent any possible over-writing of data on ceph, please choose a different panfs directory path to archive or a different ceph bucket.\\n" "$_root_path_dir" "${_BUCKET_OPTION}"
+    fi
+
+
+
+    # ---------------------------------------------------------------------
+    # Create archive working dir
+    # ---------------------------------------------------------------------
+
+
+    myprefix="panfs2ceph_archive_$(date +"%Y-%m-%d-%H%M%S")"
+    myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${myprefix}
+
+    echo $myprefix_dir
+    mkdir -p $myprefix_dir
+    cd $myprefix_dir
+
+
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Get a file list
+    # ---------------------------------------------------------------------
+
+
+    if [[ $_DELETE_EMPTY_DIRS_OPTION == "TRUE" ]]
+    then
+        # "The '--delete_empty_dirs' option was specified. Any empty dirs will not be copied to ceph."
+        :
+    else 
+        # Create a hidden file inside all empty dirs. This will ensure the empty dir will get copied as an object to ceph.
+        find ${_root_path_dir} -type d -empty -print0 | xargs -I{} -0 touch {}/.empty_dir
+    fi
+
+
+
+    # Print a list of files that will be archived
+    echo "[panfs2ceph "$(date)"] Creating the archive file list. This might take a while for large dirs..."
+
+    rclone lsf -R ${_root_path_dir} > $myprefix.filelist.txt
+    # myprefix the files with full pathname
+    sed -i -e "s|^|${_root_path_dir}/|" $myprefix.filelist.txt
+
+
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Check for filenames or pathnames that are too long
+    # ---------------------------------------------------------------------
+
+    # This check is probably pointless because I think the limit is the same for both
+    # panfs and ceph -- so if files are on panfs, they should also fit on ceph.
+
+    # On object storage (S3, ceph), filenames are irrelevant. Everything is a filename (with dirs being 
+    # represented by slash delimiters). Thus, we only need to test for path length.
+    # https://stackoverflow.com/questions/6870824/what-is-the-maximum-length-of-a-filename-in-s3
+
+    pathname_max=1024
+
+    # Are there any with filenames that are too long? They need to be less than 1024 characters (I think?).
+    awk '{ PATHNAME=$0; print length(PATHNAME)"\t"PATHNAME}' $myprefix.filelist.txt | awk -v pathname_max=$pathname_max -v out_file="$myprefix.filelist.paths_too_long.txt" '{if ($1 >= pathname_max) {print $0 > out_file}}'
+
+
+    if [[ -s $myprefix.filelist.paths_too_long.txt ]]
+    then
+        echo "[panfs2ceph "$(date)"] Some pathnames are too long (> $pathname_max char) for ceph. See $myprefix.filelist.paths_too_long.txt for a list. Shorten them before proceeding." >&2
+        exit 88
+    fi
+
+
+
+
+
+
+
+
 
 }
-
-
-
 
 
 
