@@ -12,7 +12,7 @@ MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
 all: $(BUILD)/bin/cephtools $(MAN_TARGETS)
 
 # Combine all the bash fragments into a single script
-$(BUILD)/bin/cephtools: src/head src/subcommands* src/main
+$(BUILD)/bin/cephtools: src/head_1 src/version src/head_2 src/subcommands* src/main
 	mkdir -p $(BUILD)/bin
 	cat $^ > $@
 	chmod u+x $@
