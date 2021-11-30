@@ -1,0 +1,72 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1.pre1
+.TH "CEPHTOOLS\-PANFS2CEPH" "1" "November 2021" ""
+.SH "NAME"
+\fBcephtools\-panfs2ceph\fR \- archive a dir from panfs to ceph
+.SH "SYNOPSIS"
+\fBcephtools panfs2ceph [\-\-subcommand\-options]\fR
+.SH "DESCRIPTION"
+\fBcephtools panfs2ceph\fR is a bash script that facilitates transferring data from \fIpanfs\fR to \fIceph\fR\. It has only a few options and is fairly strict in functionality\. Its sole purpose is to copy a single directory from tier 1 (\fIpanfs\fR) storage to tier 2 (\fIceph\fR)\.
+.SS "Files generated"
+The script does not actually transfer any data\. It simply examines a single input dir on \fIpanfs\fR and creates five files:
+.IP "1." 4
+file list (relative file names converted to absolute path names)
+.IP "2." 4
+slurm jobscript (copy data from \fIpanfs\fR to \fIceph\fR)
+.IP "3." 4
+slurm jobscript (delete data from \fIpanfs\fR)
+.IP "4." 4
+slurm jobscript (restore data from \fIceph\fR back to \fIpanfs\fR)
+.IP "5." 4
+a detailed readme file\.
+.IP "" 0
+.P
+The slurm jobscripts must be launched manually\. This allows for time to review the readme, scripts, and file list\.
+.SS "Details"
+.IP "\(bu" 4
+All data is copied using \fBrclone\fR, which uses MD5 checksums and auto retries on every file transfer to ensure data integrity\.
+.IP "\(bu" 4
+The data is not compressed or tar archived (e\.g\. \fI\.tar\.gz\fR) before transfer\. This is intentional\. If all files from a large project (i\.e\. > 1 TB) were concatenated with \fBtar\fR, a small data corruption in this huge single file could make recovery of any underlying files difficult\. Instead, individual files should be compressed on \fIpanfs\fR prior to transfer to \fIceph\fR\.
+.IP "\(bu" 4
+Uploading individual files allows for easier data browsing directly on \fIceph\fR and/or restoring individual files\.
+.IP "\(bu" 4
+Each file is transferred to \fIceph\fR as an absolute path name\. This creates a lot of "pseudo" dirs on \fIceph\fR, but it helps indicate where the data originally came from on \fIpanfs\fR
+.IP "\(bu" 4
+You must have a properly configured \fBrclone\fR installation running on \fIpanfs\fR\. For help setting up \fBrclone\fR, see: \fIhttps://github\.umn\.edu/knut0297org/software_tips/tree/master/rclone\fR
+.IP "\(bu" 4
+A new dir is created next to the original input that contains the archive\-related files and scripts\. This dir is named using the same input path with a suffix (including date and time)\.
+.IP "\(bu" 4
+Empty directories are copied to ceph by default\. Ceph and other bucket\-based storage platforms (e\.g\. \fIS3\fR) do not support empty dirs, so \fBpanfs2ceph\fR creates a hidden file (\fB\.empty_dir\fR) inside the \fIpreviously\fR empty dir on \fIpanfs\fR\. This trick ensures empty dirs are preserved in \fIceph\fR\. If you do not want to do this, you can set an option \fB\-e\fR\. In which case, no \fB\.empty_dir\fR files will get created and empty dirs will not be copied to ceph\.
+.IP "\(bu" 4
+Setting the \fB\-\-threads\fR option will create slurm jobscripts using this thread count\. \fBrclone\fR can transfer data in a multi\-threaded way\. So this can dramatically increase your overall transfer speed\.
+.IP "\(bu" 4
+If a bucket does not already exist on \fIceph\fR, it will get created automatically\.
+.IP "\(bu" 4
+In my experience, creating a unique bucket for each group I work with (e\.g\. \fBgroupname_knut0297\fR allows me to separate my archived data and (possibly) apply different access control to each bucket\.
+.IP "\(bu" 4
+After the data is transferred to \fIceph\fR, the files are verified\. Files on \fIceph\fR are listed by rclone and compared against the original input file list\. If differences occur, an error will occur\. This process occurs at the end of the "copy" jobscript\.
+.IP "" 0
+.SS "Potential safeguards"
+.IP "\(bu" 4
+If an input dir already exists on \fIceph\fR in the bucket you provide, the program will stop\. This is to ensure you do not accidentally overwrite any data on \fIceph\fR\.
+.IP "\(bu" 4
+If you try to restore data from \fIceph\fR back to \fIpanfs\fR and the input dir still exists on \fIpanfs\fR, the program will stop\. This is to ensure you do not accidentally overwrite any data on \fIpanfs\fR\.
+.IP "" 0
+.SH "EXAMPLES"
+.nf
+cephtools panfs2ceph \-\-remote todds_umn_ceph \-\-bucket todd \-\-path /home/lmnp/knut0297/test
+cephtools panfs2ceph \-\-remote todds_umn_ceph \-\-bucket todd \-\-path /panfs/roc/scratch/knut0297/test
+cephtools panfs2ceph \-\-remote todds_umn_ceph \-\-bucket todd \-\-path ~/test
+.fi
+.SS "Demo"
+View a screencast (8 min, 40 sec) that runs through a quick example\.
+.P
+\fIhttps://drive\.google\.com/file/d/13XLwfxSnc5iDATLdAaEmmm2FxTl7_mKH/view\fR
+.SH "SEE ALSO"
+The various subcommands can be found by running: \fBcephtools subcommands\fR
+.SH "BUGS"
+See the \fIIssues\fR section on GitHub: \fIhttps://github\.umn\.edu/knut0297org/cephtools\fR
+.SH "AUTHOR"
+Todd P\. Knutson \fIknut0297@umn\.edu\fR\. See GitHub for other contributors\.
+.SH "COPYRIGHT"
+Copyright \(co 2021 University of Minnesota\. License MIT\.
