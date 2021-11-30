@@ -21,10 +21,10 @@ Options:
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered.
     
-    -d|--dry_run_rclone     Dry run option will be applied to rclone commands. Nothing 
+    -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
     
-    -v|--verbose_rclone     Verbose mode will be applied to rclone commands.
+    -v|--verbose            Verbose mode will be applied to rclone commands.
     
     -e|--delete_empty_dirs  Do NOT transfer empty dirs on panfs to ceph. [Default is to 
                             create a hidden file (".empty_dir") inside all empty dirs so 
@@ -60,13 +60,13 @@ panfs2ceph() {
 
     # Initialize program option variables.
     local _USE_DEBUG=0
-    local _BUCKET_OPTION=
-    local _REMOTE_OPTION=
-    local _PATH_OPTION=
-    local _DRY_RUN_RCLONE_OPTION=0
-    local _VERBOSE_RCLONE_OPTION=0
-    local _DELETE_EMPTY_DIRS_OPTION=0
-    local _THREADS_OPTION="1"
+    local _bucket=
+    local _remote=
+    local _path=
+    local _dry_run=0
+    local _verbose=0
+    local _delete_empty_dirs=0
+    local _threads="1"
 
     # __get_option_value()
     #
@@ -101,29 +101,29 @@ panfs2ceph() {
         --debug)
             _USE_DEBUG=1
             ;;
-        -d|--dry_run_rclone)
-            _DRY_RUN_RCLONE_OPTION="--dry-run"
+        -d|--dry_run)
+            _dry_run="--dry-run"
             ;;
-        -v|--verbose_rclone)
-            _VERBOSE_RCLONE_OPTION="-v"
+        -v|--verbose)
+            _verbose="-v"
             ;;
         -e|--delete_empty_dirs)
-            _DELETE_EMPTY_DIRS_OPTION="TRUE"
+            _delete_empty_dirs=1
             ;;
         -b|--bucket)
-            _BUCKET_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         -r|--remote)
-            _REMOTE_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            _remote="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         -p|--path)
-            _PATH_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            _path="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         -t|--threads)
-            _THREADS_OPTION="$(__get_option_value "${__arg}" "${__val:-}")"
+            _threads="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         --endopts)
@@ -149,34 +149,34 @@ panfs2ceph() {
 
     printf -- "Program options used:\\n"
     printf -- "--debug: %s\\n" "$_USE_DEBUG"
-    printf -- "--bucket: %s\\n" "$_BUCKET_OPTION"
-    printf -- "--remote: %s\\n" "$_REMOTE_OPTION"
-    printf -- "--path: %s\\n" "$_PATH_OPTION"
-    printf -- "--dry_run_rclone: %s\\n" "$_DRY_RUN_RCLONE_OPTION"
-    printf -- "--verbose_rclone: %s\\n" "$_VERBOSE_RCLONE_OPTION"
-    printf -- "--delete_empty_dirs: %s\\n" "$_DELETE_EMPTY_DIRS_OPTION"
-    printf -- "--threads: %s\\n" "$_THREADS_OPTION"
+    printf -- "--bucket: %s\\n" "$_bucket"
+    printf -- "--remote: %s\\n" "$_remote"
+    printf -- "--path: %s\\n" "$_path"
+    printf -- "--dry_run: %s\\n" "$_dry_run"
+    printf -- "--verbose: %s\\n" "$_verbose"
+    printf -- "--delete_empty_dirs: %s\\n" "$_delete_empty_dirs"
+    printf -- "--threads: %s\\n" "$_threads"
 
 
     # If required options are empty or null, exit.
-    if [ -z "${_REMOTE_OPTION}" ]
+    if [ -z "${_remote}" ]
     then
         _exit_1 printf "The '--remote' option must be specified and not be empty or null."
     fi
-    if [ -z "${_BUCKET_OPTION}" ]
+    if [ -z "${_bucket}" ]
     then
         _exit_1 printf "The '--bucket' option must be specified and not be empty or null."
     fi
-    if [ -z "${_PATH_OPTION}" ]
+    if [ -z "${_path}" ]
     then
         _exit_1 printf "The '--path' option must be specified and not be empty or null."
     fi
     
 
-    _root_path_dir=$(readlink -m "${_PATH_OPTION}")
+    _root_path_dir=$(readlink -m "${_path}")
     if [ ! -d "${_root_path_dir}" ]
     then
-        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_PATH_OPTION}"
+        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
     fi
     
 
@@ -196,9 +196,9 @@ panfs2ceph() {
     fi
 
     # Make sure the remote exists
-    if ! rclone listremotes | grep -q "^$_REMOTE_OPTION:\$"
+    if ! rclone listremotes | grep -q "^$_remote:\$"
     then
-        printf "Rclone remote does not exist: %s\\n" "$_REMOTE_OPTION"
+        printf "Rclone remote does not exist: %s\\n" "$_remote"
         _exit_1 printf "Check available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n"
     fi
 
@@ -210,12 +210,12 @@ panfs2ceph() {
 
 
     # Count the number of ceph objects (files) listed under the input archive dir. If there are any files under this dir name already, stop.
-    remote_root_path_dir_filenumber=$(rclone lsf ${_REMOTE_OPTION}:${_BUCKET_OPTION}$(dirname ${_root_path_dir})/$(basename ${_root_path_dir}) --max-depth 1 2> /dev/null | wc -l)
+    remote_root_path_dir_filenumber=$(rclone lsf ${_remote}:${_bucket}$(dirname ${_root_path_dir})/$(basename ${_root_path_dir}) --max-depth 1 2> /dev/null | wc -l)
 
 
     if [[ $remote_root_path_dir_filenumber -gt 0 ]]
     then
-        _exit_1 printf "Tier 2 (ceph) already has files saved under this input 'directory name' (%s) in this bucket (%s). To prevent any possible over-writing of data on ceph, please choose a different panfs directory path to archive or a different ceph bucket.\\n" "$_root_path_dir" "${_BUCKET_OPTION}"
+        _exit_1 printf "Tier 2 (ceph) already has files saved under this input 'directory name' (%s) in this bucket (%s). To prevent any possible over-writing of data on ceph, please choose a different panfs directory path to archive or a different ceph bucket.\\n" "${_root_path_dir}" "${_bucket}"
     fi
 
 
@@ -225,12 +225,12 @@ panfs2ceph() {
     # ---------------------------------------------------------------------
 
 
-    myprefix="panfs2ceph_archive_$(date +"%Y-%m-%d-%H%M%S")"
-    myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${myprefix}
+    _myprefix="panfs2ceph_archive_$(date +"%Y-%m-%d-%H%M%S")"
+    _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
 
-    echo $myprefix_dir
-    mkdir -p $myprefix_dir
-    cd $myprefix_dir
+    echo ${_myprefix_dir}
+    mkdir -p ${_myprefix_dir}
+    cd ${_myprefix_dir}
 
 
 
@@ -242,7 +242,7 @@ panfs2ceph() {
     # ---------------------------------------------------------------------
 
 
-    if [[ $_DELETE_EMPTY_DIRS_OPTION == "TRUE" ]]
+    if ((_delete_empty_dirs))
     then
         # "The '--delete_empty_dirs' option was specified. Any empty dirs will not be copied to ceph."
         :
@@ -256,9 +256,9 @@ panfs2ceph() {
     # Print a list of files that will be archived
     echo "[panfs2ceph "$(date)"] Creating the archive file list. This might take a while for large dirs..."
 
-    rclone lsf -R ${_root_path_dir} > $myprefix.filelist.txt
-    # myprefix the files with full pathname
-    sed -i -e "s|^|${_root_path_dir}/|" $myprefix.filelist.txt
+    rclone lsf -R ${_root_path_dir} > ${_myprefix}.filelist.txt
+    # _myprefix the files with full pathname
+    sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
 
 
 
@@ -279,13 +279,135 @@ panfs2ceph() {
     pathname_max=1024
 
     # Are there any with filenames that are too long? They need to be less than 1024 characters (I think?).
-    awk '{ PATHNAME=$0; print length(PATHNAME)"\t"PATHNAME}' $myprefix.filelist.txt | awk -v pathname_max=$pathname_max -v out_file="$myprefix.filelist.paths_too_long.txt" '{if ($1 >= pathname_max) {print $0 > out_file}}'
+    awk '{ PATHNAME=$0; print length(PATHNAME)"\t"PATHNAME}' ${_myprefix}.filelist.txt | awk -v pathname_max=$pathname_max -v out_file="${_myprefix}.filelist.paths_too_long.txt" '{if ($1 >= pathname_max) {print $0 > out_file}}'
 
 
-    if [[ -s $myprefix.filelist.paths_too_long.txt ]]
+    if [[ -s ${_myprefix}.filelist.paths_too_long.txt ]]
     then
-        echo "[panfs2ceph "$(date)"] Some pathnames are too long (> $pathname_max char) for ceph. See $myprefix.filelist.paths_too_long.txt for a list. Shorten them before proceeding." >&2
+        echo "[panfs2ceph "$(date)"] Some pathnames are too long (> $pathname_max char) for ceph. See ${_myprefix}.filelist.paths_too_long.txt for a list. Shorten them before proceeding." >&2
         exit 88
+    fi
+
+
+
+
+    #######################################################################
+    # Copy
+    #######################################################################
+
+
+    tee ${_myprefix}.1_copy.slurm << EOF > /dev/null
+    #!/bin/bash
+    #SBATCH --nodes=1
+    #SBATCH --ntasks-per-node=1
+    #SBATCH --cpus-per-task=${_threads}
+    #SBATCH --time=24:00:00
+    #SBATCH --mem=32gb
+    #SBATCH --error=%x.e%j
+    #SBATCH --output=%x.o%j
+    #SBATCH --mail-type=BEGIN,END,FAIL
+    #SBATCH --mail-user=$USER@umn.edu
+    #SBATCH --partition=amdsmall
+
+    echo "[panfs2ceph "\$(date)"] Script start."
+
+
+    # ---------------------------------------------------------------------
+    # Variables
+    # ---------------------------------------------------------------------
+
+
+    _root_path_dir=$_root_path_dir
+    _myprefix=${_myprefix}
+    _myprefix_dir=${_myprefix_dir}
+    _dry_run=${_dry_run}
+    _verbose=${_verbose}
+    _remote=${_remote}
+    _bucket=${_bucket}
+    _threads=${_threads}
+
+
+
+    # ---------------------------------------------------------------------
+    # Load software
+    # ---------------------------------------------------------------------
+
+    cd \${_myprefix_dir}
+
+    module load rclone/1.54
+
+
+
+
+    # ---------------------------------------------------------------------
+    # rclone
+    # ---------------------------------------------------------------------
+
+
+
+    # Copy the files to ceph
+    rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+
+    if [ ! \$? -eq 0 ]
+    then
+        # rclone exit status was not zero
+        echo "[panfs2ceph "\$(date)"] Rclone copy process: FAIL" 2>&1 | tee \${_myprefix}.COPY_FAILED
+    else
+        echo "[panfs2ceph "\$(date)"] Rclone copy process: SUCCESS"
+    fi
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Verify
+    # ---------------------------------------------------------------------
+
+
+    # Sleep for a short time to allow rclone to properly list files. If done without
+    # a short break, rclone lsf seems fail.
+    echo "[panfs2ceph "\$(date)"] Starting verification..."
+    #echo "[panfs2ceph "\$(date)"] Waiting for 30 sec to allow ceph to index files..."
+    #sleep 30
+    echo "[panfs2ceph "\$(date)"] Getting file list from ceph..."
+
+    # Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
+    #rclone lsf -R \${_remote}: --max-depth 1 > /dev/null
+    #rclone lsf -R \${_remote}:\${_bucket} --max-depth 1 > /dev/null
+
+
+    # Get a file list from ceph (after the transfer)
+    rclone lsf -R \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+
+    # _myprefix the files with full pathname
+    sed -i -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt
+
+
+
+
+    # Compare the sorted files on ceph (just uploaded) against the list of files from panfs
+    comm -23 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_ceph.txt) > \${_myprefix}.files_on_panfs_but_not_ceph.txt
+
+    comm -13 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_ceph.txt) > \${_myprefix}.files_on_ceph_but_not_panfs.txt
+
+
+    if [[ ! -s \${_myprefix}.files_on_panfs_but_not_ceph.txt ]]
+    then
+       # The file above is empty.
+       #echo "[panfs2ceph "\$(date)"] There are no files in the *.filelist.txt that are missing from ceph."
+       rm -rf \${_myprefix}.files_on_panfs_but_not_ceph.txt
+    else
+        echo "[panfs2ceph "\$(date)"] There are files listed in *.filelist.txt that are not found on ceph. Review: \${_myprefix}.files_on_panfs_but_not_ceph.txt" >&2
+    fi
+
+
+    if [[ ! -s \${_myprefix}.files_on_ceph_but_not_panfs.txt ]]
+    then
+       # The file above is empty.
+       #echo "[panfs2ceph "\$(date)"] There are no files on ceph that are not listed in *.filelist.txt."
+       rm -rf \${_myprefix}.files_on_ceph_but_not_panfs.txt
+    else
+        echo "[panfs2ceph "\$(date)"] There are files on ceph that are not listed in *.filelist.txt. Review: \${_myprefix}.files_on_ceph_but_not_panfs.txt" >&2
     fi
 
 
@@ -294,6 +416,349 @@ panfs2ceph() {
 
 
 
+    # ---------------------------------------------------------------------
+    # Job summary info
+    # ---------------------------------------------------------------------
+
+    echo "[panfs2ceph "\$(date)"] Script end."
+
+    if [ ! -z \${SLURM_JOB_ID+x} ]; then
+        scontrol show job "\${SLURM_JOB_ID}"
+        sstat -j "\${SLURM_JOB_ID}" --format=JobID,MaxRSS,MaxVMSize,NTasks,MaxDiskWrite,MaxDiskRead
+    fi
+
+
+
+
+
+
+
+    EOF
+
+
+
+
+
+
+
+    #######################################################################
+    # Delete
+    #######################################################################
+
+
+    tee ${_myprefix}.2_delete.slurm << EOF > /dev/null
+    #!/bin/bash
+    #SBATCH --nodes=1
+    #SBATCH --ntasks-per-node=1
+    #SBATCH --cpus-per-task=1
+    #SBATCH --time=24:00:00
+    #SBATCH --mem=32gb
+    #SBATCH --error=%x.e%j
+    #SBATCH --output=%x.o%j
+    #SBATCH --mail-type=BEGIN,END,FAIL
+    #SBATCH --mail-user=$USER@umn.edu
+    #SBATCH --partition=amdsmall
+
+    echo "[panfs2ceph "\$(date)"] Script start."
+
+
+    # ---------------------------------------------------------------------
+    # Variables
+    # ---------------------------------------------------------------------
+
+
+    _root_path_dir=${_root_path_dir}
+    _myprefix=${_myprefix}
+    _myprefix_dir=${_myprefix_dir}
+    _dry_run=${_dry_run}
+    _verbose=${_verbose}
+
+
+
+    # ---------------------------------------------------------------------
+    # Software
+    # ---------------------------------------------------------------------
+
+    cd \${_myprefix_dir}
+
+    module load /home/lmnp/knut0297/software/modulesfiles/rsync/3.1.2
+
+
+    # ---------------------------------------------------------------------
+    # Delete files from panfs
+    # ---------------------------------------------------------------------
+
+    # Delete all files in the file list
+    # Use rsync to delte files because it's faster than "rm"
+
+    _empty_dir=\${_myprefix_dir}/empty_dir
+
+    mkdir -p \${_empty_dir}
+
+    rsync \${_dry_run} \${_verbose} -a --force --delete \${_empty_dir}/ \${_root_path_dir}/
+
+
+
+    if [ ! \$? -eq 0 ]
+    then
+        # rclone exit status was not zero
+        echo "[panfs2ceph "\$(date)"] Delete process: FAIL" 2>&1 | tee \${_myprefix}.DELETE_FAILED
+    else
+        echo "[panfs2ceph "\$(date)"] Delete process: SUCCESS"
+    fi
+
+    # Delete the original archive dir and the temp empty dir
+    rm -rf \${_root_path_dir}
+    rm -rf \${_empty_dir}
+
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Job summary info
+    # ---------------------------------------------------------------------
+
+    echo "[panfs2ceph "\$(date)"] Script end."
+
+    if [ ! -z \${SLURM_JOB_ID+x} ]; then
+        scontrol show job "\${SLURM_JOB_ID}"
+        sstat -j "\${SLURM_JOB_ID}" --format=JobID,MaxRSS,MaxVMSize,NTasks,MaxDiskWrite,MaxDiskRead
+    fi
+
+
+
+    EOF
+
+
+
+
+
+
+
+    #######################################################################
+    # Restore
+    #######################################################################
+
+
+    tee ${_myprefix}.3_restore.slurm << EOF > /dev/null
+    #!/bin/bash
+    #SBATCH --nodes=1
+    #SBATCH --ntasks-per-node=1
+    #SBATCH --cpus-per-task=${_threads}
+    #SBATCH --time=24:00:00
+    #SBATCH --mem=32gb
+    #SBATCH --error=%x.e%j
+    #SBATCH --output=%x.o%j
+    #SBATCH --mail-type=BEGIN,END,FAIL
+    #SBATCH --mail-user=$USER@umn.edu
+    #SBATCH --partition=amdsmall
+
+    echo "[panfs2ceph "\$(date)"] Script start."
+
+
+    # ---------------------------------------------------------------------
+    # Variables
+    # ---------------------------------------------------------------------
+
+
+    _root_path_dir=${_root_path_dir}
+    _myprefix=${_myprefix}
+    _myprefix_dir=${_myprefix_dir}
+    _dry_run=${_dry_run}
+    _verbose=${_verbose}
+    _remote=${_remote}
+    _bucket=${_bucket}
+    _threads=${_threads}
+
+
+
+    # ---------------------------------------------------------------------
+    # Load software
+    # ---------------------------------------------------------------------
+
+
+
+    module load rclone/1.54
+
+
+
+    # ---------------------------------------------------------------------
+    # Check if original dir still exists on panfs
+    # ---------------------------------------------------------------------
+
+    if [ -d "\${_root_path_dir}" ]
+    then
+        echo "[panfs2ceph "\$(date)"] The original dir (\${_root_path_dir}) still exists on panfs. Stopping restore process. Change the dir name on panfs and re-run restore script." >&2
+        exit 1
+    fi
+
+
+
+    # ---------------------------------------------------------------------
+    # rclone
+    # ---------------------------------------------------------------------
+
+    # Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
+    rclone lsf -R \${_remote}:\${_bucket} --max-depth 1 > /dev/null
+
+
+    # Copy the files from ceph back to panfs
+    rclone copy "\${_remote}:\${_bucket}\${_root_path_dir}" "\${_root_path_dir}" \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+
+
+    if [ ! \$? -eq 0 ]
+    then
+        # rclone exit status was not zero
+        echo "[panfs2ceph "\$(date)"] rclone restore process: FAIL" 2>&1 | tee \${_myprefix}.RESTORE_FAILED
+    else
+        echo "[panfs2ceph "\$(date)"] rclone restore process: SUCCESS"
+    fi
+
+
+
+    # ---------------------------------------------------------------------
+    # Job summary info
+    # ---------------------------------------------------------------------
+
+    echo "[panfs2ceph "\$(date)"] Script end."
+
+    if [ ! -z \${SLURM_JOB_ID+x} ]; then
+        scontrol show job "\${SLURM_JOB_ID}"
+        sstat -j "\${SLURM_JOB_ID}" --format=JobID,MaxRSS,MaxVMSize,NTasks,MaxDiskWrite,MaxDiskRead
+    fi
+
+
+
+
+
+
+
+    EOF
+
+
+
+
+
+
+    #######################################################################
+    # Readme
+    #######################################################################
+
+
+
+    tee ${_myprefix}.readme.md << EOF > /dev/null
+
+
+    # panfs2ceph archive
+
+    ## Introduction
+
+    This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1) storage to its \`ceph\` tier 2 storge. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. After the data was copied, it was deleted from \`panfs\`. 
+
+
+    ## How this works
+
+    * A program called \`panfs2ceph\` found all the files in a directory to archive and created a file list text file.
+    * Then the program created a slurm job file (bash script) that can be run to copy all files from panfs to ceph.
+    * The program also created a slurm job file (bash script) to delete the original data from panfs.
+    * The program also created this README file.
+    * The program does not actually run these slrum job scripts. You must do that manually after reviewing the file list, etc.
+
+
+    ## Notes:
+
+    * A new dir is created next to the original that contains these archive-related files and scripts.
+
+
+
+    ## Variables
+
+
+    Variable Name | Value 
+    -----------|----------
+    Directory to archive | ${_root_path_dir}
+    Directory name for archive files | ${_myprefix}
+    Directory path for archive files | ${_myprefix_dir}
+    Ceph UserID | $(s3info info | grep username | awk -F': ' '{print $2}')
+    Ceph Remote Name | ${_remote}
+    Ceph Bucket Name | ${_bucket}
+    User doing transfer | $USER
+
+
+    ## How to access the original data
+
+    ### Browse the data on ceph
+
+    You can use a variety of tools to browse data stored on ceph. For example:
+
+    1. rclone (e.g. \`rclone ls ${_remote}:${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.config/rclone/rclone.conf\` file. 
+    2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.s3cfg\` file. 
+    3. GUI based file browser (e.g. FileZilla, Panic's Transmit, CyberDuck, etc.)
+ 
+ 
+    ### Browse the data via panfs \`snapshot\`
+
+    The original data was deleted, but might still be stored on \`panfs\` as a snapshot for a short period of time (approximately 1 month or less). If this data was archived to ceph and deleted from panfs, it might be recovered from panfs for a short time. Review the available snapshots here:
+
+        ${_root_path_dir}/.snapshot
+
+
+    ### Restore from ceph back to panfs
+
+    Depending on user permissions, the data can be copied from ceph back to panfs using \`rclone\` or other methods. For example, running ${_myprefix}.3_restore.slurm job script should copy the data from ceph back to panfs in its original location.
+
+
+
+
+
+    EOF
+
+
+
+
+    #######################################################################
+    # Print instructions to terminal
+    #######################################################################
+
+    echo "[panfs2ceph "$(date)"] Done."
+
+
+    read -r -d '' instructions_message << EOF > /dev/null
+    ---------------------------------------------------------------------
+    panfs2ceph summary
+
+    Options used:
+    dry_run=${_dry_run}
+    verbose=${_verbose}
+    delete_empty_dirs=${_delete_empty_dirs}
+    remote=${_remote}
+    bucket=${_bucket}
+    threads=${_threads}
+
+    Archive dir: 
+    ${_root_path_dir}
+
+    Archive dir transfer scripts:
+    ${_myprefix_dir}
+
+    Achrive transfer files created -- but you're not done yet!
+    Next steps:
+    1. Move into transfer dir: cd ${_myprefix_dir}
+    2. Review the *.readme.md file for details.
+    3. Review the *.filelist.txt file. The files in this list will be copied to ceph and delted from panfs.
+    4. Launch the copy jobfile: sbatch ${_myprefix}.1_copy.slurm
+    5. After sucessful copy, launch the delete jobfile: sbatch ${_myprefix}.2_delete.slurm
+    6. After the data has been deleted from panfs -- and you need it back in the same location, launch the restore jobfile: sbatch ${_myprefix}.3_restore.slurm
+
+    VERSION: ${VERSION}
+    QUESTIONS: Todd Knutson (knut0297@umn.edu)
+    REPO: https://github.umn.edu/knut0297org/panfs2ceph
+    ---------------------------------------------------------------------
+    EOF
+
+
+    echo "$instructions_message"
 
 
 }
