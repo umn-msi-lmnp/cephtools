@@ -236,6 +236,7 @@ panfs2ceph() {
 
     echo ${_myprefix_dir}
     mkdir -p ${_myprefix_dir}
+    chmod --reference ${_root_path_dir} ${_myprefix_dir}
     cd ${_myprefix_dir}
 
 
