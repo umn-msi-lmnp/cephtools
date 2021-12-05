@@ -230,8 +230,8 @@ panfs2ceph() {
     # Create archive working dir
     # ---------------------------------------------------------------------
 
-
-    _myprefix="panfs2ceph_archive_$(date +"%Y-%m-%d-%H%M%S")"
+    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    _myprefix="panfs2ceph_archive_${_archive_date_time}"
     _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
 
     echo ${_myprefix_dir}
@@ -659,6 +659,9 @@ EOF
 
 # panfs2ceph archive
 
+Archive initated (Y-m-d-HMS):  
+${_archive_date_time}   
+
 ## Introduction
 
 This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1) storage to its \`ceph\` tier 2 storge. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. After the data was copied, it was deleted from \`panfs\`. 
@@ -684,6 +687,7 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1
 
 Variable Name | Value 
 -----------|----------
+Archive date and time | ${_archive_date_time}
 Directory to archive | ${_root_path_dir}
 Directory name for archive files | ${_myprefix}
 Directory path for archive files | ${_myprefix_dir}
