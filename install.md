@@ -67,12 +67,12 @@ If you want to build the program in a different location, specify an build/insta
 
 ```
 # Move into the repo dir (cephtools) and run make
-PREFIX=/my/fav/build/dir make
+make PREFIX=/my/fav/build/dir
 
 # Update paths
 # Add these to your ~/.bashrc if you want cephtools available in every new shell
-export PATH="${PREFIX}/build/bin:${PATH}"
-export MANPATH="${PREFIX}/build/share/man:${MANPATH}"
+export PATH="${PREFIX}/bin:${PATH}"
+export MANPATH="${PREFIX}/share/man:${MANPATH}"
 ```
 
 
