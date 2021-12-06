@@ -189,8 +189,8 @@ panfs2ceph() {
         printf "%s\\n" "$(command -v rclone)"
         printf "%s\\n" "$(rclone --version)" 
     else
-        printf "rclone could not be found in PATH, so using the MSI module: %s\\n" "/panfs/roc/soft/modulefiles.common/rclone/1.54"
-        module load rclone/1.54
+        printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+        MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
         printf "%s\\n" "$(command -v rclone)"
         printf "%s\\n" "$(rclone --version)" 
     fi
@@ -216,7 +216,7 @@ panfs2ceph() {
 
 
     # Count the number of ceph objects (files) listed under the input archive dir. If there are any files under this dir name already, stop.
-    remote_root_path_dir_filenumber=$(rclone lsf ${_remote}:${_bucket}$(dirname ${_root_path_dir})/$(basename ${_root_path_dir}) --max-depth 1 2> /dev/null | wc -l)
+    remote_root_path_dir_filenumber=$(rclone lsf ${_remote}:${_bucket}$(dirname ${_root_path_dir})/$(basename ${_root_path_dir}) --links --max-depth 1 2> /dev/null | wc -l)
 
 
     if [[ $remote_root_path_dir_filenumber -gt 0 ]]
@@ -263,7 +263,7 @@ panfs2ceph() {
     # Print a list of files that will be archived
     echo "[panfs2ceph "$(date)"] Creating the archive file list. This might take a while for large dirs..."
 
-    rclone lsf -R ${_root_path_dir} > ${_myprefix}.filelist.txt
+    rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt
     # _myprefix the files with full pathname
     sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
 
@@ -341,7 +341,7 @@ _threads=${_threads}
 
 cd \${_myprefix_dir}
 
-module load rclone/1.54
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 
@@ -353,7 +353,7 @@ module load rclone/1.54
 
 
 # Copy the files to ceph
-rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --links \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 if [ ! \$? -eq 0 ]
 then
@@ -379,12 +379,12 @@ echo "[panfs2ceph "\$(date)"] Starting verification..."
 echo "[panfs2ceph "\$(date)"] Getting file list from ceph..."
 
 # Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
-#rclone lsf -R \${_remote}: --max-depth 1 > /dev/null
-#rclone lsf -R \${_remote}:\${_bucket} --max-depth 1 > /dev/null
+#rclone lsf -R --links \${_remote}: --max-depth 1 > /dev/null
+#rclone lsf -R --links \${_remote}:\${_bucket} --max-depth 1 > /dev/null
 
 
 # Get a file list from ceph (after the transfer)
-rclone lsf -R \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+rclone lsf -R --links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
 
 # _myprefix the files with full pathname
 sed -i -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt
@@ -488,8 +488,7 @@ _verbose=${_verbose}
 
 cd \${_myprefix_dir}
 
-module load /home/lmnp/knut0297/software/modulesfiles/rsync/3.1.2
-
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rsync/3.1.2
 
 # ---------------------------------------------------------------------
 # Delete files from panfs
@@ -586,7 +585,7 @@ _threads=${_threads}
 
 
 
-module load rclone/1.54
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 
@@ -607,11 +606,11 @@ fi
 # ---------------------------------------------------------------------
 
 # Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
-rclone lsf -R \${_remote}:\${_bucket} --max-depth 1 > /dev/null
+rclone lsf -R --links \${_remote}:\${_bucket} --max-depth 1 > /dev/null
 
 
 # Copy the files from ceph back to panfs
-rclone copy "\${_remote}:\${_bucket}\${_root_path_dir}" "\${_root_path_dir}" \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "\${_remote}:\${_bucket}\${_root_path_dir}" "\${_root_path_dir}" --links \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 
 if [ ! \$? -eq 0 ]
