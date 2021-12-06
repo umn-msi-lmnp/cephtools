@@ -1,0 +1,363 @@
+
+
+
+# ---------------------------------------------------------------------
+# bucketpolicy
+# ---------------------------------------------------------------------
+
+describe "bucketpolicy" <<HEREDOC
+---------------------------------------------------------------------
+Usage:
+    ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION>
+
+Options:
+    -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
+                            transfer. Required.
+    
+    -p|--policy <STRING>    What policy should be created? [Default = "GROUP_READ"]
+                            Policy options: 
+                                NONE: Removes any policy currently set.
+                                GROUP_READ: Allows all current memebers of the MSI group 
+                                    read-only access to the bucket. 
+                                    
+    -g|--group <STRING>     MSI group id. Required only if "--policy GROUP_READ" is
+                            specified.
+    
+    -n|--do_not_setpolicy   If specified, the policy will be created (i.e. written to
+                            file) but it will not be set on the bucket.
+    
+    -v|--verbose            Verbose mode will be applied to s3cmd commands.
+    
+    --debug                 Print additional info when running this command (like verbose 
+                            mode). 
+
+Description:
+  Create and set bucket policies for tier 2 (ceph).
+  
+Help (print this screen):
+    ${_ME} help bucketpolicy
+
+Version: ${_VERSION}
+Questions: Todd Knutson (knut0297@umn.edu)
+GitHub: https://github.umn.edu/knut0297org/cephtools
+---------------------------------------------------------------------
+HEREDOC
+
+bucketpolicy() {
+#     echo ALL ARGS:
+#     echo "${@:-}"
+#     echo "${#}"
+
+
+    
+    # Parse Options ###############################################################
+
+    # Initialize program option variables.
+    local _USE_DEBUG=0
+    local _bucket=
+    local _policy="GROUP_READ"
+    local _group=
+    local _do_not_setpolicy=0
+    local _verbose=
+
+    # __get_option_value()
+    #
+    # Usage:
+    #   __get_option_value <option> <value>
+    #
+    # Description:
+    #  Given a flag (e.g., -e | --example) return the value or exit 1 if value
+    #  is blank or appears to be another option.
+    __get_option_value() {
+      local __arg="${1:-}"
+      local __val="${2:-}"
+      
+      if [[ -n "${__val:-}" ]] && [[ ! "${__val:-}" =~ ^- ]]
+      then
+        printf "%s\\n" "${__val}"
+      else
+        _exit_1 printf "%s requires a valid argument.\\n" "${__arg}"
+      fi
+    }
+
+
+    # For flags (i.e. no corresponding value), do not shift inside the case testing
+    # statement. For options with required value, shift inside case testing statement, 
+    # so the loop moves twice. 
+    while ((${#}))
+    do
+        __arg="${1:-}"
+        __val="${2:-}"
+
+        case "${__arg}" in
+        --debug)
+            _USE_DEBUG=1
+            ;;
+        -v|--verbose)
+            _verbose="-v"
+            ;;
+        -n|--do_not_setpolicy)
+            _do_not_setpolicy=1
+            ;;
+        -b|--bucket)
+            _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
+        -p|--policy)
+            _policy="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
+        -g|--group)
+            _group="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
+        --endopts)
+            # Terminate option parsing.
+            break
+            ;;
+        -*)
+            _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
+            ;;
+        *)
+            describe --get bucketpolicy
+            _exit_1 printf "Unexpected positional arg: %s\\n" "${__arg}"
+            ;;
+        esac
+
+        shift
+    done
+
+
+    # ---------------------------------------------------------------------
+    # Check and print input options
+    # ---------------------------------------------------------------------
+
+    printf -- "Program options used:\\n"
+    printf -- "--debug: %s\\n" "$_USE_DEBUG"
+    printf -- "--bucket: %s\\n" "$_bucket"
+    printf -- "--policy: %s\\n" "$_policy"
+    printf -- "--group: %s\\n" "$_group"
+    printf -- "--verbose: %s\\n" "$_verbose"
+    printf -- "--do_not_setpolicy: %s\\n" "$_do_not_setpolicy"
+
+
+    # If required options are empty or null, exit.
+    if [ -z "${_bucket}" ]
+    then
+        _exit_1 printf "The '--bucket' option must be specified and not be empty or null."
+    fi
+    if [ -z "${_policy}" ]
+    then
+        _exit_1 printf "The '--policy' option must be specified and not be empty or null."
+    fi
+    if [ "${_policy}" == "GROUP_READ" ]
+    then
+        if [ -z "${_group}" ]
+        then
+            _exit_1 printf "The '--group' option must be specified and not be empty or null when using --policy=GROUP_READ\\n"
+        fi
+    fi
+    
+
+    # ---------------------------------------------------------------------
+    # Check s3cmd specific info
+    # ---------------------------------------------------------------------
+
+    S3CMD_CONFIG=${S3CMD_CONFIG:-"$HOME/.s3cfg"}
+    S3CMD="$(which s3cmd)"
+    if command -v s3cmd &> /dev/null
+    then
+        printf "Using s3cmd found in PATH:\\n"
+        printf "%s\\n" "$(which s3cmd)"
+        printf "%s\\n" "$(s3cmd --version)" 
+    else
+        _exit_1 printf "s3cmd could not be found in PATH"
+    fi
+
+    # Make sure access to bucket is possible
+    if ! s3cmd ls s3://${_bucket}
+    then
+        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
+    fi
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Create bucket policy vars
+    # ---------------------------------------------------------------------
+
+    _curr_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    _bucket_policy="${_bucket}.bucket_policy.json"
+    _bucket_policy_readme="${_bucket}.bucket_policy_readme.md"
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Get group user ids
+    # ---------------------------------------------------------------------
+
+    if [ "${_policy}" == "GROUP_READ" ]
+    then
+    
+        # Find all usernames in the group
+        _username_csv="$(getent group "${_group}" | cut -d":" -f4-)"
+
+        readarray -t _username <<< "$(printf "%s\\n" "${_username_csv}" | sed -e 'y/,/\n/')"
+        echo "${_username[@]}"
+        echo "${#_username[@]}"
+        echo "${!_username[@]}"
+
+
+        # Capture the user id (uid) from the MSI "s3info" function (if possible). Alternatively,
+        # capture the uid from the the unix "id" command. Either way, we should generated a comma 
+        # separated list of uid values for each user. This entire concatenated string will be supplied
+        # to the bucket policy.
+        _all_uid_string=()
+        for i in "${!_username[@]}"
+        do
+            if _curr_s3info_uid="$(s3info --user "${_username[$i]}" | grep -Po "uid=\\d+$")" ; then
+                _curr_uid_string="\"arn:aws:iam:::user/${_curr_s3info_uid}\""
+    
+                if [ "${#_all_uid_string[@]}" -eq 0 ]; then
+                    _all_uid_string+="${_curr_uid_string}"
+                else
+                    _all_uid_string+=",${_curr_uid_string}"
+                fi
+            elif curr_unix_uid="$(id -u "${_username[$i]}")" ; then
+                printf "s3info command failed for username: %s, getting unix user id instead.\\n" "${_username[$i]}"
+                #printf "%s\t%s\n" "${_username[$i]}" "user=${curr_unix_uid}" >> group_usernames_without_s3info_uid.txt
+                _curr_uid_string="\"arn:aws:iam:::user/user=${curr_unix_uid}\""
+    
+                if [ ${#_all_uid_string[@]} -eq 0 ]; then
+                    _all_uid_string+="$_curr_uid_string"
+                else
+                    _all_uid_string+=",$_curr_uid_string"
+                fi
+
+            else
+                printf "unix id command failed for username: %s.\\n" "${_username[$i]}"
+            fi
+        done
+
+        echo "${_all_uid_string}"
+    fi
+
+
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Write a bucket policy
+    # ---------------------------------------------------------------------
+
+
+    # Make sure your JSON file is correctly formatted: 
+    # https://jsonlint.com
+
+    # Ceph docs:
+    # https://docs.ceph.com/en/latest/radosgw/bucketpolicy/
+    # The Ceph Object Gateway supports a subset of the Amazon S3 policy language applied to buckets.
+    # Ceph does not support groups or usernames. Must use individual uid for each user.
+
+
+    # This is basically a "read-only" policy
+    tee "${_bucket_policy}" << HEREDOC > /dev/null 
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_uid_string}
+        ]},
+        "Action": [
+            "s3:ListBucket",
+            "s3:ListBucketVersions",
+            "s3:GetBucketAcl",
+            "s3:GetBucketCORS",
+            "s3:GetBucketLocation",
+            "s3:GetBucketLogging",
+            "s3:GetBucketNotification",
+            "s3:GetBucketPolicy",
+            "s3:GetBucketTagging",
+            "s3:GetBucketVersioning",
+            "s3:GetBucketWebsite",
+            "s3:GetObjectAcl",
+            "s3:GetObject",
+            "s3:GetObjectVersionAcl",
+            "s3:GetObjectVersion"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Apply bucket policy
+    # ---------------------------------------------------------------------
+
+    if ((_do_not_setpolicy))
+    then
+        # "The '--do_not_setpolicy' option was specified. The bucket policy will not be set."
+        :
+    else
+        s3cmd setpolicy ${_bucket_policy} s3://${_bucket}
+        s3cmd info s3://${_bucket}
+    fi
+
+
+    # If you need to delete bucket policy:
+    # s3cmd delpolicy s3://$BUCKET
+
+
+
+
+
+    #######################################################################
+    # Print instructions to terminal
+    #######################################################################
+
+    echo "[bucketpolicy "$(date)"] Done."
+
+
+    #read -r -d '' instructions_message << EOF > /dev/null
+
+    # The unix "read" command does not return a zero exit code. Use a temp function instead.
+    # https://stackoverflow.com/a/8088167/2367748
+    heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
+    
+    heredoc2var instructions_message << HEREDOC > /dev/null
+
+---------------------------------------------------------------------
+cephtools bucketpolicy summary
+
+curr_date_time=${_curr_date_time}
+Options used:
+
+bucket=${_bucket}
+policy=${_policy}
+verbose=${_verbose}
+do_not_setpolicy=${_do_not_setpolicy}
+
+
+
+VERSION: ${_VERSION}
+QUESTIONS: Todd Knutson (knut0297@umn.edu)
+REPO: https://github.umn.edu/knut0297org/cephtools
+---------------------------------------------------------------------
+HEREDOC
+
+
+    echo "$instructions_message"
+}
+
+
+
