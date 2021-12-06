@@ -26,17 +26,20 @@ cephtools --help
 
 cephtools panfs2ceph
 cephtools help panfs2ceph
+cephtools help bucketpolicy
+
 ```
 
 The program man pages contain detailed information about how each command or subcommand works. These pages can be also be viewed on GitHub as `.ronn` files ([which are nearly equivalent to markdown](https://github.com/apjanke/ronn-ng/blob/master/man/ronn.1.ronn)) here: 
 
 * [./doc/cephtools.1.ronn](./doc/cephtools.1.ronn)
 * [./doc/cephtools-panfs2ceph.1.ronn](./doc/cephtools-panfs2ceph.1.ronn)
-
+* [./doc/cephtools-bucketpolicy.1.ronn](./doc/cephtools-bucketpolicy.1.ronn)
 
 ```
 man cephtools
 man cephtools panfs2ceph
+man cephtools bucketpolicy
 ```
 
 
