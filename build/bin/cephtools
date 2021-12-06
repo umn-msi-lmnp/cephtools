@@ -64,7 +64,7 @@ _ME="$(basename "${0}")"
 # MAJOR version when you make incompatible API changes,
 # MINOR version when you add functionality in a backwards compatible manner, and
 # PATCH version when you make backwards compatible bug fixes.
-_VERSION="0.1.0"
+_VERSION="2.0.0"
 
 
 
@@ -819,12 +819,13 @@ panfs2ceph() {
     # Create archive working dir
     # ---------------------------------------------------------------------
 
-
-    _myprefix="panfs2ceph_archive_$(date +"%Y-%m-%d-%H%M%S")"
+    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    _myprefix="panfs2ceph_archive_${_archive_date_time}"
     _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
 
     echo ${_myprefix_dir}
     mkdir -p ${_myprefix_dir}
+    chmod --reference ${_root_path_dir} ${_myprefix_dir}
     cd ${_myprefix_dir}
 
 
@@ -1247,6 +1248,9 @@ EOF
 
 # panfs2ceph archive
 
+Archive initated (Y-m-d-HMS):  
+${_archive_date_time}   
+
 ## Introduction
 
 This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1) storage to its \`ceph\` tier 2 storge. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. After the data was copied, it was deleted from \`panfs\`. 
@@ -1264,6 +1268,7 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1
 ## Notes:
 
 * A new dir is created next to the original that contains these archive-related files and scripts.
+* File modification times/dates should be preserved between transfers. However, if files are transferred from ceph back to panfs, the original modification times of directories will be lost (i.e. block storage like tier 2 does not have directories, so their mod times can't be preserved).
 
 
 
@@ -1272,6 +1277,7 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1
 
 Variable Name | Value 
 -----------|----------
+Archive date and time | ${_archive_date_time}
 Directory to archive | ${_root_path_dir}
 Directory name for archive files | ${_myprefix}
 Directory path for archive files | ${_myprefix_dir}

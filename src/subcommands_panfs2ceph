@@ -679,6 +679,7 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1
 ## Notes:
 
 * A new dir is created next to the original that contains these archive-related files and scripts.
+* File modification times/dates should be preserved between transfers. However, if files are transferred from ceph back to panfs, the original modification times of directories will be lost (i.e. block storage like tier 2 does not have directories, so their mod times can't be preserved).
 
 
 
