@@ -11,8 +11,7 @@ Usage:
     ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION>
 
 Options:
-    -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
-                            transfer. Required.
+    -b|--bucket <STRING>    Name of the ceph bucket for policy. Required.
     
     -p|--policy <STRING>    What policy should be created? [Default = "GROUP_READ"]
                             Policy options: 
