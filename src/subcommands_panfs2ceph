@@ -185,21 +185,20 @@ panfs2ceph() {
     # ---------------------------------------------------------------------
     if command -v rclone &> /dev/null
     then
-        printf "Using rclone found in PATH:\\n"
-        printf "%s\\n" "$(command -v rclone)"
-        printf "%s\\n" "$(rclone --version)" 
+        _info printf "Using rclone found in PATH:\\n"
+        _info printf "%s\\n" "$(command -v rclone)"
+        _info printf "%s\\n" "$(rclone --version)" 
     else
-        printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
         MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
-        printf "%s\\n" "$(command -v rclone)"
-        printf "%s\\n" "$(rclone --version)" 
+        _info printf "%s\\n" "$(command -v rclone)"
+        _info printf "%s\\n" "$(rclone --version)" 
     fi
 
     # Make sure the remote exists
     if ! rclone listremotes | grep -q "^$_remote:\$"
     then
-        printf "Rclone remote does not exist: %s\\n" "$_remote"
-        _exit_1 printf "Check available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n"
+        _exit_1 printf "Rclone remote does not exist: %s\\nCheck available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n" "$_remote"
     fi
 
     # Make sure access to bucket is possible
@@ -234,7 +233,7 @@ panfs2ceph() {
     _myprefix="panfs2ceph_archive_${_archive_date_time}"
     _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
 
-    echo ${_myprefix_dir}
+    _info printf "Archive dir name: %s\\n" ${_myprefix_dir}
     mkdir -p ${_myprefix_dir}
     chmod --reference ${_root_path_dir} ${_myprefix_dir}
     cd ${_myprefix_dir}
@@ -261,7 +260,7 @@ panfs2ceph() {
 
 
     # Print a list of files that will be archived
-    echo "[panfs2ceph "$(date)"] Creating the archive file list. This might take a while for large dirs..."
+    _info printf "Creating the archive file list. This might take a while for large dirs..."
 
     rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt
     # _myprefix the files with full pathname
@@ -291,8 +290,7 @@ panfs2ceph() {
 
     if [[ -s ${_myprefix}.filelist.paths_too_long.txt ]]
     then
-        echo "[panfs2ceph "$(date)"] Some pathnames are too long (> $pathname_max char) for ceph. See ${_myprefix}.filelist.paths_too_long.txt for a list. Shorten them before proceeding." >&2
-        exit 88
+        _exit_1 printf "Some pathnames are too long (> %s char) for ceph. See %s.filelist.paths_too_long.txt for a list. Shorten them before proceeding." "${pathname_max}" "${_myprefix}"
     fi
 
 
