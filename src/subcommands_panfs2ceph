@@ -260,7 +260,7 @@ panfs2ceph() {
 
 
     # Print a list of files that will be archived
-    _info printf "Creating the archive file list. This might take a while for large dirs..."
+    _info printf "Creating the archive file list. This might take a while for large dirs...\\n"
 
     rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt
     # _myprefix the files with full pathname
