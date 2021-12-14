@@ -43,7 +43,7 @@ Re-run the bucket policy command after MSI members are added or removed from gro
 
 ## Transfer data from `data_delivery` to ceph
 
-After the PI's bucket has an READ/WRITE bucket policy set for group member, the following methods can be done by any group members. In fact, the data transfer steps below should repeatedly (i.e. after any new datasets are added to `data_delivery` directory). 
+After the PI's bucket has an READ/WRITE bucket policy set for group member, the following methods can be done by any group members. In fact, the data transfer steps below should repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/knut0297org/software_tips/tree/main/rclone#umn-tier2-ceph).
 
 
 
