@@ -18,6 +18,8 @@ Options:
                                 NONE: Removes any policy currently set.
                                 GROUP_READ: Allows all current memebers of the MSI group 
                                     read-only access to the bucket. 
+                                GROUP_READ_WRITE: Allows all current memebers of the MSI 
+                                    group read and write access to the bucket.
                                     
     -g|--group <STRING>     MSI group id. Required only if "--policy GROUP_READ" is
                             specified.
