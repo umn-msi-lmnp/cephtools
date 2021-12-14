@@ -7,7 +7,7 @@ BUILD=$(DESTDIR)$(PREFIX)
 MAN_NAMES:=cephtools.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
 MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
 #MAN_NAMES_HTML:=cephtools.1.html cephtools-panfs2ceph.1.html cephtools-bucketpolicy.1.html
-MAN_TARGETS_HTML:=$(MAN_NAMES:%=$(BUILD)/share/man/man1_html/%.html)
+MAN_TARGETS_HTML:=$(MAN_NAMES:%=$(BUILD)/share/man_html/%.html)
 DOC_NAMES:=vignette_dd2ceph.html vignette_getting_started.html
 DOC_TARGETS:=$(DOC_NAMES:%=$(BUILD)/share/doc/%)
 
@@ -27,10 +27,10 @@ $(BUILD)/share/man/man1/%: doc/%.ronn
 	ronn --roff $^ --output-dir $(BUILD)/share/man/man1
 
 # Convert markdown (ronn format) to HTML format
-$(BUILD)/share/man/man1_html/%.html: doc/%.ronn
-	mkdir -p $(BUILD)/share/man/man1_html; \
+$(BUILD)/share/man_html/%.html: doc/%.ronn
+	mkdir -p $(BUILD)/share/man_html; \
 	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load ronn-ng; \
-	ronn --html $^ --output-dir $(BUILD)/share/man/man1_html
+	ronn --html $^ --output-dir $(BUILD)/share/man_html
 
 # Convert markdown vignettes to HTML format
 $(BUILD)/share/doc/%.html: doc/%.md
