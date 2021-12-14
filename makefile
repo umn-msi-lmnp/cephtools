@@ -4,12 +4,15 @@ DESTDIR=
 BUILD=$(DESTDIR)$(PREFIX)
 
 # Generate file paths for some targets
-MAN_NAMES:=cephtools.1 cephtools-panfs2ceph.1
+MAN_NAMES:=cephtools.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
 MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
+#MAN_NAMES_HTML:=cephtools.1.html cephtools-panfs2ceph.1.html cephtools-bucketpolicy.1.html
+MAN_TARGETS_HTML:=$(MAN_NAMES:%=$(BUILD)/share/man/man1_html/%.html)
+DOC_NAMES:=vignette_dd2ceph.html vignette_getting_started.html
+DOC_TARGETS:=$(DOC_NAMES:%=$(BUILD)/share/doc/%)
 
 .PHONY: all
-#all: $(BUILD)/bin/cephtools $(BUILD)/share/man/man1/cephtools.1 $(BUILD)/share/man/man1/cephtools-panfs2ceph.1
-all: $(BUILD)/bin/cephtools $(MAN_TARGETS)
+all: $(BUILD)/bin/cephtools $(MAN_TARGETS) $(MAN_TARGETS_HTML) $(DOC_TARGETS)
 
 # Combine all the bash fragments into a single script
 $(BUILD)/bin/cephtools: src/head_1 src/version src/head_2 src/subcommands* src/main
@@ -22,6 +25,19 @@ $(BUILD)/share/man/man1/%: doc/%.ronn
 	mkdir -p $(BUILD)/share/man/man1; \
 	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load ronn-ng; \
 	ronn --roff $^ --output-dir $(BUILD)/share/man/man1
+
+# Convert markdown (ronn format) to HTML format
+$(BUILD)/share/man/man1_html/%.html: doc/%.ronn
+	mkdir -p $(BUILD)/share/man/man1_html; \
+	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load ronn-ng; \
+	ronn --html $^ --output-dir $(BUILD)/share/man/man1_html
+
+# Convert markdown vignettes to HTML format
+$(BUILD)/share/doc/%.html: doc/%.md
+	mkdir -p $(BUILD)/share/doc; \
+	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load pandoc; \
+	pandoc -f markdown -t html $^ -o $@ --self-contained 
+
 
 clean:
 	rm -rf $(BUILD)
