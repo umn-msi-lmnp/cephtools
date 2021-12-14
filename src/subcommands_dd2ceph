@@ -8,12 +8,12 @@
 describe "dd2ceph" <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} dd2ceph [options] --remote <REMOTE> --bucket <BUCKET> --path <DIR_PATH>
+    ${_ME} dd2ceph [options] --bucket <BUCKET> --remote <REMOTE> --path <DIR_PATH>
 
 Options:
     -r|--remote <STRING>    Rclone remote name. (use "rclone listremotes" for available
                             remotes). Rclone remotes must be set up using "rclone init"
-                            and can be viewed at: ~/.config/rclone/rclone.config.
+                            and can be viewed at: ~/.config/rclone/rclone.conf. 
                             
     -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
                             transfer. [Default = "$(id -ng)-data-archive"]
@@ -27,12 +27,10 @@ Options:
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
     
-    -v|--verbose            Verbose mode will be applied to rclone commands.
+    -v|--verbose            Verbose mode (print additional info).
                             
-    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 1].
+    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
-    --debug                 Print additional info when running this command (like verbose 
-                            mode). 
 
 Description:
   Archiving tool to copy any new data from the "data_delivery" directory to tier 2 (ceph).
@@ -56,15 +54,13 @@ dd2ceph() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _USE_DEBUG=0
     local _bucket="$(id -ng)-data-archive"
     local _remote=
     local _path="/home/$(id -ng)/data_delivery"
     local _log_dir="/home/$(id -ng)/shared/dd2ceph"
     local _dry_run=
     local _verbose=
-    local _delete_empty_dirs=0
-    local _threads="1"
+    local _threads="16"
 
     # __get_option_value()
     #
@@ -96,17 +92,11 @@ dd2ceph() {
         __val="${2:-}"
 
         case "${__arg}" in
-        --debug)
-            _USE_DEBUG=1
-            ;;
         -d|--dry_run)
             _dry_run="--dry-run"
             ;;
         -v|--verbose)
-            _verbose="-v"
-            ;;
-        -e|--delete_empty_dirs)
-            _delete_empty_dirs=1
+            _verbose=1
             ;;
         -b|--bucket)
             _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
@@ -150,14 +140,12 @@ dd2ceph() {
     # ---------------------------------------------------------------------
 
     printf -- "Program options used:\\n"
-    printf -- "--debug: %s\\n" "$_USE_DEBUG"
     printf -- "--bucket: %s\\n" "$_bucket"
     printf -- "--remote: %s\\n" "$_remote"
     printf -- "--path: %s\\n" "$_path"
     printf -- "--log_dir: %s\\n" "$_log_dir"
     printf -- "--dry_run: %s\\n" "$_dry_run"
     printf -- "--verbose: %s\\n" "$_verbose"
-    printf -- "--delete_empty_dirs: %s\\n" "$_delete_empty_dirs"
     printf -- "--threads: %s\\n" "$_threads"
 
 
@@ -166,20 +154,34 @@ dd2ceph() {
     then
         _exit_1 printf "The '--remote' option must be specified and not be empty or null."
     fi
-#     if [ -z "${_bucket}" ]
-#     then
-#         _exit_1 printf "The '--bucket' option must be specified and not be empty or null."
-#     fi
-#     if [ -z "${_path}" ]
-#     then
-#         _exit_1 printf "The '--path' option must be specified and not be empty or null."
-#     fi
     
 
     _root_path_dir=$(readlink -m "${_path}")
     if [ ! -d "${_root_path_dir}" ]
     then
         _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
+    fi
+
+
+    if command -v rclone &> /dev/null
+    then
+        RCLONE_MINOR_VER="$(rclone --version | head -n 1 | sed 's/rclone v..//' | sed 's/\..*$//')"
+        if [ "$RCLONE_MINOR_VER" -ge "57" ]
+        then
+            _info printf "Using rclone found in PATH:\\n"
+            _info printf "%s\\n" "$(command -v rclone)"
+            _info printf "%s\\n" "$(rclone --version)"
+        else
+            _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+            MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+            _info printf "%s\\n" "$(command -v rclone)"
+            _info printf "%s\\n" "$(rclone --version)" 
+        fi
+    else
+        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+        MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+        _info printf "%s\\n" "$(command -v rclone)"
+        _info printf "%s\\n" "$(rclone --version)" 
     fi
 
 
@@ -190,33 +192,20 @@ dd2ceph() {
         chmod g+rwx ${_log_dir}
     fi
    
-
-    # ---------------------------------------------------------------------
-    # Check rclone specific info
-    # ---------------------------------------------------------------------
-    if command -v rclone &> /dev/null
-    then
-        _info printf "Using rclone found in PATH:\\n"
-        _info printf "%s\\n" "$(command -v rclone)"
-        _info printf "%s\\n" "$(rclone --version)" 
-    else
-        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
-        MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
-        _info printf "%s\\n" "$(command -v rclone)"
-        _info printf "%s\\n" "$(rclone --version)" 
-    fi
-
     # Make sure the remote exists
     if ! rclone listremotes | grep -q "^$_remote:\$"
     then
         _exit_1 printf "Rclone remote does not exist: %s\\nCheck available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n" "$_remote"
     fi
 
+
     # Make sure access to bucket is possible
     if ! rclone lsf ${_remote}:${_bucket}
     then
-        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
+        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDoes the bucket exist?\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\nOr the MSI group PI should create the bucket using 's3cmd mb s3://%s'\\n" "${_bucket}" "${_bucket}" "${_bucket}"
     fi
+
+
 
     
 
@@ -311,7 +300,6 @@ _root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
-_verbose=${_verbose}
 _remote=${_remote}
 _bucket=${_bucket}
 _threads=${_threads}
@@ -336,7 +324,7 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 # Copy the files to ceph
-rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 if [ ! \$? -eq 0 ]
 then
@@ -354,19 +342,9 @@ fi
 # ---------------------------------------------------------------------
 
 
-# Sleep for a short time to allow rclone to properly list files. If done without
-# a short break, rclone lsf seems fail.
+
 echo "[dd2ceph "\$(date)"] Starting verification..."
-#echo "[dd2ceph "\$(date)"] Waiting for 30 sec to allow ceph to index files..."
-#sleep 30
 echo "[dd2ceph "\$(date)"] Getting file list from ceph..."
-
-# Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
-#rclone lsf -R --copy-links \${_remote}: --max-depth 1 > /dev/null
-#rclone lsf -R --copy-links \${_remote}:\${_bucket} --max-depth 1 > /dev/null
-
-
-# Get a file list from ceph (after the transfer)
 rclone lsf -R --copy-links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
 
 # _myprefix the files with full pathname
@@ -397,7 +375,7 @@ then
    #echo "[dd2ceph "\$(date)"] There are no files on ceph that are not listed in *.filelist.txt."
    rm -rf \${_myprefix}.files_on_ceph_but_not_panfs.txt
 else
-    echo "[dd2ceph "\$(date)"] There are files on ceph that are not listed in *.filelist.txt. Review: \${_myprefix}.files_on_ceph_but_not_panfs.txt" >&2
+    echo "[dd2ceph "\$(date)"] There are files on ceph that are not listed in *.filelist.txt. This is expected (i.e. some files removed from panfs are still found on ceph). Review: \${_myprefix}.files_on_ceph_but_not_panfs.txt" >&2
 fi
 
 
@@ -449,21 +427,21 @@ ${_archive_date_time}
 
 ## Introduction
 
-This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1) storage to its \`ceph\` tier 2 storge. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. After the data was copied, it was deleted from \`panfs\`. 
+This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1) storage to its \`ceph\` tier 2 storge. All new data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. Only new files were transfered (based on file size and date) from panfs to ceph. 
 
 
 ## How this works
 
-* A program called \`dd2ceph\` found all the files in a directory to archive and created a file list text file.
+* A program called \`dd2ceph\` found all the files in the directory above (old and new) and created a file list text file.
+* Only new files are transfered.
 * Then the program created a slurm job file (bash script) that can be run to copy all files from panfs to ceph.
-* The program also created a slurm job file (bash script) to delete the original data from panfs.
 * The program also created this README file.
-* The program does not actually run these slrum job scripts. You must do that manually after reviewing the file list, etc.
+* The program does not actually run this slrum job script. You must do that manually after reviewing the file list, etc.
 
 
 ## Notes:
 
-* A new dir is created next to the original that contains these archive-related files and scripts.
+* A new dir is created that contains these archive-related files and scripts.
 * File modification times/dates should be preserved between transfers. However, if files are transferred from ceph back to panfs, the original modification times of directories will be lost (i.e. block storage like tier 2 does not have directories, so their mod times can't be preserved).
 
 
@@ -494,17 +472,10 @@ You can use a variety of tools to browse data stored on ceph. For example:
 3. GUI based file browser (e.g. FileZilla, Panic's Transmit, CyberDuck, etc.)
 
 
-### Browse the data via panfs \`snapshot\`
-
-The original data was deleted, but might still be stored on \`panfs\` as a snapshot for a short period of time (approximately 1 month or less). If this data was archived to ceph and deleted from panfs, it might be recovered from panfs for a short time. Review the available snapshots here:
-
-    ${_root_path_dir}/.snapshot
-
 
 ### Restore from ceph back to panfs
 
-Depending on user permissions, the data can be copied from ceph back to panfs using \`rclone\` or other methods. For example, running ${_myprefix}.3_restore.slurm job script should copy the data from ceph back to panfs in its original location.
-
+The data can be copied from ceph back to panfs using \`rclone\` or other methods. Ideally, this ceph bucket (${_bucket}) should remain the main storage location for the data_delivery file. However, if you need to process some of these files, we suggest you copy the files from ceph to somewhere on MSI global scratch "/global.scratch/", so the files do not take up storage space in the home dir. 
 
 
 
@@ -532,28 +503,13 @@ EOF
 ---------------------------------------------------------------------
 cephtools dd2ceph summary
 
-Options used:
-dry_run=${_dry_run}
-verbose=${_verbose}
-delete_empty_dirs=${_delete_empty_dirs}
-remote=${_remote}
-bucket=${_bucket}
-threads=${_threads}
-
-Archive dir: 
-${_root_path_dir}
-
-Archive dir transfer scripts:
-${_myprefix_dir}
-
 Achrive transfer files created -- but you're not done yet!
 Next steps:
 1. Move into transfer dir: cd ${_myprefix_dir}
 2. Review the *.readme.md file for details.
-3. Review the *.filelist.txt file. The files in this list will be copied to ceph and delted from panfs.
+3. Review the *.filelist.txt file. The files in this list will be copied to ceph.
 4. Launch the copy jobfile: sbatch ${_myprefix}.1_copy.slurm
-5. After sucessful copy, launch the delete jobfile: sbatch ${_myprefix}.2_delete.slurm
-6. After the data has been deleted from panfs -- and you need it back in the same location, launch the restore jobfile: sbatch ${_myprefix}.3_restore.slurm
+
 
 VERSION: ${_VERSION}
 QUESTIONS: Todd Knutson (knut0297@umn.edu)
