@@ -269,8 +269,9 @@ bucketpolicy() {
 
     if _contains "${_policy}" "NONE"
     then
-        # No bucket policy written
-        :
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+
+HEREDOC
     elif _contains "${_policy}" "GROUP_READ"
     then
         tee "${_bucket_policy}" << HEREDOC > /dev/null
