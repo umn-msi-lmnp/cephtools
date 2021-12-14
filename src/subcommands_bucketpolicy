@@ -146,7 +146,7 @@ bucketpolicy() {
         _exit_1 printf "The '--bucket' option must be specified and not be empty or null.\\n"
     fi
     
-    _policy_options=(NONE GROUP_READ)
+    _policy_options=(NONE GROUP_READ GROUP_READ_WRITE)
     if ! _contains "${_policy}" "${_policy_options[@]}"
     then
         local _str
@@ -154,12 +154,11 @@ bucketpolicy() {
         _exit_1 printf "The '--policy' option must be specified as one of: %s\\n" "${_str}"
     fi
     
-    
-    if [ "${_policy}" == "GROUP_READ" ]
+    if [[ "${_policy}" =~ ^.*GROUP.*$ ]]
     then
         if [ -z "${_group}" ]
         then
-            _exit_1 printf "The '--group' option must be specified and not be empty or null when using --policy=GROUP_READ\\n"
+            _exit_1 printf "The '--group' option must be specified and not be empty or null when using --policy=GROUP_*\\n"
         fi
     fi
     
@@ -202,7 +201,7 @@ bucketpolicy() {
     # Get group user ids
     # ---------------------------------------------------------------------
 
-    if [ "${_policy}" == "GROUP_READ" ]
+    if [[ "${_policy}" =~ ^.*GROUP.*$ ]]
     then
     
         # Find all usernames in the group
@@ -244,8 +243,6 @@ bucketpolicy() {
                 _warn printf "unix id command failed for username: %s.\\n" "${_username[$i]}"
             fi
         done
-
-        #echo "${_all_uid_string}"
     fi
 
 
@@ -254,9 +251,8 @@ bucketpolicy() {
 
 
     # ---------------------------------------------------------------------
-    # Write a bucket policy
+    # Create and write the bucket policies
     # ---------------------------------------------------------------------
-
 
     # Make sure your JSON file is correctly formatted: 
     # https://jsonlint.com
@@ -267,8 +263,15 @@ bucketpolicy() {
     # Ceph does not support groups or usernames. Must use individual uid for each user.
 
 
-    # This is basically a "read-only" policy
-    tee "${_bucket_policy}" << HEREDOC > /dev/null 
+
+
+    if _contains "${_policy}" "NONE"
+    then
+        # No bucket policy written
+        :
+    elif _contains "${_policy}" "GROUP_READ"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -300,7 +303,31 @@ bucketpolicy() {
 }
 
 HEREDOC
+    elif _contains "${_policy}" "GROUP_READ_WRITE"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_uid_string}
+        ]},
+        "Action": [
+            "s3:*"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
 
+HEREDOC
+    else
+        _exit_1 printf "The '--policy' option is not recognized."
+    fi
+    
+    
 
 
 
@@ -310,23 +337,21 @@ HEREDOC
 
     if ((_do_not_setpolicy))
     then
-        _warn printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
+        _info printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
         :
     else
-        _warn printf "The '--do_not_setpolicy' option was not specified. The bucket policy will be set.\\n"
-        if ! s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+        if _contains "${_policy}" "NONE"
         then
-            _warn printf "The 's3cmd setpolicy' failed.\\n"
+            _info printf "Any bucket policy will be removed.\\n"
+            s3cmd delpolicy s3://${_bucket} &>/dev/null
+        else
+            _info printf "The bucket policy will be set.\\n"
+            if ! s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+            then
+                _warn printf "The 's3cmd setpolicy' command failed.\\n"
+            fi
         fi
-        # s3cmd info s3://${_bucket}
     fi
-
-
-    # If you need to delete bucket policy:
-    # s3cmd delpolicy s3://$BUCKET
-
-
-
 
 
     #######################################################################
@@ -337,7 +362,6 @@ HEREDOC
 
 
     #read -r -d '' instructions_message << EOF > /dev/null
-
     # The unix "read" command does not return a zero exit code. Use a temp function instead.
     # https://stackoverflow.com/a/8088167/2367748
     heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
