@@ -8,12 +8,12 @@
 describe "panfs2ceph" <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} panfs2ceph [options] --remote <REMOTE> --bucket <BUCKET> --path <DIR_PATH>
+    ${_ME} panfs2ceph [options] --bucket <BUCKET> --remote <REMOTE> --path <DIR_PATH>
 
 Options:
     -r|--remote <STRING>    Rclone remote name. (use "rclone listremotes" for available
                             remotes). Rclone remotes must be set up using "rclone init"
-                            and can be viewed at: ~/.config/rclone/rclone.config.
+                            and can be viewed at: ~/.config/rclone/rclone.conf.
                             
     -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
                             transfer.
