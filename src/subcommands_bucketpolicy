@@ -143,12 +143,18 @@ bucketpolicy() {
     # If required options are empty or null, exit.
     if [ -z "${_bucket}" ]
     then
-        _exit_1 printf "The '--bucket' option must be specified and not be empty or null."
+        _exit_1 printf "The '--bucket' option must be specified and not be empty or null.\\n"
     fi
-    if [ -z "${_policy}" ]
+    
+    _policy_options=(NONE GROUP_READ)
+    if ! _contains "${_policy}" "${_policy_options[@]}"
     then
-        _exit_1 printf "The '--policy' option must be specified and not be empty or null."
+        local _str
+        printf -v _str '%s ' "${_policy_options[@]}"
+        _exit_1 printf "The '--policy' option must be specified as one of: %s\\n" "${_str}"
     fi
+    
+    
     if [ "${_policy}" == "GROUP_READ" ]
     then
         if [ -z "${_group}" ]
@@ -166,15 +172,14 @@ bucketpolicy() {
     S3CMD="$(which s3cmd)"
     if command -v s3cmd &> /dev/null
     then
-        printf "Using s3cmd found in PATH:\\n"
-        printf "%s\\n" "$(which s3cmd)"
-        printf "%s\\n" "$(s3cmd --version)" 
+        _info printf "Using s3cmd found in PATH: %s\\n" "$(which s3cmd)"
+        _info printf "%s\\n" "$(s3cmd --version)" 
     else
-        _exit_1 printf "s3cmd could not be found in PATH"
+        _exit_1 printf "s3cmd could not be found in PATH\\n"
     fi
 
     # Make sure access to bucket is possible
-    if ! s3cmd ls s3://${_bucket}
+    if ! s3cmd ls s3://${_bucket} &>/dev/null
     then
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
     fi
@@ -204,9 +209,9 @@ bucketpolicy() {
         _username_csv="$(getent group "${_group}" | cut -d":" -f4-)"
 
         readarray -t _username <<< "$(printf "%s\\n" "${_username_csv}" | sed -e 'y/,/\n/')"
-        echo "${_username[@]}"
-        echo "${#_username[@]}"
-        echo "${!_username[@]}"
+        #echo "${_username[@]}"
+        #echo "${#_username[@]}"
+        #echo "${!_username[@]}"
 
 
         # Capture the user id (uid) from the MSI "s3info" function (if possible). Alternatively,
@@ -225,7 +230,7 @@ bucketpolicy() {
                     _all_uid_string+=",${_curr_uid_string}"
                 fi
             elif curr_unix_uid="$(id -u "${_username[$i]}")" ; then
-                printf "s3info command failed for username: %s, getting unix user id instead.\\n" "${_username[$i]}"
+                _warn printf "s3info command failed for username: %s, getting unix user id instead.\\n" "${_username[$i]}"
                 #printf "%s\t%s\n" "${_username[$i]}" "user=${curr_unix_uid}" >> group_usernames_without_s3info_uid.txt
                 _curr_uid_string="\"arn:aws:iam:::user/user=${curr_unix_uid}\""
     
@@ -236,11 +241,11 @@ bucketpolicy() {
                 fi
 
             else
-                printf "unix id command failed for username: %s.\\n" "${_username[$i]}"
+                _warn printf "unix id command failed for username: %s.\\n" "${_username[$i]}"
             fi
         done
 
-        echo "${_all_uid_string}"
+        #echo "${_all_uid_string}"
     fi
 
 
@@ -305,11 +310,15 @@ HEREDOC
 
     if ((_do_not_setpolicy))
     then
-        # "The '--do_not_setpolicy' option was specified. The bucket policy will not be set."
+        _warn printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
         :
     else
-        s3cmd setpolicy ${_bucket_policy} s3://${_bucket}
-        s3cmd info s3://${_bucket}
+        _warn printf "The '--do_not_setpolicy' option was not specified. The bucket policy will be set.\\n"
+        if ! s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+        then
+            _warn printf "The 's3cmd setpolicy' failed.\\n"
+        fi
+        # s3cmd info s3://${_bucket}
     fi
 
 
@@ -338,14 +347,14 @@ HEREDOC
 ---------------------------------------------------------------------
 cephtools bucketpolicy summary
 
-curr_date_time=${_curr_date_time}
-Options used:
+Bucket policy initated (Y-m-d-HMS):  
+${_curr_date_time} 
 
+Options used:
 bucket=${_bucket}
 policy=${_policy}
-verbose=${_verbose}
 do_not_setpolicy=${_do_not_setpolicy}
-
+policy_json=${_bucket}.bucket_policy.json
 
 
 VERSION: ${_VERSION}
