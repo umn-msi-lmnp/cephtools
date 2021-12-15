@@ -24,8 +24,6 @@ Options:
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
     
-    -v|--verbose            Verbose mode will be applied to rclone commands.
-    
     -e|--delete_empty_dirs  Do NOT transfer empty dirs on panfs to ceph. [Default is to 
                             create a hidden file (".empty_dir") inside all empty dirs so 
                             they get transfered to ceph. Setting this flag will not create
@@ -34,8 +32,7 @@ Options:
                             
     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 1].
     
-    --debug                 Print additional info when running this command (like verbose 
-                            mode). 
+    -v|--verbose            Verbose mode (print additional info).
 
 Description:
   Archiving tool to copy a single directory from tier 1 (panfs) storage to tier 2 (ceph).
@@ -59,12 +56,11 @@ panfs2ceph() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _USE_DEBUG=0
     local _bucket=
     local _remote=
     local _path=
     local _dry_run=
-    local _verbose=
+    local _verbose=0
     local _delete_empty_dirs=0
     local _threads="1"
 
@@ -98,14 +94,11 @@ panfs2ceph() {
         __val="${2:-}"
 
         case "${__arg}" in
-        --debug)
-            _USE_DEBUG=1
-            ;;
         -d|--dry_run)
             _dry_run="--dry-run"
             ;;
         -v|--verbose)
-            _verbose="-v"
+            _verbose=1
             ;;
         -e|--delete_empty_dirs)
             _delete_empty_dirs=1
@@ -147,15 +140,14 @@ panfs2ceph() {
     # Check and print input options
     # ---------------------------------------------------------------------
 
-    printf -- "Program options used:\\n"
-    printf -- "--debug: %s\\n" "$_USE_DEBUG"
-    printf -- "--bucket: %s\\n" "$_bucket"
-    printf -- "--remote: %s\\n" "$_remote"
-    printf -- "--path: %s\\n" "$_path"
-    printf -- "--dry_run: %s\\n" "$_dry_run"
-    printf -- "--verbose: %s\\n" "$_verbose"
-    printf -- "--delete_empty_dirs: %s\\n" "$_delete_empty_dirs"
-    printf -- "--threads: %s\\n" "$_threads"
+    _verb printf -- "Program options used:\\n"
+    _verb printf -- "--bucket: %s\\n" "$_bucket"
+    _verb printf -- "--remote: %s\\n" "$_remote"
+    _verb printf -- "--path: %s\\n" "$_path"
+    _verb printf -- "--dry_run: %s\\n" "$_dry_run"
+    _verb printf -- "--verbose: %s\\n" "$_verbose"
+    _verb printf -- "--delete_empty_dirs: %s\\n" "$_delete_empty_dirs"
+    _verb printf -- "--threads: %s\\n" "$_threads"
 
 
     # If required options are empty or null, exit.
@@ -183,16 +175,16 @@ panfs2ceph() {
     # ---------------------------------------------------------------------
     # Check rclone specific info
     # ---------------------------------------------------------------------
-    if command -v rclone &> /dev/null
+    if command -v rclone &>/dev/null
     then
-        _info printf "Using rclone found in PATH:\\n"
-        _info printf "%s\\n" "$(command -v rclone)"
-        _info printf "%s\\n" "$(rclone --version)" 
+        _verb printf "Using rclone found in PATH:\\n"
+        _verb printf "%s\\n" "$(command -v rclone)"
+        _verb printf "%s\\n" "$(rclone --version)" 
     else
         _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
         MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
-        _info printf "%s\\n" "$(command -v rclone)"
-        _info printf "%s\\n" "$(rclone --version)" 
+        _verb printf "%s\\n" "$(command -v rclone)"
+        _verb printf "%s\\n" "$(rclone --version)" 
     fi
 
     # Make sure the remote exists
@@ -202,7 +194,7 @@ panfs2ceph() {
     fi
 
     # Make sure access to bucket is possible
-    if ! rclone lsf ${_remote}:${_bucket}
+    if ! rclone lsf ${_remote}:${_bucket} &>/dev/null
     then
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
     fi
@@ -233,7 +225,7 @@ panfs2ceph() {
     _myprefix="panfs2ceph_archive_${_archive_date_time}"
     _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
 
-    _info printf "Archive dir name: %s\\n" ${_myprefix_dir}
+    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
     mkdir -p ${_myprefix_dir}
     chmod --reference ${_root_path_dir} ${_myprefix_dir}
     cd ${_myprefix_dir}
@@ -260,7 +252,7 @@ panfs2ceph() {
 
 
     # Print a list of files that will be archived
-    _info printf "Creating the archive file list. This might take a while for large dirs...\\n"
+    _verb printf "Creating the archive file list. This might take a while for large dirs...\\n"
 
     rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt
     # _myprefix the files with full pathname
@@ -301,7 +293,7 @@ panfs2ceph() {
     #######################################################################
 
 
-    tee ${_myprefix}.1_copy.slurm << EOF > /dev/null
+    tee ${_myprefix}.1_copy.slurm << HEREDOC > /dev/null
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -326,7 +318,6 @@ _root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
-_verbose=${_verbose}
 _remote=${_remote}
 _bucket=${_bucket}
 _threads=${_threads}
@@ -351,7 +342,7 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 # Copy the files to ceph
-rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --links \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 if [ ! \$? -eq 0 ]
 then
@@ -434,11 +425,7 @@ fi
 
 
 
-
-
-
-
-EOF
+HEREDOC
 
 
 
@@ -451,7 +438,7 @@ EOF
     #######################################################################
 
 
-    tee ${_myprefix}.2_delete.slurm << EOF > /dev/null
+    tee ${_myprefix}.2_delete.slurm << HEREDOC > /dev/null
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -476,7 +463,7 @@ _root_path_dir=${_root_path_dir}
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
-_verbose=${_verbose}
+
 
 
 
@@ -499,7 +486,7 @@ _empty_dir=\${_myprefix_dir}/empty_dir
 
 mkdir -p \${_empty_dir}
 
-rsync \${_dry_run} \${_verbose} -a --force --delete \${_empty_dir}/ \${_root_path_dir}/
+rsync \${_dry_run} -v -a --force --delete \${_empty_dir}/ \${_root_path_dir}/
 
 
 
@@ -532,7 +519,7 @@ fi
 
 
 
-EOF
+HEREDOC
 
 
 
@@ -545,7 +532,7 @@ EOF
     #######################################################################
 
 
-    tee ${_myprefix}.3_restore.slurm << EOF > /dev/null
+    tee ${_myprefix}.3_restore.slurm << HEREDOC > /dev/null
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -570,7 +557,6 @@ _root_path_dir=${_root_path_dir}
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
-_verbose=${_verbose}
 _remote=${_remote}
 _bucket=${_bucket}
 _threads=${_threads}
@@ -608,7 +594,7 @@ rclone lsf -R --links \${_remote}:\${_bucket} --max-depth 1 > /dev/null
 
 
 # Copy the files from ceph back to panfs
-rclone copy "\${_remote}:\${_bucket}\${_root_path_dir}" "\${_root_path_dir}" --links \${_dry_run} \${_verbose} --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "\${_remote}:\${_bucket}\${_root_path_dir}" "\${_root_path_dir}" --links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 
 if [ ! \$? -eq 0 ]
@@ -638,7 +624,7 @@ fi
 
 
 
-EOF
+HEREDOC
 
 
 
@@ -651,7 +637,7 @@ EOF
 
 
 
-    tee ${_myprefix}.readme.md << EOF > /dev/null
+    tee ${_myprefix}.readme.md << HEREDOC > /dev/null
 
 
 # panfs2ceph archive
@@ -721,7 +707,7 @@ Depending on user permissions, the data can be copied from ceph back to panfs us
 
 
 
-EOF
+HEREDOC
 
 
 
@@ -730,23 +716,19 @@ EOF
     # Print instructions to terminal
     #######################################################################
 
-    echo "[panfs2ceph "$(date)"] Done."
 
-
-    #read -r -d '' instructions_message << EOF > /dev/null
-
+    #read -r -d '' instructions_message << HEREDOC > /dev/null
     # The unix "read" command does not return a zero exit code. Use a temp function instead.
     # https://stackoverflow.com/a/8088167/2367748
     heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
     
-    heredoc2var instructions_message << EOF > /dev/null
+    heredoc2var instructions_message << HEREDOC > /dev/null
 
 ---------------------------------------------------------------------
 cephtools panfs2ceph summary
 
 Options used:
 dry_run=${_dry_run}
-verbose=${_verbose}
 delete_empty_dirs=${_delete_empty_dirs}
 remote=${_remote}
 bucket=${_bucket}
@@ -767,11 +749,12 @@ Next steps:
 5. After sucessful copy, launch the delete jobfile: sbatch ${_myprefix}.2_delete.slurm
 6. After the data has been deleted from panfs -- and you need it back in the same location, launch the restore jobfile: sbatch ${_myprefix}.3_restore.slurm
 
+
 VERSION: ${_VERSION}
 QUESTIONS: Todd Knutson (knut0297@umn.edu)
 REPO: https://github.umn.edu/knut0297org/cephtools
 ---------------------------------------------------------------------
-EOF
+HEREDOC
 
 
     echo "$instructions_message"
