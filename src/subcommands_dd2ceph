@@ -139,16 +139,17 @@ dd2ceph() {
     # Check and print input options
     # ---------------------------------------------------------------------
 
-    printf -- "Program options used:\\n"
-    printf -- "--bucket: %s\\n" "$_bucket"
-    printf -- "--remote: %s\\n" "$_remote"
-    printf -- "--path: %s\\n" "$_path"
-    printf -- "--log_dir: %s\\n" "$_log_dir"
-    printf -- "--dry_run: %s\\n" "$_dry_run"
-    printf -- "--verbose: %s\\n" "$_verbose"
-    printf -- "--threads: %s\\n" "$_threads"
+    _verb printf -- "Program options used:\\n"
+    _verb printf -- "--bucket: %s\\n" "$_bucket"
+    _verb printf -- "--remote: %s\\n" "$_remote"
+    _verb printf -- "--path: %s\\n" "$_path"
+    _verb printf -- "--log_dir: %s\\n" "$_log_dir"
+    _verb printf -- "--dry_run: %s\\n" "$_dry_run"
+    _verb printf -- "--verbose: %s\\n" "$_verbose"
+    _verb printf -- "--threads: %s\\n" "$_threads"
 
 
+    
     # If required options are empty or null, exit.
     if [ -z "${_remote}" ]
     then
@@ -163,25 +164,25 @@ dd2ceph() {
     fi
 
 
-    if command -v rclone &> /dev/null
+    if command -v rclone &>/dev/null
     then
         RCLONE_MINOR_VER="$(rclone --version | head -n 1 | sed 's/rclone v..//' | sed 's/\..*$//')"
         if [ "$RCLONE_MINOR_VER" -ge "57" ]
         then
-            _info printf "Using rclone found in PATH:\\n"
-            _info printf "%s\\n" "$(command -v rclone)"
-            _info printf "%s\\n" "$(rclone --version)"
+            _verb printf "Using rclone found in PATH:\\n"
+            _verb printf "%s\\n" "$(command -v rclone)"
+            _verb printf "%s\\n" "$(rclone --version)"
         else
             _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
             MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
-            _info printf "%s\\n" "$(command -v rclone)"
-            _info printf "%s\\n" "$(rclone --version)" 
+            _verb printf "%s\\n" "$(command -v rclone)"
+            _verb printf "%s\\n" "$(rclone --version)" 
         fi
     else
         _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
         MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
-        _info printf "%s\\n" "$(command -v rclone)"
-        _info printf "%s\\n" "$(rclone --version)" 
+        _verb printf "%s\\n" "$(command -v rclone)"
+        _verb printf "%s\\n" "$(rclone --version)" 
     fi
 
 
@@ -191,7 +192,7 @@ dd2ceph() {
         mkdir -p ${_log_dir}
         chmod g+rwx ${_log_dir}
     fi
-   
+
     # Make sure the remote exists
     if ! rclone listremotes | grep -q "^$_remote:\$"
     then
@@ -200,11 +201,10 @@ dd2ceph() {
 
 
     # Make sure access to bucket is possible
-    if ! rclone lsf ${_remote}:${_bucket}
+    if ! rclone lsf ${_remote}:${_bucket} &>/dev/null
     then
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDoes the bucket exist?\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\nOr the MSI group PI should create the bucket using 's3cmd mb s3://%s'\\n" "${_bucket}" "${_bucket}" "${_bucket}"
     fi
-
 
 
     
@@ -218,7 +218,7 @@ dd2ceph() {
     _myprefix="dd2ceph_${_archive_date_time}"
     _myprefix_dir=${_log_dir}/${_bucket}___${_myprefix}
 
-    _info printf "Archive dir name: %s\\n" ${_myprefix_dir}
+    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
     mkdir -p ${_myprefix_dir}
     chmod g+rwx ${_myprefix_dir}
     cd ${_myprefix_dir}
@@ -235,7 +235,7 @@ dd2ceph() {
 
 
     # Print a list of files that will be archived
-    _info printf "Creating the archive file list. This might take a while for large dirs...\\n"
+    _verb printf "Creating the archive file list. This might take a while for large dirs...\\n"
 
     rclone lsf -R --copy-links ${_root_path_dir} > ${_myprefix}.filelist.txt
     # _myprefix the files with full pathname
@@ -483,39 +483,43 @@ The data can be copied from ceph back to panfs using \`rclone\` or other methods
 EOF
 
 
+    # ---------------------------------------------------------------------
+    # Allow permissions for group
+    # ---------------------------------------------------------------------
+
+    find "${_myprefix_dir}" -type d -print0 | xargs -0 chmod ug+rwxs,o-rwx
+    find "${_myprefix_dir}" -type f -print0 | xargs -0 chmod ug+rw,o-rwx
 
 
     #######################################################################
     # Print instructions to terminal
     #######################################################################
 
-    echo "[dd2ceph "$(date)"] Done."
 
 
     #read -r -d '' instructions_message << EOF > /dev/null
-
     # The unix "read" command does not return a zero exit code. Use a temp function instead.
     # https://stackoverflow.com/a/8088167/2367748
     heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
     
-    heredoc2var instructions_message << EOF > /dev/null
+    heredoc2var instructions_message << HEREDOC > /dev/null
 
 ---------------------------------------------------------------------
 cephtools dd2ceph summary
 
 Achrive transfer files created -- but you're not done yet!
 Next steps:
-1. Move into transfer dir: cd ${_myprefix_dir}
+1. Move into log dir: cd ${_myprefix_dir}
 2. Review the *.readme.md file for details.
-3. Review the *.filelist.txt file. The files in this list will be copied to ceph.
-4. Launch the copy jobfile: sbatch ${_myprefix}.1_copy.slurm
+3. Review the *.filelist.txt file. Any files not already on ceph, will be copied to ceph.
+4. Launch the copy slurm job file: sbatch ${_myprefix}.1_copy.slurm
 
 
 VERSION: ${_VERSION}
 QUESTIONS: Todd Knutson (knut0297@umn.edu)
 REPO: https://github.umn.edu/knut0297org/cephtools
 ---------------------------------------------------------------------
-EOF
+HEREDOC
 
 
     echo "$instructions_message"
