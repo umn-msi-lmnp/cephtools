@@ -27,10 +27,8 @@ Options:
     -n|--do_not_setpolicy   If specified, the policy will be created (i.e. written to
                             file) but it will not be set on the bucket.
     
-    -v|--verbose            Verbose mode will be applied to s3cmd commands.
-    
-    --debug                 Print additional info when running this command (like verbose 
-                            mode). 
+    -v|--verbose            Verbose mode (print additional info).
+
 
 Description:
   Create and set bucket policies for tier 2 (ceph).
@@ -54,12 +52,11 @@ bucketpolicy() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _USE_DEBUG=0
     local _bucket=
     local _policy="GROUP_READ"
     local _group=
     local _do_not_setpolicy=0
-    local _verbose=
+    local _verbose=0
 
     # __get_option_value()
     #
@@ -91,11 +88,8 @@ bucketpolicy() {
         __val="${2:-}"
 
         case "${__arg}" in
-        --debug)
-            _USE_DEBUG=1
-            ;;
         -v|--verbose)
-            _verbose="-v"
+            _verbose=1
             ;;
         -n|--do_not_setpolicy)
             _do_not_setpolicy=1
@@ -133,13 +127,12 @@ bucketpolicy() {
     # Check and print input options
     # ---------------------------------------------------------------------
 
-    printf -- "Program options used:\\n"
-    printf -- "--debug: %s\\n" "$_USE_DEBUG"
-    printf -- "--bucket: %s\\n" "$_bucket"
-    printf -- "--policy: %s\\n" "$_policy"
-    printf -- "--group: %s\\n" "$_group"
-    printf -- "--verbose: %s\\n" "$_verbose"
-    printf -- "--do_not_setpolicy: %s\\n" "$_do_not_setpolicy"
+    _verb printf -- "Program options used:\\n"
+    _verb printf -- "--bucket: %s\\n" "$_bucket"
+    _verb printf -- "--policy: %s\\n" "$_policy"
+    _verb printf -- "--group: %s\\n" "$_group"
+    _verb printf -- "--verbose: %s\\n" "$_verbose"
+    _verb printf -- "--do_not_setpolicy: %s\\n" "$_do_not_setpolicy"
 
 
     # If required options are empty or null, exit.
@@ -173,8 +166,8 @@ bucketpolicy() {
     S3CMD="$(which s3cmd)"
     if command -v s3cmd &> /dev/null
     then
-        _info printf "Using s3cmd found in PATH: %s\\n" "$(which s3cmd)"
-        _info printf "%s\\n" "$(s3cmd --version)" 
+        _verb printf "Using s3cmd found in PATH: %s\\n" "$(which s3cmd)"
+        _verb printf "%s\\n" "$(s3cmd --version)" 
     else
         _exit_1 printf "s3cmd could not be found in PATH\\n"
     fi
@@ -340,17 +333,22 @@ HEREDOC
 
     if ((_do_not_setpolicy))
     then
-        _info printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
-        :
+        _verb printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
     else
         if _contains "${_policy}" "NONE"
         then
-            _info printf "Any bucket policy will be removed.\\n"
-            s3cmd delpolicy s3://${_bucket} &>/dev/null
-        else
-            _info printf "The bucket policy will be set.\\n"
-            if ! s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+            if s3cmd delpolicy s3://${_bucket} &>/dev/null
             then
+                _info printf "The bucket policy was removed.\\n"
+            else
+                _warn printf "The 's3cmd delpolicy' command failed.\\n"
+            fi
+
+        else
+            if s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+            then
+                _info printf "The bucket policy was set.\\n"
+            else
                 _warn printf "The 's3cmd setpolicy' command failed.\\n"
             fi
         fi
@@ -397,24 +395,26 @@ HEREDOC
         tee "${_bucket_policy_readme}" << HEREDOC > /dev/null 
 # cephtools bucketpolicy summary
 
-## Options
+## Options used
 
 Bucket policy initated (Y-m-d-HMS):  
-${_curr_date_time} 
-
-Options used:
-bucket=${_bucket}
-policy=${_policy}
-do_not_setpolicy=${_do_not_setpolicy}
-policy_json=${_bucket}.bucket_policy.json
+${_curr_date_time}  
 
 
-VERSION: ${_VERSION}
-QUESTIONS: Todd Knutson (knut0297@umn.edu)
-REPO: https://github.umn.edu/knut0297org/cephtools
+\`\`\`
+bucket=${_bucket}  
+policy=${_policy}  
+do_not_setpolicy=${_do_not_setpolicy}  
+policy_json=${_bucket}.bucket_policy.json  
+\`\`\`
 
 
-## Users included in the access policy
+VERSION: ${_VERSION}  
+QUESTIONS: Todd Knutson (knut0297@umn.edu)  
+REPO: https://github.umn.edu/knut0297org/cephtools  
+
+
+## MSI users included in the access policy
 
 \`\`\`
 $(printf "%s\n" "${_username[@]}")
@@ -427,8 +427,8 @@ See the ceph documentation for details:
 
 [https://docs.ceph.com/en/latest/radosgw/bucketpolicy/](https://docs.ceph.com/en/latest/radosgw/bucketpolicy/)
 
-See all "Actions" listed in the policy JSON file:
-${_bucket}.bucket_policy.json
+See all "Actions" listed in the policy JSON file:  
+\`${_bucket}.bucket_policy.json\`
 
 
 HEREDOC
@@ -436,7 +436,12 @@ HEREDOC
 
 
 
+    # ---------------------------------------------------------------------
+    # Allow permissions for group
+    # ---------------------------------------------------------------------
 
+    chmod ug+rw,o-rwx "${_bucket}.bucket_policy_readme.md"
+    chmod ug+rw,o-rwx "${_bucket}.bucket_policy.json"
 
 
 
@@ -447,7 +452,6 @@ HEREDOC
     # Print instructions to terminal
     #######################################################################
 
-    echo "[bucketpolicy "$(date)"] Done."
 
 
     #read -r -d '' instructions_message << EOF > /dev/null
@@ -460,14 +464,13 @@ HEREDOC
 ---------------------------------------------------------------------
 cephtools bucketpolicy summary
 
-Bucket policy initated (Y-m-d-HMS):  
-${_curr_date_time} 
+The bucket policy was modified for ceph bucket:
+${_bucket}
 
-Options used:
-bucket=${_bucket}
-policy=${_policy}
-do_not_setpolicy=${_do_not_setpolicy}
-policy_json=${_bucket}.bucket_policy.json
+Next steps:
+1. Review the readme file for details: ${_bucket}.bucket_policy_readme.md
+2. Review the JSON bucket policy for details: ${_bucket}.bucket_policy.json
+3. Repeat this process with new group members are added or removed, so the policy is updated.
 
 
 VERSION: ${_VERSION}
