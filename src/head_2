@@ -50,7 +50,7 @@ _debug() {
 #   function name in brackets in red.
 _exit_1() {
   {
-    printf "[%s %s] " "${FUNCNAME[1]}" "$(tput setaf 1)ERROR$(tput sgr0)"
+    printf "[%s %s %s] " "${_ME}" "${FUNCNAME[1]}" "$(tput setaf 1)ERROR$(tput sgr0)"
     "${@}"
   } 1>&2
   exit 1
@@ -67,7 +67,7 @@ _exit_1() {
 #   `echo`, `printf`, or `cat`. Prints the parent function name in brackets in red.
 _warn() {
   {
-    printf "[%s %s] " "${FUNCNAME[1]}" "$(tput setaf 1)WARNING$(tput sgr0)"
+    printf "[%s %s %s] " "${_ME}" "${FUNCNAME[1]}" "$(tput setaf 1)WARNING$(tput sgr0)"
     "${@}"
   } 1>&2
 }
@@ -83,9 +83,31 @@ _warn() {
 #   `echo`, `printf`, or `cat`. Prints the parent function name in brackets.
 _info() {
   {
-    printf "[%s INFO] " "${FUNCNAME[1]}"
+    printf "[%s %s INFO] " "${_ME}" "${FUNCNAME[1]}"
     "${@}"
   } 1>&2
+}
+
+
+# _verb()
+#
+# Usage:
+#   _verb <command> <options>...
+#
+# Description:
+#   Execute a command and print to standard error. The command is expected to
+#   print a message and should typically be either `echo`, `printf`, or `cat`.
+#
+# Example:
+#   _verb printf "Verbose info. Variable: %s\\n" "$0"
+_verb() {
+  if ((${_verbose:-0}))
+  then
+    {
+      printf "[%s %s VERBOSE INFO] " "${_ME}" "${FUNCNAME[1]}"
+      "${@}"
+    } 1>&2
+  fi
 }
 
 
