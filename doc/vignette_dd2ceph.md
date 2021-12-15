@@ -47,7 +47,7 @@ After the PI's bucket has an READ/WRITE bucket policy set for group member, the 
 
 
 
-Keep a record of data transfers in common location (make sure permissions are set at this folder)
+Keep a record of data transfers in a common location (make sure permissions are set at this folder)
 
 ```
 cd /home/$MYGROUP/shared/dd2ceph
@@ -59,7 +59,8 @@ cephtools dd2ceph --bucket $MYGROUP-data-archive --remote umn_ceph --path /home/
 Review the slurm script (change any parameters you wish) and launch the data transfer job
 
 ```
-sbatch dd2ceph.1_copy.slurm
+cd $MYGROUP-data-archive___*
+sbatch dd2ceph_*.1_copy.slurm
 ```
 
 
