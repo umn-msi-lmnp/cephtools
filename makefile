@@ -4,9 +4,8 @@ DESTDIR=
 BUILD=$(DESTDIR)$(PREFIX)
 
 # Generate file paths for some targets
-MAN_NAMES:=cephtools.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
+MAN_NAMES:=cephtools.1 cephtools-dd2ceph.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
 MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
-#MAN_NAMES_HTML:=cephtools.1.html cephtools-panfs2ceph.1.html cephtools-bucketpolicy.1.html
 MAN_TARGETS_HTML:=$(MAN_NAMES:%=$(BUILD)/share/man_html/%.html)
 DOC_NAMES:=vignette_dd2ceph.html vignette_getting_started.html
 DOC_TARGETS:=$(DOC_NAMES:%=$(BUILD)/share/doc/%)
