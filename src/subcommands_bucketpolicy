@@ -357,6 +357,92 @@ HEREDOC
     fi
 
 
+
+
+
+
+    # ---------------------------------------------------------------------
+    # Summary readme
+    # ---------------------------------------------------------------------
+
+
+
+    if _contains "${_policy}" "NONE"
+    then
+        tee "${_bucket_policy_readme}" << HEREDOC > /dev/null 
+# cephtools bucketpolicy readme
+
+## Options
+
+Bucket policy initated (Y-m-d-HMS):  
+${_curr_date_time} 
+
+Options used:
+bucket=${_bucket}
+policy=${_policy}
+do_not_setpolicy=${_do_not_setpolicy}
+policy_json=${_bucket}.bucket_policy.json
+
+
+VERSION: ${_VERSION}
+QUESTIONS: Todd Knutson (knut0297@umn.edu)
+REPO: https://github.umn.edu/knut0297org/cephtools
+
+## Policy
+
+Any bucket policy that was present was removed. 
+
+HEREDOC
+    else
+        tee "${_bucket_policy_readme}" << HEREDOC > /dev/null 
+# cephtools bucketpolicy summary
+
+## Options
+
+Bucket policy initated (Y-m-d-HMS):  
+${_curr_date_time} 
+
+Options used:
+bucket=${_bucket}
+policy=${_policy}
+do_not_setpolicy=${_do_not_setpolicy}
+policy_json=${_bucket}.bucket_policy.json
+
+
+VERSION: ${_VERSION}
+QUESTIONS: Todd Knutson (knut0297@umn.edu)
+REPO: https://github.umn.edu/knut0297org/cephtools
+
+
+## Users included in the access policy
+
+\`\`\`
+$(printf "%s\n" "${_username[@]}")
+\`\`\`
+
+
+## Ceph Actions enabled
+
+See the ceph documentation for details:
+
+[https://docs.ceph.com/en/latest/radosgw/bucketpolicy/](https://docs.ceph.com/en/latest/radosgw/bucketpolicy/)
+
+See all "Actions" listed in the policy JSON file:
+${_bucket}.bucket_policy.json
+
+
+HEREDOC
+    fi
+
+
+
+
+
+
+
+
+
+
     #######################################################################
     # Print instructions to terminal
     #######################################################################
