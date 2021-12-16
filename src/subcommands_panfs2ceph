@@ -254,10 +254,11 @@ panfs2ceph() {
     # Print a list of files that will be archived
     _verb printf "Creating the archive file list. This might take a while for large dirs...\\n"
 
-    rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt
+    rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt_temp1
     # _myprefix the files with full pathname
-    sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
-
+    sed -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt_temp1 > ${_myprefix}.filelist.txt_temp2
+    sort ${_myprefix}.filelist.txt_temp2 > ${_myprefix}.filelist.txt
+    rm ${_myprefix}.filelist.txt_temp{1,2}
 
 
 
@@ -373,11 +374,12 @@ echo "[panfs2ceph "\$(date)"] Getting file list from ceph..."
 
 
 # Get a file list from ceph (after the transfer)
-rclone lsf -R --links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+rclone lsf -R --links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt_temp1
 
 # _myprefix the files with full pathname
-sed -i -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt
-
+sed -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt_temp1 > \${_myprefix}.filelist_from_ceph.txt_temp2
+sort \${_myprefix}.filelist_from_ceph.txt_temp2 > \${_myprefix}.filelist_from_ceph.txt
+rm \${_myprefix}.filelist_from_ceph.txt_temp{1,2}
 
 
 
