@@ -362,23 +362,21 @@ comm -13 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_c
 if [[ ! -s \${_myprefix}.files_on_panfs_but_not_ceph.txt ]]
 then
    # The file above is empty.
-   #echo "[dd2ceph "\$(date)"] There are no files in the *.filelist.txt that are missing from ceph."
-   rm -rf \${_myprefix}.files_on_panfs_but_not_ceph.txt
+   echo "[dd2ceph "\$(date)"] There are no files in '\${_myprefix}.filelist.txt' that are missing from ceph."
 else
-    echo "[dd2ceph "\$(date)"] There are files listed in *.filelist.txt that are not found on ceph. Review: \${_myprefix}.files_on_panfs_but_not_ceph.txt" >&2
+    echo "[dd2ceph "\$(date)"] There are files listed in '\${_myprefix}.filelist.txt' that are not found on ceph."
+    echo "[dd2ceph "\$(date)"] Review: '\${_myprefix}.files_on_panfs_but_not_ceph.txt'" >&2
 fi
 
 
 if [[ ! -s \${_myprefix}.files_on_ceph_but_not_panfs.txt ]]
 then
    # The file above is empty.
-   #echo "[dd2ceph "\$(date)"] There are no files on ceph that are not listed in *.filelist.txt."
-   rm -rf \${_myprefix}.files_on_ceph_but_not_panfs.txt
+   echo "[dd2ceph "\$(date)"] There are no files on ceph that are not listed in '\${_myprefix}.filelist.txt'."
 else
-    echo "[dd2ceph "\$(date)"] There are files on ceph that are not listed in *.filelist.txt. This is expected (i.e. some files removed from panfs are still found on ceph). Review: \${_myprefix}.files_on_ceph_but_not_panfs.txt" >&2
+    echo "[dd2ceph "\$(date)"] There are files on ceph that are not listed in '\${_myprefix}.filelist.txt'." 
+    echo "[dd2ceph "\$(date)"] Review: '\${_myprefix}.files_on_ceph_but_not_panfs.txt'" >&2
 fi
-
-
 
 
 
