@@ -200,22 +200,24 @@ bucketpolicy() {
     then
     
         # Find all usernames in the group
-        _username_csv="$(getent group "${_group}" | cut -d":" -f4-)"
+        _username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
 
-        readarray -t _username <<< "$(printf "%s\\n" "${_username_csv}" | sed -e 'y/,/\n/')"
+        readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
 
 
         # Use the MSI user id (uid) with the "s3info" function (if possible) to return the ceph username. Generate a comma 
         # separated list of ceph usernames for each MSI user. This entire concatenated string will be supplied
         # to the bucket policy.
         _all_ceph_username_string=()
-        _ceph_username=()
-        for i in "${!_username[@]}"
+        _username_ceph=()
+        _username_ceph_msi=()
+        for i in "${!_username_msi[@]}"
         do
-            if s3info --user "${_username[$i]}" &>/dev/null
+            if s3info --user "${_username_msi[$i]}" &>/dev/null
             then
-                _curr_ceph_username="$(s3info --user "${_username[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
-                _ceph_username+=("${_curr_ceph_username}")
+                _curr_ceph_username="$(s3info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _username_ceph+=("${_curr_ceph_username}")
+                _username_ceph_msi+=("${_username_msi[$i]}")
                 _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
                 if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
                     _all_ceph_username_string+="${_curr_ceph_username_string}"
@@ -223,7 +225,7 @@ bucketpolicy() {
                     _all_ceph_username_string+=",${_curr_ceph_username_string}"
                 fi
             else
-                _warn printf "s3info command failed for username: %s.\\n" "${_username[$i]}"
+                _warn printf "s3info command failed for username: %s.\\n" "${_username_msi[$i]}"
             fi
         done
     fi
@@ -402,7 +404,7 @@ REPO: https://github.umn.edu/knut0297org/cephtools
 ## MSI users included in the access policy
 
 \`\`\`
-$(printf "%s\n" "${_ceph_username[@]}")
+$(printf "%s\n" "${_username_ceph_msi[@]}")
 \`\`\`
 
 
