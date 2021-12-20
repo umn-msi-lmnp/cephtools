@@ -203,45 +203,30 @@ bucketpolicy() {
         _username_csv="$(getent group "${_group}" | cut -d":" -f4-)"
 
         readarray -t _username <<< "$(printf "%s\\n" "${_username_csv}" | sed -e 'y/,/\n/')"
-        #echo "${_username[@]}"
-        #echo "${#_username[@]}"
-        #echo "${!_username[@]}"
 
 
-        # Capture the user id (uid) from the MSI "s3info" function (if possible). Alternatively,
-        # capture the uid from the the unix "id" command. Either way, we should generated a comma 
-        # separated list of uid values for each user. This entire concatenated string will be supplied
+        # Use the MSI user id (uid) with the "s3info" function (if possible) to return the ceph username. Generate a comma 
+        # separated list of ceph usernames for each MSI user. This entire concatenated string will be supplied
         # to the bucket policy.
-        _all_uid_string=()
+        _all_ceph_username_string=()
+        _ceph_username=()
         for i in "${!_username[@]}"
         do
-            if _curr_s3info_uid="$(s3info --user "${_username[$i]}" | grep -Po "uid=\\d+$")" ; then
-                _curr_uid_string="\"arn:aws:iam:::user/${_curr_s3info_uid}\""
-    
-                if [ "${#_all_uid_string[@]}" -eq 0 ]; then
-                    _all_uid_string+="${_curr_uid_string}"
+            if s3info --user "${_username[$i]}" &>/dev/null
+            then
+                _curr_ceph_username="$(s3info --user "${_username[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _ceph_username+=("${_curr_ceph_username}")
+                _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
+                if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
+                    _all_ceph_username_string+="${_curr_ceph_username_string}"
                 else
-                    _all_uid_string+=",${_curr_uid_string}"
+                    _all_ceph_username_string+=",${_curr_ceph_username_string}"
                 fi
-            elif curr_unix_uid="$(id -u "${_username[$i]}")" ; then
-                _warn printf "s3info command failed for username: %s, getting unix user id instead.\\n" "${_username[$i]}"
-                #printf "%s\t%s\n" "${_username[$i]}" "user=${curr_unix_uid}" >> group_usernames_without_s3info_uid.txt
-                _curr_uid_string="\"arn:aws:iam:::user/user=${curr_unix_uid}\""
-    
-                if [ ${#_all_uid_string[@]} -eq 0 ]; then
-                    _all_uid_string+="$_curr_uid_string"
-                else
-                    _all_uid_string+=",$_curr_uid_string"
-                fi
-
             else
-                _warn printf "unix id command failed for username: %s.\\n" "${_username[$i]}"
+                _warn printf "s3info command failed for username: %s.\\n" "${_username[$i]}"
             fi
         done
     fi
-
-
-
 
 
 
@@ -274,7 +259,7 @@ HEREDOC
     {
         "Effect": "Allow",
         "Principal": {"AWS": [
-            ${_all_uid_string}
+            ${_all_ceph_username_string}
         ]},
         "Action": [
             "s3:ListBucket",
@@ -308,7 +293,7 @@ HEREDOC
     {
         "Effect": "Allow",
         "Principal": {"AWS": [
-            ${_all_uid_string}
+            ${_all_ceph_username_string}
         ]},
         "Action": [
             "s3:*"
@@ -417,7 +402,7 @@ REPO: https://github.umn.edu/knut0297org/cephtools
 ## MSI users included in the access policy
 
 \`\`\`
-$(printf "%s\n" "${_username[@]}")
+$(printf "%s\n" "${_ceph_username[@]}")
 \`\`\`
 
 
