@@ -201,6 +201,8 @@ panfs2ceph() {
 
     
 
+
+
     # ---------------------------------------------------------------------
     # Check to make sure this input dir does NOT already exist on ceph.
     # ---------------------------------------------------------------------
@@ -232,6 +234,48 @@ panfs2ceph() {
 
 
 
+#     # ---------------------------------------------------------------------
+#     # Check for read and write access
+#     # ---------------------------------------------------------------------
+# 
+#     find ${_root_path_dir} -type f ! -perm -u=r >files_not_readable_by_user_${USER}.txt 2>/dev/null || true
+#     find ${_root_path_dir} -type d ! -perm -u=r >directories_not_readable_by_user_${USER}.txt 2>/dev/null || true
+#     find ${_root_path_dir} -type d ! -perm -u=x >directories_not_executable_by_user_${USER}.txt 2>/dev/null || true
+# 
+#     find ${_root_path_dir} -type f ! -perm -u=w >files_not_writable_or_deletable_by_user_${USER}.txt 2>/dev/null || true
+#     find ${_root_path_dir} -type d ! -perm -u=w >directories_not_writable_or_deletable_by_user_${USER}.txt 2>/dev/null || true
+#     
+#     if [[ ! -s "files_not_readable_by_user_${USER}.txt" ]]
+#     then
+#         # Empty file, delete it.
+#         rm "files_not_readable_by_user_${USER}.txt"
+#     fi
+#     if [[ ! -s "directories_not_readable_by_user_${USER}.txt" ]]
+#     then
+#         # Empty file, delete it.
+#         rm "directories_not_readable_by_user_${USER}.txt"
+#     fi
+#     if [[ ! -s "directories_not_executable_by_user_${USER}.txt" ]]
+#     then
+#         # Empty file, delete it.
+#         rm "directories_not_executable_by_user_${USER}.txt"
+#     fi
+#     if [[ ! -s "files_not_writable_or_deletable_by_user_${USER}.txt" ]]
+#     then
+#         # Empty file, delete it.
+#         rm "files_not_writable_or_deletable_by_user_${USER}.txt"
+#     fi
+#     if [[ ! -s "directories_not_writable_or_deletable_by_user_${USER}.txt" ]]
+#     then
+#         # Empty file, delete it.
+#         rm "directories_not_writable_or_deletable_by_user_${USER}.txt"
+#     fi
+#     
+#     _permission_files=("${_root_path_dir}/*_by_user*")
+#     if [[ ${#_permission_files[@]} -gt 0 ]]
+#     then
+#         _exit_1 printf "There are files or directories listed in the backup dir '%s' that are not readable or executable (dirs) by user: %s. These items cannot be transfered. Review them here: '%s'.\\n" "${_root_path_dir}" "${USER}" "${_myprefix_dir}"
+#     fi
 
 
 
