@@ -10,18 +10,23 @@ There are multiple ways to start using cephtools.
 
 ### Load an available module
 
+
 ```
 # Check available versions
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module avail cephtools
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
 
-# Load the default (i.e. most current) version
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load cephtools
+# Load the default (i.e. most current) version (highly recommended)
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
 
 # Load a specific version
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load cephtools/2.0.0
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/2.0.0
 ```
 
+> Technical note: 
+>  
+> If you include `MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH"` before running the `module` commands (e.g. `avail`, `load`, etc.), the `MODULEPATH` variable will be prepended to include my personal modulefile path, in addition to the default MSI modulefile paths normally included in the `MODULEPATH` variable. Doing this will not export or permanently change your `MODULEPATH` variable -- it only changes your `MODULEPATH` variable for the single `module` command, run on the same line. 
 
+ 
 
 ### Clone the repo and checkout any version tag or commit
 
