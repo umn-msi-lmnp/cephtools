@@ -20,6 +20,12 @@ Options:
                                     read-only access to the bucket. 
                                 GROUP_READ_WRITE: Allows all current memebers of the MSI 
                                     group read and write access to the bucket.
+                                OTHERS_READ: Allows anyone read-only access to the bucket
+                                    (i.e. world public read-only access). WARNING: this
+                                    policy will expose all files in the bucket to the 
+                                    entire Internet for viewing or downloading. However,
+                                    this can be a good option for hosting a public static
+                                    website.
                                     
     -g|--group <STRING>     MSI group id. Required only if "--policy GROUP_READ" is
                             specified.
@@ -141,7 +147,7 @@ bucketpolicy() {
         _exit_1 printf "The '--bucket' option must be specified and not be empty or null.\\n"
     fi
     
-    _policy_options=(NONE GROUP_READ GROUP_READ_WRITE)
+    _policy_options=(NONE GROUP_READ GROUP_READ_WRITE OTHERS_READ)
     if ! _contains "${_policy}" "${_policy_options[@]}"
     then
         local _str
@@ -228,6 +234,11 @@ bucketpolicy() {
                 _warn printf "s3info command failed for username: %s.\\n" "${_username_msi[$i]}"
             fi
         done
+        # Copy variable to another name for README file
+        _users_with_access=${_username_ceph_msi}
+    elif [[ "${_policy}" =~ ^.*OTHERS.*$ ]]
+    then
+        _users_with_access="All MSI users and the entire public Internet"
     fi
 
 
@@ -299,6 +310,26 @@ HEREDOC
         ]},
         "Action": [
             "s3:*"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+    elif _contains "${_policy}" "OTHERS_READ"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Sid":"PublicRead",
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+            "s3:GetObject",
+            "s3:GetObjectVersion"
         ],
         "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
         }
@@ -404,7 +435,7 @@ REPO: https://github.umn.edu/knut0297org/cephtools
 ## MSI users included in the access policy
 
 \`\`\`
-$(printf "%s\n" "${_username_ceph_msi[@]}")
+$(printf "%s\n" "${_users_with_access[@]}")
 \`\`\`
 
 
