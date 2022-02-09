@@ -43,20 +43,34 @@ Re-run the bucket policy command after MSI members are added or removed from gro
 
 ## Transfer data from `data_delivery` to ceph
 
-After the PI's bucket has an READ/WRITE bucket policy set for group member, the following methods can be done by any group members. In fact, the data transfer steps below should repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/knut0297org/software_tips/tree/main/rclone#umn-tier2-ceph).
+After the PI's bucket has an READ/WRITE bucket policy set for group member, *the following methods can be done by any group members*. In fact, the data transfer steps below should repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/knut0297org/software_tips/tree/main/rclone#umn-tier2-ceph).
 
 
 
-Keep a record of data transfers in a common location (make sure permissions are set at this folder)
+As a regular group member (i.e. not the PI), run `newgrp` and set the MYGROUP variable if necessary. Then load `cephtools`.
+
+```
+# newgrp GROUPNAME
+MYGROUP=$(id -ng)
+
+# Load cephtools
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+```
+
+Keep a record of data transfers in a common location (make sure permissions are set at this folder). Change into this directory and run `cephtools`.
 
 ```
 cd /home/$MYGROUP/shared/dd2ceph
-cephtools dd2ceph --bucket $MYGROUP-data-archive --remote umn_ceph --path /home/$MYGROUP/data_delivery
+# Run with explicit options
+# cephtools dd2ceph --bucket $MYGROUP-data-archive --remote ceph --path /home/$MYGROUP/data_delivery
+
+# Run with defaults (same as above)
+cephtools dd2ceph -r ceph
 ```
 
 
 
-Review the slurm script (change any parameters you wish) and launch the data transfer job
+Review the slurm script (change any parameters you wish) and launch the data transfer job.
 
 ```
 cd $MYGROUP-data-archive___*
