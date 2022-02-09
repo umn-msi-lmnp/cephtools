@@ -235,7 +235,7 @@ bucketpolicy() {
             fi
         done
         # Copy variable to another name for README file
-        _users_with_access=${_username_ceph_msi}
+        _users_with_access=(${_username_ceph_msi[@]})
     elif [[ "${_policy}" =~ ^.*OTHERS.*$ ]]
     then
         _users_with_access="All MSI users and the entire public Internet"
