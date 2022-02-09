@@ -37,7 +37,7 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load c
 
 You need to create a ceph bucket before transferring data with `cephtools`. After the bucket is created, a bucket policy can be applied to the bucket (i.e. `cephtools bucketpolicy`), controlling access to the bucket for only certain MSI users. If you don't want to share the data with anyone, no bucket policy is needed.
 
-What should I name my bucket? The [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/) can be found here. If you are archiving up projects for a particular group, I suggest a format like this: `GROUP-USER-tier1-archive`. For example, project in the "farrarm" group would be `farrarm-knut0297-tier1-archive`.
+What should I name my bucket? The [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/) can be found here. If you are archiving up projects for a particular group, I suggest a format like this: `GROUP-USER-tier1-archive`.
 
 
 ```
