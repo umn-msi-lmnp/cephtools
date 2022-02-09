@@ -69,6 +69,8 @@ Inside the working directory:
     * `cephtools` converts relative paths to full length paths using `readlink -m PATHNAME`. This process has an (unfortunate?) consequence of converting paths to `/panfs/roc/groups/INTEGER/MYGROUP`, `/panfs/jay/groups/INTEGER/MYGROUP`, or `/data_delivery/MYGROUP` paths on ceph. The full paths are used on ceph because they inherently show where the original files were once located on panfs (making file collisions less likely).
 * How much storage am I using on ceph (tier2)?
     * You can run `s3info` to learn how much data is being used. See `s3info --help` for options. Ceph storage is calculated for each MSI user (not by MSI group). 
+* How can I ensure robust data transfer?
+    * `cephtools` creates slurm job scripts that use `rclone` for data transfer. You can review and modify those default scripts. By default, `rclone` uses md5sum checks on every file transfer. So each file transfer is robust. However, when `rclone` checks to see if a file needs to be transfered, it compares the current file against the remote file using file size and timestamp. `cephtools` uses this default action in `dd2ceph`. However, you can have `rclone` make this check using md5sums by adding the `-c` option to `rclone`.
 
 
 
