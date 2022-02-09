@@ -36,7 +36,7 @@ The script does not actually transfer any data. It simply examines a single inpu
 ## EXAMPLES
 
 ```
-cephtools bucketpolicy --bucket todd --group lmnp --policy GROUP_READ
+cephtools bucketpolicy --bucket example-bucket --group $(id -ng) --policy GROUP_READ
 ```
 
 

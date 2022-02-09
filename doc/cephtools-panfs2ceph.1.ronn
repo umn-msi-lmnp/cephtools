@@ -55,9 +55,9 @@ The slurm jobscripts must be launched manually. This allows for time to review t
 ## EXAMPLES
 
 ```
-cephtools panfs2ceph --remote todds_umn_ceph --bucket todd --path /home/lmnp/knut0297/test
-cephtools panfs2ceph --remote todds_umn_ceph --bucket todd --path /panfs/roc/scratch/knut0297/test
-cephtools panfs2ceph --remote todds_umn_ceph --bucket todd --path ~/test
+cephtools panfs2ceph --remote ceph --bucket example-bucket --path /home/$(id -ng)/$USER/test
+cephtools panfs2ceph --remote ceph --bucket example-bucket --path /panfs/roc/scratch/$USER/test
+cephtools panfs2ceph --remote ceph --bucket example-bucket --path ~/test
 ```
 
 

@@ -41,7 +41,7 @@ The slurm jobscript must be launched manually. This allows for time to review th
 ## EXAMPLES
 
 ```
-cephtools dd2ceph --remote todds_umn_ceph --bucket todd --path /home/lmnp/data_delivery
+cephtools dd2ceph --remote ceph --bucket $(id -ng)-data-archive --path /home/$(id -ng)/data_delivery
 ```
 
 
