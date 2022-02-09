@@ -60,14 +60,15 @@ Inside the working directory:
 * How do these tools handle symbolic links?
     * `panfs2ceph` does NOT follow symbolic links and does not transfer the actual file. It transfers the symbolic link itself. See the `rclone` flag [`--links`](https://rclone.org/local/#links-l) for details. `dd2ceph` DOES follow symbolic links and copies the actual file (i.e. it copies the dereferenced file).
 * How fast is the transfer?
-    * The empirical data transfer rate from panfs to ceph is approximately 1 TB per 30 min (or around 30 GB/min). By default, `panfs2ceph` requests a 24 hr job time and `dd2ceph` requests a 72 hr job time. These times can be adjusted directly in the slurm script before launching. 
+    * The empirical data transfer rate from panfs to ceph is approximately 1 TB per 30 min (or around 30 GB/min). By default, `panfs2ceph` requests a 24 hr job time and `dd2ceph` requests a 72 hr job time. These times can be adjusted directly in the slurm script before launching. Reviewing the end of a slurm error log file will show a summary from `rclone`, indicating how much data was transfered and how long it took.
 * Do I have to create a bucket first?
     * Yes, you'll need to create a bucket before using it with `cephtools`. `cephtools` checks that the bucket exists before running for added safety and transparency. `rclone` can automatically create buckets when transferring for the first time, but `cephtools` fails before writing the "copy" slurm script if the bucket does not exist. To create a new bucket, run: `s3cmd mb s3://MY-BUCKET-NAME`.
 * How should I name buckets?
     * Ceph is an open-source software storage platform that uses the Amazon S3 APIs. Ceph allows for buckets to be named with underscores, but some S3 APIs will fail if they find buckets with underscores. I think everything in `cephtools` will work with underscores in the bucket names, but use hyphens to be safe. [Amazon bucket naming rules](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html) and [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/)
 * How are relative paths handled?
     * `cephtools` converts relative paths to full length paths using `readlink -m PATHNAME`. This process has an (unfortunate?) consequence of converting paths to `/panfs/roc/groups/INTEGER/MYGROUP`, `/panfs/jay/groups/INTEGER/MYGROUP`, or `/data_delivery/MYGROUP` paths on ceph. The full paths are used on ceph because they inherently show where the original files were once located on panfs (making file collisions less likely).
-    
+* How much storage am I using on ceph (tier2)?
+    * You can run `s3info` to learn how much data is being used. See `s3info --help` for options. Ceph storage is calculated for each MSI user (not by MSI group). 
 
 
 
