@@ -32,22 +32,34 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load c
 
 
 
+## Create a bucket
+
+After a bucket is created (that you own), a bucket policy can be applied.
+
+What should I name my bucket? The [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/) can be found here.
+
+
+```
+BUCKET_NAME="my-unique-bucket-name"
+s3cmd mb s3://$BUCKET_NAME
+```
+
+
+
 
 ### Use `cephtools` to set a bucket policy 
 
 For example, it can be helpful to allow anyone in your MSI group read-only access to the archived projects bucket. Running this tool will generate two files (the json bucket policy and a readme), so you should put these files in common location. Re-run the bucket policy command after MSI members are added or removed from group.
 
-```
-BUCKET_NAME="my-unique-bucket-name"
-```
-
 
 ```
+MYGROUP=$(id -ng)
+
 # Change into a common place to store policies
 mkdir -p $HOME/ceph/$BUCKET_NAME
 cd $HOME/ceph/$BUCKET_NAME
 
-cephtools bucketpolicy --bucket $MYGROUP-$USER-tier1-archive --policy GROUP_READ --group $MYGROUP
+cephtools bucketpolicy --bucket $BUCKET_NAME --policy GROUP_READ --group $MYGROUP
 ```
 
 

@@ -7,17 +7,34 @@ Data from various UMN core facilities (e.g. UMGC) export data to a special direc
 
 
 
+## Set up environment
+
+
+If necessary, run `newgrp` and set the MYGROUP variable. Then load `cephtools`.
+
+
+```
+# newgrp GROUPNAME
+MYGROUP=$(id -ng)
+
+# Load cephtools
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+```
+
+
+
+
+
 ## Create a bucket that all MSI group members can access
 
 *The MSI group PI* (or via sudo) should create a new bucket on ceph, called `GROUP-data-archive` (replacing GROUP with your MSI group name). Later, a bucket policy can be applied to the bucket, controlling access to the bucket for only certain MSI users. This process will ensure the raw data in the bucket are owned by the group's PI username. 
 
-This bucket only needs to be created once. FYI, your current group name can be found by running: `id -ng` on the command line. 
+This bucket only needs to be created once.
 
 
 
 
 ```
-MYGROUP=$(id -ng)
 s3cmd mb s3://$MYGROUP-data-archive
 ```
 
@@ -49,13 +66,6 @@ After the PI's bucket has an READ/WRITE bucket policy set for group member, *the
 
 As a regular group member (i.e. not the PI), run `newgrp` and set the MYGROUP variable if necessary. Then load `cephtools`.
 
-```
-# newgrp GROUPNAME
-MYGROUP=$(id -ng)
-
-# Load cephtools
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
-```
 
 Keep a record of data transfers in a common location (make sure permissions are set at this folder). Change into this directory and run `cephtools`.
 
