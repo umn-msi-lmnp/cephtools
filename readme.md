@@ -18,6 +18,8 @@ There are multiple ways to start using cephtools. See the [Install Options](./in
 
 * See the [Getting Started](./doc/vignette_getting_started.md) vignette for a basic workflow using the cephtools subcommands and FAQs.
 * See the [Data Delivery Archive](./doc/vignette_dd2ceph.md) vignette for how to transfer data (e.g. fastqs) from "data_delivery" to ceph.
+* See the [Directory Transfer](./doc/vignette_panfs2ceph.md) vignette for how to transfer a single directory (e.g. project) to ceph.
+* See the [Allow Bucket Access](./doc/vignette_bucketpolicy.md) vignette for how to change ceph bucket policies to share data between groups or the public.
 
 
 
