@@ -16,7 +16,7 @@ There are multiple ways to start using cephtools. See the [Install Options](./in
 ## Examples
 
 
-* See the [Getting Started](./doc/vignette_getting_started.md) vignette for a basic workflow using the cephtools subcommands.
+* See the [Getting Started](./doc/vignette_getting_started.md) vignette for a basic workflow using the cephtools subcommands and FAQs.
 * See the [Data Delivery Archive](./doc/vignette_dd2ceph.md) vignette for how to transfer data (e.g. fastqs) from "data_delivery" to ceph.
 
 
