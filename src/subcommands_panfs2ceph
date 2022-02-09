@@ -30,7 +30,7 @@ Options:
                             the ".empty_dir" files, thus empty dirs will not get copied to
                             ceph.
                             
-    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 1].
+    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
     -v|--verbose            Verbose mode (print additional info).
 
@@ -62,7 +62,7 @@ panfs2ceph() {
     local _dry_run=
     local _verbose=0
     local _delete_empty_dirs=0
-    local _threads="1"
+    local _threads="16"
 
     # __get_option_value()
     #
