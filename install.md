@@ -4,21 +4,24 @@
 
 There are multiple ways to start using cephtools. 
 
-1. Load an available module
+1. Load a module
 1. Clone the repo and checkout any version tag or commit
 
 
-### Load an available module
+## Load a module
 
+### Load the default version (i.e. most current)  *highly recommended*
 
 ```
-# Check available versions
+MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+```
+
+
+### Check available versions or load a specific version
+
+```
 MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
 
-# Load the default (i.e. most current) version (highly recommended)
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
-
-# Load a specific version
 MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/2.0.0
 ```
 
@@ -28,9 +31,9 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load c
 
  
 
-### Clone the repo and checkout any version tag or commit
+## Clone the repo and checkout any version tag or commit
 
-#### Download
+### Download
 The repo is located on the UMN GitHub site, but is public to anyone with access to [github.umn.edu](github.umn.edu). However, using `wget` with https does not work because you need to authenticate using your UMN GitHub credentials. 
 
 
