@@ -6,87 +6,135 @@
 Data from various UMN core facilities (e.g. UMGC) export data to a special directory called `data_delivery` for short period of time (~ 1 year). This vignette will describe how to data deposited in `data_delivery` can be easily copied to MSI ceph (tier2) for long term strorage. 
 
 
-
-## Set up environment
-
-
-If necessary, run `newgrp` and set the MYGROUP variable. Then load `cephtools`.
+## Step 1: Create bucket and set a policy *(completed once, preferably by the MSI group PI)*
 
 
-```
-# newgrp GROUPNAME
-MYGROUP=$(id -ng)
+Create a bucket that all MSI group members can access.
 
-# Load cephtools
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
-```
+
+*The MSI group PI* (or via sudo) should create a new bucket on ceph, called `GROUP-data-archive` (replacing GROUP with your MSI group name). Later, a bucket policy can be applied to the bucket, controlling access to the bucket for only certain MSI users. This process will ensure the raw data in the bucket are owned by the group's PI username. This bucket only needs to be created once.
 
 
 
+1. Set up environment.
+
+    The PI should log into MSI and check their current primary (default) group. The primary group for some PIs is not their own group (i.e. sometimes a PI has their group set to a different group). 
+    
+    ```
+    # Check current group
+    id -ng
+    ```
+    
+    If necessary, run `newgrp GROUPNAME` to change your current group and set a MYGROUP variable.
+    
+    ```
+    # Set a variable for group name
+    MYGROUP=$(id -ng)
+    ```
+    
+    
+    Load `cephtools` software.
+    
+    ```
+    MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+    ```
+
+2. Create the ceph (tier2) bucket.
 
 
-## Create a bucket that all MSI group members can access
+    ```
+    s3cmd mb s3://$MYGROUP-data-archive
+    ```
 
-*The MSI group PI* (or via sudo) should create a new bucket on ceph, called `GROUP-data-archive` (replacing GROUP with your MSI group name). Later, a bucket policy can be applied to the bucket, controlling access to the bucket for only certain MSI users. This process will ensure the raw data in the bucket are owned by the group's PI username. 
+3. Create working directory.
 
-This bucket only needs to be created once.
+    Keep a record of all data transfers in shared (common) location. Make sure group permissions are set at this folder.
 
+    ```
+    mkdir -p -m ug+rwxs,o-rwx /home/$MYGROUP/shared/dd2ceph
+    cd /home/$MYGROUP/shared/dd2ceph
+    ```
 
+4. Set bucket policy
+    
+    Use `cephtools` to set a bucket policy that will allow all MSI group members read and write access. Re-run the bucket policy command above after MSI members are added or removed from group.
 
-
-```
-s3cmd mb s3://$MYGROUP-data-archive
-```
-
-Keep a record of data transfers in shared (common) location (and make sure group permissions are set at this folder):
-
-```
-mkdir -p -m ug+rwxs,o-rwx /home/$MYGROUP/shared/dd2ceph
-cd /home/$MYGROUP/shared/dd2ceph
-```
-
-
-Use cephtools to set a bucket policy (allow group read and write). 
-
-```
-cephtools bucketpolicy -b $MYGROUP-data-archive -p GROUP_READ_WRITE -g $MYGROUP
-```
+    ```
+    cephtools bucketpolicy -v -b $MYGROUP-data-archive -p GROUP_READ_WRITE -g $MYGROUP
+    ```
 
 
-Re-run the bucket policy command after MSI members are added or removed from group
+## Step 2: Transfer data to ceph *(completed my any group member, repeatedly)*
+
+After the PI's bucket has a group READ/WRITE bucket policy set, *the following methods can be done by any group members*. In fact, the data transfer steps below should be done repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: you will need to supply your `rclone` remote name in the command below. [To learn more about rclone remotes and how to set one up, see this tips page](https://github.umn.edu/knut0297org/software_tips/tree/main/rclone#umn-tier2-ceph).
 
 
+1. Set up environment.
 
-
-## Transfer data from `data_delivery` to ceph
-
-After the PI's bucket has an READ/WRITE bucket policy set for group member, *the following methods can be done by any group members*. In fact, the data transfer steps below should repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/knut0297org/software_tips/tree/main/rclone#umn-tier2-ceph).
-
-
-
-As a regular group member (i.e. not the PI), run `newgrp` and set the MYGROUP variable if necessary. Then load `cephtools`.
-
-
-Keep a record of data transfers in a common location (make sure permissions are set at this folder). Change into this directory and run `cephtools`.
-
-```
-cd /home/$MYGROUP/shared/dd2ceph
-# Run with explicit options
-# cephtools dd2ceph --bucket $MYGROUP-data-archive --remote ceph --path /home/$MYGROUP/data_delivery
-
-# Run with defaults (same as above)
-cephtools dd2ceph -r ceph
-```
+    ```
+    # Check current group
+    id -ng
+    ```
+    
+    If necessary, run `newgrp GROUPNAME` to change your current group and set a MYGROUP variable.
+    
+    ```
+    # Set a variable for group name
+    MYGROUP=$(id -ng)
+    ```
+    
+    
+    Load `cephtools` software.
+    
+    ```
+    MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+    ```
 
 
 
-Review the slurm script (change any parameters you wish) and launch the data transfer job.
 
-```
-cd $MYGROUP-data-archive___*
-sbatch dd2ceph_*.1_copy.slurm
-```
+2. Change into the working directory (created above).
+
+    ```
+    cd /home/$MYGROUP/shared/dd2ceph
+    ```
+    
+3. Run the `cephtools dd2ceph` command.
+    
+    
+    ```
+    # Explore the tool's options.
+    cephtools dd2ceph
+    ```
+    
+    
+
+    ```
+    # Run the command
+    cephtools dd2ceph -v --bucket $MYGROUP-data-archive --remote ceph --path /home/$MYGROUP/data_delivery
+    ```
 
 
+
+4. Review the output and launch the SLURM job.
+
+    
+    Change into the working directory for this run.
+    
+    ```
+    cd $MYGROUP-data-archive___*
+    ```
+    
+
+    Review the slurm script (change any parameters you wish) and launch the data transfer job.
+
+    ```
+    sbatch dd2ceph_*.1_copy.slurm
+    ```
+
+5. Monitor your SLURM job.
+
+    Look for (BEGIN, END, FAIL) emails from the slurm scheduler. Follow the progress in the slurm `stderr` and `stdout` files (located within the working directory.
+    
 
 
