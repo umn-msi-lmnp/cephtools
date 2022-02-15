@@ -14,6 +14,7 @@ Create a bucket that all MSI group members can access.
 
 *The MSI group PI* (or via sudo) should create a new bucket on ceph, called `GROUP-data-archive` (replacing GROUP with your MSI group name). Later, a bucket policy can be applied to the bucket, controlling access to the bucket for only certain MSI users. This process will ensure the raw data in the bucket are owned by the group's PI username. This bucket only needs to be created once.
 
+> NOTE: Before completing these steps, you can check to see whether the bucket you plan to create already exists. Running `s3cmd ls s3://BUCKETNAME` will return an ERROR if it does not exist or if you cannot access it. If it exists and you can access it, no error is given. [Skip to **Step 2** below](#step-2-transfer-data-to-ceph-completed-my-any-group-member-repeatedly). 
 
 
 1. Set up environment.
