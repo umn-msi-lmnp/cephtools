@@ -18,14 +18,24 @@ A few bucket policy presets exist:
 ## Set up environment
 
 
-If necessary, run `newgrp` and set the MYGROUP variable. Then load `cephtools`.
-
+Check your current primary (default) group. The primary group for some users is not what they expect. 
 
 ```
-# newgrp GROUPNAME
-MYGROUP=$(id -ng)
+# Check current group
+id -ng
+```
 
-# Load cephtools
+If necessary, run `newgrp GROUPNAME` to change your current group and set a MYGROUP variable.
+
+```
+# Set a variable for group name
+MYGROUP=$(id -ng)
+```
+
+
+Load `cephtools` software.
+
+```
 MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
 ```
 
@@ -53,13 +63,11 @@ For example, it can be helpful to allow anyone in your MSI group read-only acces
 
 
 ```
-MYGROUP=$(id -ng)
-
 # Change into a common place to store policies
 mkdir -p $HOME/ceph/$BUCKET_NAME
 cd $HOME/ceph/$BUCKET_NAME
 
-cephtools bucketpolicy --bucket $BUCKET_NAME --policy GROUP_READ --group $MYGROUP
+cephtools bucketpolicy -v --bucket $BUCKET_NAME --policy GROUP_READ --group $MYGROUP
 ```
 
 
