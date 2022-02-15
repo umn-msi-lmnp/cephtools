@@ -103,7 +103,7 @@ After the PI's bucket has a group READ/WRITE bucket policy set, *the following m
     
     
     ```
-    # Explore the tool's options.
+    # Explore the tool's options
     cephtools dd2ceph
     ```
     
@@ -132,7 +132,7 @@ After the PI's bucket has a group READ/WRITE bucket policy set, *the following m
     sbatch dd2ceph_*.1_copy.slurm
     ```
 
-5. Monitor your SLURM job.
+5. Monitor your SLURM job and review output files.
 
     Look for (BEGIN, END, FAIL) emails from the slurm scheduler. Follow the progress in the slurm `stderr` and `stdout` files (located within the working directory.
     
