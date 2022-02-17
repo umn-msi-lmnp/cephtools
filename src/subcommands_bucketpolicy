@@ -254,7 +254,7 @@ bucketpolicy() {
     then
         _users_with_access="All MSI users and the entire public Internet"
     elif [[ "${_policy}" =~ ^.*LIST.*$ ]]
-    
+    then
         # Read in the specific users in the VIP list file
         #_username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
         _username_msi_csv="$(cat ${_list})"
