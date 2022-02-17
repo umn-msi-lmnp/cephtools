@@ -26,12 +26,20 @@ Options:
                                     entire Internet for viewing or downloading. However,
                                     this can be a good option for hosting a public static
                                     website.
+                                LIST_READ: Allows a specific list of users to have read-only 
+                                    access to the bucket. Must be a comma separated x500 
+                                    list without spaces.
+                                LIST_READ_WRITE: Allows a specific list of users to have 
+                                    read and write access to the bucket. Must be a comma 
+                                    separated x500 list without spaces.
                                     
     -g|--group <STRING>     MSI group id. Required only if "--policy GROUP_READ" is
                             specified.
     
     -n|--do_not_setpolicy   If specified, the policy will be created (i.e. written to
                             file) but it will not be set on the bucket.
+                            
+    -l|--list               Provide a list of user ids for the particular policy setting
     
     -v|--verbose            Verbose mode (print additional info).
 
@@ -63,6 +71,7 @@ bucketpolicy() {
     local _group=
     local _do_not_setpolicy=0
     local _verbose=0
+    local _list=
 
     # __get_option_value()
     #
@@ -112,6 +121,10 @@ bucketpolicy() {
             _group="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
+        -l|--list)
+            _list="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         --endopts)
             # Terminate option parsing.
             break
@@ -138,6 +151,7 @@ bucketpolicy() {
     _verb printf -- "--policy: %s\\n" "$_policy"
     _verb printf -- "--group: %s\\n" "$_group"
     _verb printf -- "--verbose: %s\\n" "$_verbose"
+    _verb printf -- "--list: %s\\n" "$_list"
     _verb printf -- "--do_not_setpolicy: %s\\n" "$_do_not_setpolicy"
 
 
@@ -147,7 +161,7 @@ bucketpolicy() {
         _exit_1 printf "The '--bucket' option must be specified and not be empty or null.\\n"
     fi
     
-    _policy_options=(NONE GROUP_READ GROUP_READ_WRITE OTHERS_READ)
+    _policy_options=(NONE GROUP_READ GROUP_READ_WRITE OTHERS_READ LIST_READ LIST_READ_WRITE)
     if ! _contains "${_policy}" "${_policy_options[@]}"
     then
         local _str
@@ -239,6 +253,39 @@ bucketpolicy() {
     elif [[ "${_policy}" =~ ^.*OTHERS.*$ ]]
     then
         _users_with_access="All MSI users and the entire public Internet"
+    elif [[ "${_policy}" =~ ^.*LIST.*$ ]]
+    
+        # Read in the specific users in the VIP list file
+        #_username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
+        _username_msi_csv="$(cat ${_list})"
+        readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
+
+
+        # Use the MSI user id (uid) with the "s3info" function (if possible) to return the ceph username. Generate a comma 
+        # separated list of ceph usernames for each MSI user. This entire concatenated string will be supplied
+        # to the bucket policy.
+        _all_ceph_username_string=()
+        _username_ceph=()
+        _username_ceph_msi=()
+        for i in "${!_username_msi[@]}"
+        do
+            if s3info --user "${_username_msi[$i]}" &>/dev/null
+            then
+                _curr_ceph_username="$(s3info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _username_ceph+=("${_curr_ceph_username}")
+                _username_ceph_msi+=("${_username_msi[$i]}")
+                _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
+                if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
+                    _all_ceph_username_string+="${_curr_ceph_username_string}"
+                else
+                    _all_ceph_username_string+=",${_curr_ceph_username_string}"
+                fi
+            else
+                _warn printf "s3info command failed for username: %s.\\n" "${_username_msi[$i]}"
+            fi
+        done
+        # Copy variable to another name for README file
+        _users_with_access=(${_username_ceph_msi[@]})
     fi
 
 
@@ -315,6 +362,61 @@ HEREDOC
         }
     ]
 }
+
+HEREDOC
+    elif _contains "${_policy}" "LIST_READ"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_ceph_username_string}
+        ]},
+        "Action": [
+            "s3:ListBucket",
+            "s3:ListBucketVersions",
+            "s3:GetBucketAcl",
+            "s3:GetBucketCORS",
+            "s3:GetBucketLocation",
+            "s3:GetBucketLogging",
+            "s3:GetBucketNotification",
+            "s3:GetBucketPolicy",
+            "s3:GetBucketTagging",
+            "s3:GetBucketVersioning",
+            "s3:GetBucketWebsite",
+            "s3:GetObjectAcl",
+            "s3:GetObject",
+            "s3:GetObjectVersionAcl",
+            "s3:GetObjectVersion"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+    elif _contains "${_policy}" "LIST_READ_WRITE"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_ceph_username_string}
+        ]},
+        "Action": [
+            "s3:*"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
 
 HEREDOC
     elif _contains "${_policy}" "OTHERS_READ"
