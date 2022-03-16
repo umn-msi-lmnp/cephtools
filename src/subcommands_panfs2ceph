@@ -20,6 +20,9 @@ Options:
     
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered.
+                            
+    -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
+                            are saved. [Default: "<path>___panfs2ceph_archive_<date_time>"]
     
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
@@ -59,6 +62,7 @@ panfs2ceph() {
     local _bucket=
     local _remote=
     local _path=
+    local _log_dir=
     local _dry_run=
     local _verbose=0
     local _delete_empty_dirs=0
@@ -115,6 +119,10 @@ panfs2ceph() {
             _path="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
+        -l|--log_dir)
+            _path="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         -t|--threads)
             _threads="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
@@ -144,6 +152,7 @@ panfs2ceph() {
     _verb printf -- "--bucket: %s\\n" "$_bucket"
     _verb printf -- "--remote: %s\\n" "$_remote"
     _verb printf -- "--path: %s\\n" "$_path"
+    _verb printf -- "--log_dir: %s\\n" "$_log_dir"
     _verb printf -- "--dry_run: %s\\n" "$_dry_run"
     _verb printf -- "--verbose: %s\\n" "$_verbose"
     _verb printf -- "--delete_empty_dirs: %s\\n" "$_delete_empty_dirs"
@@ -225,7 +234,24 @@ panfs2ceph() {
 
     _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
     _myprefix="panfs2ceph_archive_${_archive_date_time}"
-    _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
+    
+    # If the log_dir variable is empty or null, use the default.
+    if [ -z "${_log_dir}" ]
+    then
+        # Default _log_dir path
+        _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
+    else
+        # Make sure supplied path is a real location
+        _root_log_dir=$(readlink -m "${_log_dir}")
+        if [ ! -d "${_root_log_dir}" ]
+        then
+            _exit_1 printf "The '--log_dir' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_log_dir}"
+        fi
+        # Set the _log_dir as specified, after converted via readlink
+        _myprefix_dir=${_root_log_dir}
+    fi
+
+
 
     _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
     mkdir -p ${_myprefix_dir}
