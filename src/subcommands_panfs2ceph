@@ -120,7 +120,7 @@ panfs2ceph() {
             shift
             ;;
         -l|--log_dir)
-            _path="$(__get_option_value "${__arg}" "${__val:-}")"
+            _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         -t|--threads)
@@ -240,22 +240,24 @@ panfs2ceph() {
     then
         # Default _log_dir path
         _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
+
+        mkdir -p ${_myprefix_dir}
+        chmod --reference ${_root_path_dir} ${_myprefix_dir}
     else
         # Make sure supplied path is a real location
         _root_log_dir=$(readlink -m "${_log_dir}")
         if [ ! -d "${_root_log_dir}" ]
         then
-            _exit_1 printf "The '--log_dir' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_log_dir}"
+            _exit_1 printf "The '--log_dir' option specified is not a valid directory. Does it exist? \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_log_dir}"
+        else
+            # Set the _log_dir as specified, after converted via readlink
+            _myprefix_dir=${_root_log_dir}
         fi
-        # Set the _log_dir as specified, after converted via readlink
-        _myprefix_dir=${_root_log_dir}
     fi
 
 
 
     _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
-    mkdir -p ${_myprefix_dir}
-    chmod --reference ${_root_path_dir} ${_myprefix_dir}
     cd ${_myprefix_dir}
 
 
