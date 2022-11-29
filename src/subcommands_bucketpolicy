@@ -233,9 +233,9 @@ bucketpolicy() {
         _username_ceph_msi=()
         for i in "${!_username_msi[@]}"
         do
-            if s3info --user "${_username_msi[$i]}" &>/dev/null
+            if s3info info --user "${_username_msi[$i]}" &>/dev/null
             then
-                _curr_ceph_username="$(s3info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
                 _username_ceph+=("${_curr_ceph_username}")
                 _username_ceph_msi+=("${_username_msi[$i]}")
                 _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
@@ -245,7 +245,7 @@ bucketpolicy() {
                     _all_ceph_username_string+=",${_curr_ceph_username_string}"
                 fi
             else
-                _warn printf "s3info command failed for username: %s.\\n" "${_username_msi[$i]}"
+                _warn printf "s3info info command failed for username: %s.\\n" "${_username_msi[$i]}"
             fi
         done
         # Copy variable to another name for README file
@@ -269,9 +269,9 @@ bucketpolicy() {
         _username_ceph_msi=()
         for i in "${!_username_msi[@]}"
         do
-            if s3info --user "${_username_msi[$i]}" &>/dev/null
+            if s3info info --user "${_username_msi[$i]}" &>/dev/null
             then
-                _curr_ceph_username="$(s3info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
                 _username_ceph+=("${_curr_ceph_username}")
                 _username_ceph_msi+=("${_username_msi[$i]}")
                 _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
@@ -281,7 +281,7 @@ bucketpolicy() {
                     _all_ceph_username_string+=",${_curr_ceph_username_string}"
                 fi
             else
-                _warn printf "s3info command failed for username: %s.\\n" "${_username_msi[$i]}"
+                _warn printf "s3info info command failed for username: %s.\\n" "${_username_msi[$i]}"
             fi
         done
         # Copy variable to another name for README file
