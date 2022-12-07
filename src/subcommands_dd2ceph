@@ -269,6 +269,26 @@ dd2ceph() {
 
 
 
+    # ---------------------------------------------------------------------
+    # Determine best slurm partition
+    # ---------------------------------------------------------------------
+
+    # Capture the dns domain name for current cluster
+    cluster=$(dnsdomainname | awk -F. '{print $1}')
+
+    # Specify the appropriate slurm partition in job files
+    if [[ "${cluster}" = "agate" ]]; then
+        _partition="agsmall"
+    elif [[ "${cluster}" = "mesabi" ]]; then
+        _partition="small"
+    elif [[ "${cluster}" = "mangi" ]]; then
+        _partition="amdsmall"
+    else
+        _partition="msismall"
+    fi
+
+
+
 
     #######################################################################
     # Copy
@@ -286,7 +306,7 @@ dd2ceph() {
 #SBATCH --output=%x.o%j
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=$USER@umn.edu
-#SBATCH --partition=amdsmall
+#SBATCH --partition=$_partition
 
 echo "[dd2ceph "\$(date)"] Script start."
 
