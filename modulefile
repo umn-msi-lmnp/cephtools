@@ -1,0 +1,20 @@
+#%Module######################################################################
+
+# This modulefile is used only for local development purposes. For example,
+# clone this repo to a local space, then running 'module load /path/to/THIS_MODULEFILE', 
+# the env variables will be updated to allow running the code directly from this repo. 
+# NOTE: the load this file from a relative path, you need to specify the path format in
+# this way "./relative/path/modulefile", including the dot, or it will not load.
+
+
+
+# Determine the directory where this current modulefile is located
+set this_modulefile_path [module-info name]
+# Extract the directory from the path
+set this_modulefile_dir [file dirname $this_modulefile_path]
+prepend-path PATH "${this_modulefile_dir}/build/bin"
+
+# Only prints message when being loaded
+if [ module-info mode load ] {
+    puts stderr "Executable files in the following path are now available: $this_modulefile_dir/build/bin"
+}
