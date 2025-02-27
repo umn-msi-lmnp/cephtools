@@ -70,6 +70,7 @@ bucketpolicy() {
 
     # Initialize program option variables.
     local _bucket=
+    local _make_bucket=0
     local _policy="GROUP_READ"
     local _group=
     local _do_not_setpolicy=0
@@ -108,6 +109,9 @@ bucketpolicy() {
         case "${__arg}" in
         -v|--verbose)
             _verbose=1
+            ;;
+        -m|--make_bucket)
+            _make_bucket=1
             ;;
         -n|--do_not_setpolicy)
             _do_not_setpolicy=1
@@ -151,6 +155,7 @@ bucketpolicy() {
 
     _verb printf -- "Program options used:\\n"
     _verb printf -- "--bucket: %s\\n" "$_bucket"
+    _verb printf -- "--make_bucket: %s\\n" "$_make_bucket"
     _verb printf -- "--policy: %s\\n" "$_policy"
     _verb printf -- "--group: %s\\n" "$_group"
     _verb printf -- "--verbose: %s\\n" "$_verbose"
