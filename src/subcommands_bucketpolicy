@@ -12,7 +12,10 @@ Usage:
 
 Options:
     -b|--bucket <STRING>    Name of the ceph bucket for policy. Required.
-    
+
+    -m|--make_bucket        If the bucket does not exist, make it. [Default = buckets are not created
+                            but policies will be adjusted if a bucket already exists.]
+
     -p|--policy <STRING>    What policy should be created? [Default = "GROUP_READ"]
                             Policy options: 
                                 NONE: Removes any policy currently set.
@@ -193,8 +196,14 @@ bucketpolicy() {
     fi
 
     # Make sure access to bucket is possible
-    if ! s3cmd ls s3://${_bucket} &>/dev/null
-    then
+    if ! s3cmd ls s3://${_bucket} &>/dev/null; then
+        if s3cmd mb s3://${bucket} &>/dev/null; then
+            s3cmd mb s3://${bucket}
+            _info printf "Bucket was made: %s" "${_bucket}"
+        else
+            _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
+        fi
+    else
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
     fi
 
