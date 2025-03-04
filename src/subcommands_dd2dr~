@@ -2,54 +2,40 @@
 
 
 # ---------------------------------------------------------------------
-# panfs2ceph
+# dd2dr
 # ---------------------------------------------------------------------
 
-describe "panfs2ceph" <<HEREDOC
+describe "dd2dr" <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} panfs2ceph [options] --bucket <BUCKET> --remote <REMOTE> --path <DIR_PATH>
+    ${_ME} dd2dr [options] --group
 
 Options:
-    -r|--remote <STRING>    Rclone remote name. (use "rclone listremotes" for available
-                            remotes). Rclone remotes must be set up using "rclone init"
-                            and can be viewed at: ~/.config/rclone/rclone.conf.
-                            
-    -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
-                            transfer.
-    
-    -p|--path <STRING>      Absolute or relative path to the directory that should be 
-                            transfered.
-                            
-    -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
-                            are saved. [Default: "<path>___panfs2ceph_archive_<date_time>"]
-    
+    -g|--group <STRING>     MSI group ID (required)
+
+    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 8].
+
+    -l|--log_dir 	    Absolute or relative path to directory where log files are
+    			    saved. [Default: "/home/GROUP/shared/dd2dr"]
+			    
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
-    
-    -e|--delete_empty_dirs  Do NOT transfer empty dirs on panfs to ceph. [Default is to 
-                            create a hidden file (".empty_dir") inside all empty dirs so 
-                            they get transfered to ceph. Setting this flag will not create
-                            the ".empty_dir" files, thus empty dirs will not get copied to
-                            ceph.
-                            
-    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
     -v|--verbose            Verbose mode (print additional info).
 
 Description:
-  Archiving tool to copy a single directory from tier 1 (panfs) storage to tier 2 (ceph).
+  Copy data from data delivery to disaster recovery. 
   
 Help (print this screen):
-    ${_ME} help panfs2ceph
+    ${_ME} help dd2dr
 
 Version: ${_VERSION}
-Questions: Todd Knutson (knut0297@umn.edu)
-GitHub: https://github.umn.edu/knut0297org/cephtools
+Questions: Todd Knutson (knut0297@umn.edu) Christine O'Connor (oconnorc@umn.edu)
+GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
 
-panfs2ceph() {
+dd2dr() {
 #     echo ALL ARGS:
 #     echo "${@:-}"
 #     echo "${#}"
@@ -59,14 +45,11 @@ panfs2ceph() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _bucket=
-    local _remote=
-    local _path=
-    local _log_dir=
+    local _group=
     local _dry_run=
+    local _log_dir="/home/$(id -ng)/shared/dd2dr"
+    local _threds=8
     local _verbose=0
-    local _delete_empty_dirs=0
-    local _threads="16"
 
     # __get_option_value()
     #
@@ -104,25 +87,14 @@ panfs2ceph() {
         -v|--verbose)
             _verbose=1
             ;;
-        -e|--delete_empty_dirs)
-            _delete_empty_dirs=1
-            ;;
-        -b|--bucket)
-            _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
+        -g|--group)
+            _group="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
-        -r|--remote)
-            _remote="$(__get_option_value "${__arg}" "${__val:-}")"
-            shift
-            ;;
-        -p|--path)
-            _path="$(__get_option_value "${__arg}" "${__val:-}")"
-            shift
-            ;;
-        -l|--log_dir)
-            _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
-            shift
-            ;;
+	-l|--log_dir
+	    _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+	    shift
+	    ;;
         -t|--threads)
             _threads="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
@@ -135,7 +107,7 @@ panfs2ceph() {
             _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
             ;;
         *)
-            describe --get panfs2ceph
+            describe --get dd2dr
             _exit_1 printf "Unexpected positional arg: %s\\n" "${__arg}"
             ;;
         esac
@@ -149,9 +121,7 @@ panfs2ceph() {
     # ---------------------------------------------------------------------
 
     _verb printf -- "Program options used:\\n"
-    _verb printf -- "--bucket: %s\\n" "$_bucket"
-    _verb printf -- "--remote: %s\\n" "$_remote"
-    _verb printf -- "--path: %s\\n" "$_path"
+    _verb printf -- "--group: %s\\n" "$_group"
     _verb printf -- "--log_dir: %s\\n" "$_log_dir"
     _verb printf -- "--dry_run: %s\\n" "$_dry_run"
     _verb printf -- "--verbose: %s\\n" "$_verbose"
@@ -160,26 +130,18 @@ panfs2ceph() {
 
 
     # If required options are empty or null, exit.
-    if [ -z "${_remote}" ]
+    if [ -z "${_group}" ]
     then
-        _exit_1 printf "The '--remote' option must be specified and not be empty or null."
+        _exit_1 printf "The '--group' option must be specified and not be empty or null."
     fi
-    if [ -z "${_bucket}" ]
-    then
-        _exit_1 printf "The '--bucket' option must be specified and not be empty or null."
-    fi
-    if [ -z "${_path}" ]
-    then
-        _exit_1 printf "The '--path' option must be specified and not be empty or null."
-    fi
-    
 
-    _root_path_dir=$(readlink -m "${_path}")
-    if [ ! -d "${_root_path_dir}" ]
+    # does log_dir need to be created?
+    if [ ! -d "${_log_dir}" ]
     then
-        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
+        _warn printf "The '--log_dir' option specified is not a valid directory. Creating the dir with g+rwx permissions: '%s'\\n" "${_log_dir}"
+        mkdir -p ${_log_dir}
+        chmod g+rwx ${_log_dir}
     fi
-    
 
     # ---------------------------------------------------------------------
     # Check rclone specific info
@@ -196,36 +158,6 @@ panfs2ceph() {
         _verb printf "%s\\n" "$(rclone --version)" 
     fi
 
-    # Make sure the remote exists
-    if ! rclone listremotes | grep -q "^$_remote:\$"
-    then
-        _exit_1 printf "Rclone remote does not exist: %s\\nCheck available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n" "$_remote"
-    fi
-
-    # Make sure access to bucket is possible
-    if ! rclone lsf ${_remote}:${_bucket} &>/dev/null
-    then
-        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
-    fi
-
-    
-
-
-
-    # ---------------------------------------------------------------------
-    # Check to make sure this input dir does NOT already exist on ceph.
-    # ---------------------------------------------------------------------
-
-
-    # Count the number of ceph objects (files) listed under the input archive dir. If there are any files under this dir name already, stop.
-    remote_root_path_dir_filenumber=$(rclone lsf ${_remote}:${_bucket}$(dirname ${_root_path_dir})/$(basename ${_root_path_dir}) --links --max-depth 1 2> /dev/null | wc -l)
-
-
-    if [[ $remote_root_path_dir_filenumber -gt 0 ]]
-    then
-        _exit_1 printf "Tier 2 (ceph) already has files saved under this input 'directory name' (%s) in this bucket (%s). To prevent any possible over-writing of data on ceph, please choose a different panfs directory path to archive or a different ceph bucket.\\n" "${_root_path_dir}" "${_bucket}"
-    fi
-
 
 
     # ---------------------------------------------------------------------
@@ -233,130 +165,7 @@ panfs2ceph() {
     # ---------------------------------------------------------------------
 
     _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
-    _myprefix="panfs2ceph_archive_${_archive_date_time}"
     
-    # If the log_dir variable is empty or null, use the default.
-    if [ -z "${_log_dir}" ]
-    then
-        # Default _log_dir path
-        _myprefix_dir=$(dirname ${_root_path_dir})/$(basename ${_root_path_dir})___${_myprefix}
-
-        mkdir -p ${_myprefix_dir}
-        chmod --reference ${_root_path_dir} ${_myprefix_dir}
-    else
-        # Make sure supplied path is a real location
-        _root_log_dir=$(readlink -m "${_log_dir}")
-        if [ ! -d "${_root_log_dir}" ]
-        then
-            _exit_1 printf "The '--log_dir' option specified is not a valid directory. Does it exist? \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_log_dir}"
-        else
-            # Set the _log_dir as specified, after converted via readlink
-            _myprefix_dir=${_root_log_dir}
-        fi
-    fi
-
-
-
-    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
-    cd ${_myprefix_dir}
-
-
-
-#     # ---------------------------------------------------------------------
-#     # Check for read and write access
-#     # ---------------------------------------------------------------------
-# 
-#     find ${_root_path_dir} -type f ! -perm -u=r >files_not_readable_by_user_${USER}.txt 2>/dev/null || true
-#     find ${_root_path_dir} -type d ! -perm -u=r >directories_not_readable_by_user_${USER}.txt 2>/dev/null || true
-#     find ${_root_path_dir} -type d ! -perm -u=x >directories_not_executable_by_user_${USER}.txt 2>/dev/null || true
-# 
-#     find ${_root_path_dir} -type f ! -perm -u=w >files_not_writable_or_deletable_by_user_${USER}.txt 2>/dev/null || true
-#     find ${_root_path_dir} -type d ! -perm -u=w >directories_not_writable_or_deletable_by_user_${USER}.txt 2>/dev/null || true
-#     
-#     if [[ ! -s "files_not_readable_by_user_${USER}.txt" ]]
-#     then
-#         # Empty file, delete it.
-#         rm "files_not_readable_by_user_${USER}.txt"
-#     fi
-#     if [[ ! -s "directories_not_readable_by_user_${USER}.txt" ]]
-#     then
-#         # Empty file, delete it.
-#         rm "directories_not_readable_by_user_${USER}.txt"
-#     fi
-#     if [[ ! -s "directories_not_executable_by_user_${USER}.txt" ]]
-#     then
-#         # Empty file, delete it.
-#         rm "directories_not_executable_by_user_${USER}.txt"
-#     fi
-#     if [[ ! -s "files_not_writable_or_deletable_by_user_${USER}.txt" ]]
-#     then
-#         # Empty file, delete it.
-#         rm "files_not_writable_or_deletable_by_user_${USER}.txt"
-#     fi
-#     if [[ ! -s "directories_not_writable_or_deletable_by_user_${USER}.txt" ]]
-#     then
-#         # Empty file, delete it.
-#         rm "directories_not_writable_or_deletable_by_user_${USER}.txt"
-#     fi
-#     
-#     _permission_files=("${_root_path_dir}/*_by_user*")
-#     if [[ ${#_permission_files[@]} -gt 0 ]]
-#     then
-#         _exit_1 printf "There are files or directories listed in the backup dir '%s' that are not readable or executable (dirs) by user: %s. These items cannot be transfered. Review them here: '%s'.\\n" "${_root_path_dir}" "${USER}" "${_myprefix_dir}"
-#     fi
-
-
-
-    # ---------------------------------------------------------------------
-    # Get a file list
-    # ---------------------------------------------------------------------
-
-
-    if ((_delete_empty_dirs))
-    then
-        # "The '--delete_empty_dirs' option was specified. Any empty dirs will not be copied to ceph."
-        :
-    else 
-        # Create a hidden file inside all empty dirs. This will ensure the empty dir will get copied as an object to ceph.
-        find ${_root_path_dir} -type d -empty -print0 | xargs -I{} -0 touch {}/.empty_dir
-    fi
-
-
-
-    # Print a list of files that will be archived
-    _verb printf "Creating the archive file list. This might take a while for large dirs...\\n"
-
-    rclone lsf -R --links ${_root_path_dir} > ${_myprefix}.filelist.txt_temp1
-    # _myprefix the files with full pathname
-    sed -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt_temp1 > ${_myprefix}.filelist.txt_temp2
-    sort ${_myprefix}.filelist.txt_temp2 > ${_myprefix}.filelist.txt
-    rm ${_myprefix}.filelist.txt_temp{1,2}
-
-
-
-
-
-    # ---------------------------------------------------------------------
-    # Check for filenames or pathnames that are too long
-    # ---------------------------------------------------------------------
-
-    # This check is probably pointless because I think the limit is the same for both
-    # panfs and ceph -- so if files are on panfs, they should also fit on ceph.
-
-    # On object storage (S3, ceph), filenames are irrelevant. Everything is a filename (with dirs being 
-    # represented by slash delimiters). Thus, we only need to test for path length.
-    # https://stackoverflow.com/questions/6870824/what-is-the-maximum-length-of-a-filename-in-s3
-
-    pathname_max=1024
-
-    # Are there any with filenames that are too long? They need to be less than 1024 characters (I think?).
-    awk '{ PATHNAME=$0; print length(PATHNAME)"\t"PATHNAME}' ${_myprefix}.filelist.txt | awk -v pathname_max=$pathname_max -v out_file="${_myprefix}.filelist.paths_too_long.txt" '{if ($1 >= pathname_max) {print $0 > out_file}}'
-
-
-    if [[ -s ${_myprefix}.filelist.paths_too_long.txt ]]
-    then
-        _exit_1 printf "Some pathnames are too long (> %s char) for ceph. See %s.filelist.paths_too_long.txt for a list. Shorten them before proceeding." "${pathname_max}" "${_myprefix}"
-    fi
 
 
     # ---------------------------------------------------------------------
@@ -383,7 +192,7 @@ panfs2ceph() {
     #######################################################################
 
 
-    tee ${_myprefix}.1_copy.slurm << HEREDOC > /dev/null
+    tee ${_myprefix}.1_dd2dr.slurm << HEREDOC > /dev/null
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -396,7 +205,7 @@ panfs2ceph() {
 #SBATCH --mail-user=$USER@umn.edu
 #SBATCH --partition=$_partition
 
-echo "[panfs2ceph "\$(date)"] Script start."
+echo "[dd2dr "\$(date)"] Script start."
 
 
 # ---------------------------------------------------------------------
@@ -408,8 +217,7 @@ _root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
-_remote=${_remote}
-_bucket=${_bucket}
+_group=${_group}
 _threads=${_threads}
 
 
@@ -424,83 +232,101 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 
+# ---------------------------------------------------------------------
+# Print some info
+# ---------------------------------------------------------------------
+
+echo "${_group} sync starting..."
+DATESTAMP=$(date +%Y%m%d%M%S)
+echo "${DATESTAMP}"
+#exit 6
+umask u=rwx,g=rx,o=
+
+
 
 # ---------------------------------------------------------------------
-# rclone
+# Check for any space issues
 # ---------------------------------------------------------------------
 
+# should I rely on groupquota or are there other lower level system tools that I could use...
+groupquota -g ${_group} -p -U 'G' -c
+AVAIL=$( groupquota -g ${_group} -p -U '' -cH | awk 'BEGIN { FS=",";OFS=","} {print $3-$2}' )
+AVAILH=$( groupquota -g ${_group} -p -U 'G' -cH | sed 's/G//g' | awk 'BEGIN { FS=",";OFS=","} {print $3-$2}' )
+
+echo "${AVAILH}G remaining in /home/${_group} total quota"
 
 
-# Copy the files to ceph
-rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+# ---------------------------------------------------------------------
+# Check data_delivery
+# ---------------------------------------------------------------------
 
-if [ ! \$? -eq 0 ]
-then
-    # rclone exit status was not zero
-    echo "[panfs2ceph "\$(date)"] Rclone copy process: FAIL" 2>&1 | tee \${_myprefix}.COPY_FAILED
+#DDTOTAL=$(du -Lhc /home/$GROUP/oconnorc/data_delivery_backup/data_delivery | tail -1 | cut -f1)
+DDTOTAL=$(du -Lhc /home/${_group}/data_delivery | tail -1 | cut -f1)
+echo "$DDTOTAL in /home/${_group}/data_delivery"
+# must use -b to get bytes that are comparable to $AVAIL from groupquota
+#DDBYTES=$(du -Lbc /home/$GROUP/oconnorc/data_delivery_backup/data_delivery |tail -1 | cut -f1)
+DDBYTES=$(du -Lbc /home/${_group}/data_delivery |tail -1 | cut -f1)
+echo "$DDBYTES bytes in data_delivery"
+
+
+# ---------------------------------------------------------------------
+# Total size of files that will be transfered
+# ---------------------------------------------------------------------
+
+#DDBYTES_TRANSFER=$(rsync -Lvru --dry-run --stats /home/$GROUP/oconnorc/data_delivery_backup/data_delivery /home/$GROUP/oconnorc/data_delivery_backup/disaster_recovery/ | grep "Total transferred file size:" | tr " " "\t" | cut -f 5 | sed 's/\,//g')
+DDBYTES_TRANSFER=$(rsync -Lvru --dry-run --stats /home/${_group}/data_delivery /home/${_group}/shared/disaster_recovery/ | grep "Total transferred file size:" | tr " " "\t" | cut -f 5 | sed 's/\,//g')
+echo "$DDBYTES_TRANSFER bytes to be transferred"
+
+
+# ---------------------------------------------------------------------
+# Transfer the files
+# ---------------------------------------------------------------------
+
+#if [ "$DDBYTES" -lt "$AVAIL" ]; then
+if [ "$DDBYTES_TRANSFER" -lt "$AVAIL" ]; then
+    echo "$DDBYTES_TRANSFER < $AVAIL, syncing data_delivery to disaster_recovery"
+    #echo "$DDBYTES < $AVAIL, syncing data_delivery to disaster_recovery"
+    # -L is critical to copy links as files...
+    rsync -Lvru /home/${_group}/data_delivery /home/${_group}/shared/disaster_recovery/
+# add a check here to make sure the rsync finished successfully.
+    if [ "$?" -eq 0 ]; then
+       echo "rsync finished successfully!"
+    else
+       echo "rsync did not finish successfully"
+       exit 5
+    fi
+    
+    AVAILHNEW=$( groupquota -g ${_group} -U 'G' -cH | sed 's/G//g' | awk 'BEGIN { FS=",";OFS=","} {print $3-$2}' )
+    echo "Previous space available was ${AVAILH}"
+    echo "New space available is ${AVAILHNEW}"
+    echo "Sync complete"
 else
-    echo "[panfs2ceph "\$(date)"] Rclone copy process: SUCCESS"
+    echo "$DDBYTES > $AVAIL Not enough space for syncing!"
+    echo "Checking disaster_recovery data_delivery size..."
+    DDDRBYTES=$(du -Lbc /home/${_group}/data_delivery |tail -1 | cut -f1)
+    echo "$DDDRBYTES in disaster_recovery data_delivery"
+    if [ "$DDBYTES" -eq "$DDDRBYTES" ]; then
+	echo "$DDBYTES (dd size) equal to $DDDRBYTES (dddr size)"
+	echo "Nothing needs to transfer, but space is not available"
+    else
+# need to update here to deal with the scenario where dd data has rolled off the system
+	# dd could be smaller than dddr but data needs to sync
+	# can dd be larger than dddr - possibly, but under what conditions?
+    # maybe the best thing to do is check to see if the most recent data transferred successfully
+      NEW=$(du -Lbc /home/${_group}/shared/disaster_recovery/data_delivery |tail -4 | head -1)
+      QUARTER=$(echo $NEW | cut -d '/' -f 8)
+      NEWSIZE=$(du -Lbc /home/${_group}/shared/disaster_recovery/data_delivery |tail -4 | head -1 | cut -f1)
+      MATCHSIZE=$(du -Lbc /home/${_group}/data_delivery/*/$QUARTER | tail -1 | cut -f1 ) 
+     if [ "$NEWSIZE" -eq "$MATCHSIZE" ]; then
+	 echo "Most recent data has been synced, warning that space is not available to sync, exit code 10"
+	 exit 10
+     else
+	echo "Newest data has not been synced and space is not available, exiting with code 20"
+	exit 20
+     fi 
+    fi
+
 fi
-
-
-
-
-# ---------------------------------------------------------------------
-# Verify
-# ---------------------------------------------------------------------
-
-
-# Sleep for a short time to allow rclone to properly list files. If done without
-# a short break, rclone lsf seems fail.
-echo "[panfs2ceph "\$(date)"] Starting verification..."
-#echo "[panfs2ceph "\$(date)"] Waiting for 30 sec to allow ceph to index files..."
-#sleep 30
-echo "[panfs2ceph "\$(date)"] Getting file list from ceph..."
-
-# Nudge rclone to list the files on bucket (refresh). This seems to help avoid random errors.
-#rclone lsf -R --links \${_remote}: --max-depth 1 > /dev/null
-#rclone lsf -R --links \${_remote}:\${_bucket} --max-depth 1 > /dev/null
-
-
-# Get a file list from ceph (after the transfer)
-rclone lsf -R --links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt_temp1
-
-# _myprefix the files with full pathname
-sed -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt_temp1 > \${_myprefix}.filelist_from_ceph.txt_temp2
-sort \${_myprefix}.filelist_from_ceph.txt_temp2 > \${_myprefix}.filelist_from_ceph.txt
-rm \${_myprefix}.filelist_from_ceph.txt_temp{1,2}
-
-
-
-# Compare the sorted files on ceph (just uploaded) against the list of files from panfs
-comm -23 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_ceph.txt) > \${_myprefix}.files_on_panfs_but_not_ceph.txt
-
-comm -13 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_ceph.txt) > \${_myprefix}.files_on_ceph_but_not_panfs.txt
-
-
-if [[ ! -s \${_myprefix}.files_on_panfs_but_not_ceph.txt ]]
-then
-   # The file above is empty.
-   echo "[panfs2ceph "\$(date)"] There are no files in '\${_myprefix}.filelist.txt' that are missing from ceph."
-else
-    echo "[panfs2ceph "\$(date)"] There are files listed in '\${_myprefix}.filelist.txt' that are not found on ceph."
-    echo "[panfs2ceph "\$(date)"] Review: '\${_myprefix}.files_on_panfs_but_not_ceph.txt'" >&2
-fi
-
-
-if [[ ! -s \${_myprefix}.files_on_ceph_but_not_panfs.txt ]]
-then
-   # The file above is empty.
-   echo "[panfs2ceph "\$(date)"] There are no files on ceph that are not listed in '\${_myprefix}.filelist.txt'."
-else
-    echo "[panfs2ceph "\$(date)"] There are files on ceph that are not listed in '\${_myprefix}.filelist.txt'." 
-    echo "[panfs2ceph "\$(date)"] Review: '\${_myprefix}.files_on_ceph_but_not_panfs.txt'" >&2
-fi
-
-
-
-
-
 
 
 # ---------------------------------------------------------------------

@@ -278,11 +278,11 @@ dd2ceph() {
 
     # Specify the appropriate slurm partition in job files
     if [[ "${cluster}" = "agate" ]]; then
-        _partition="agsmall"
+        _partition="msismall"
     elif [[ "${cluster}" = "mesabi" ]]; then
-        _partition="small"
+        _partition="msismall"
     elif [[ "${cluster}" = "mangi" ]]; then
-        _partition="amdsmall"
+        _partition="msismall"
     else
         _partition="msismall"
     fi
