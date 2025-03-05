@@ -351,42 +351,22 @@ HEREDOC
 
 
 
-# code is from clia_hybcap
 # ---------------------------------------------------------------------
 # Launch jobs
 # ---------------------------------------------------------------------
 
 
 
-if ((_DRY_RUN))
+if ((_dry_run))
 then
     # Do no launch the slurm jobs
     _warn printf "Launch option --dry-run was specified. Dirs and slurm job files created, but not launched.\\n"
 else
-    sbatch_job_ids=()
-    # Launch the slrum jobs
-    for i in "${!SAMPLES_LONG[@]}"
-    do
-        SAMPLE_NAME_LONG="${SAMPLES_LONG[$i]}"
-        sbatch_output=$(sbatch ${SAMPLE_NAME_LONG}.slurm)
-        job_id=$(echo $sbatch_output | awk '{print $4}')
-        printf "Launched sample with slurm job id: %s: %s\n" "${SAMPLE_NAME_LONG}.slurm" "${job_id}"
-        sbatch_job_ids+=(${job_id})
-    done
-
-    # Launch the summary job
-    # Use all the slurm job ids from above as a dependency before running the summary job
-    IFS=':'
-    # Join the array elements into a single string
-    job_list="${sbatch_job_ids[*]}"
-
-    # Add individual slurm job ids to the summary script
-    sed -i "s|job_list=|job_list=\"${job_list}\"|" "sequencing_run_QC_metric_summary.slurm"
-
-    # Launch summary script with a dependency
-    sbatch_output=$(sbatch --dependency afterok:"${job_list}" "sequencing_run_QC_metric_summary.slurm")
-    job_id=$(echo "${sbatch_output}" | awk '{print $4}')
-    printf "Launched summary sample with slurm job id: %s: %s\n" "sequencing_run_QC_metric_summary.slurm" "${job_id}"
+        sbatch_output=$(sbatch "${_myprefix}.1_dd2dr.slurm")
+        job_id=$(echo "${sbatch_output}" | awk '{print $4}')
+        sbatch_job_ids+=("${job_id}")
+        _verb printf "%s\n" "${sbatch_output}"
+        _info printf "$${_myprefix}.1_dd2dr.slurm job file created and launched.\n"
 fi
 
 
@@ -398,30 +378,28 @@ fi
 
 
     tee ${_myprefix}.readme.md << HEREDOC > /dev/null
-# panfs2ceph archive
+# dd2dr archive
 
 Archive initated (Y-m-d-HMS):  
 ${_archive_date_time}   
 
 ## Introduction
 
-This directory (\`${_root_path_dir}\`) was archived from MSI's *panfs* (tier 1) storage to its *ceph* tier 2 storge. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. After the data was copied, it was deleted from \`panfs\`. 
+This directory (\`${_root_path_dir}\`) was archived from a PI's data_delivery directory to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
 
 
 ## How this works
 
-* A program called \`cephtools panfs2ceph\` found all the files in the directory above and created a file list text file.
-* Then the program created a slurm job file (bash script) that can be run to copy all files from panfs to ceph.
-* The program also created a slurm job file (bash script) to delete the original data from panfs.
+* A program called \`cephtools dd2dr\` found all the files in the directory above.
+* Then the program created a slurm job file (bash script) that can be run to copy all files from data_delivery to disaster_recovery.
 * The program also created this README file.
-* The program does not actually run these slrum job scripts. You must do that manually after reviewing the file list, etc.
 * After running the slurm job scripts, you should review the stderr and stdout log files and the new file lists that get created during the \`*.1_copy.slurm\` job.
 
 
 ## Notes:
 
 * A new dir is created next to the original that contains these archive-related files and scripts. This dir should have the same permissions as the original dir (that got archived). 
-* File modification times/dates should be preserved between transfers. However, if files are transferred from ceph back to panfs, the original modification times of directories will be lost (i.e. block storage like tier 2 does not have directories, so their mod times can't be preserved).
+* File modification times/dates should be preserved between transfers.
 
 
 
@@ -431,36 +409,9 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's *panfs* (tier 1) 
 Variable Name | Value 
 -----------|----------
 Archive date and time | ${_archive_date_time}
-Directory to archive | ${_root_path_dir}
 Archive transfer prefix | ${_myprefix}
 Directory path for archive files | ${_myprefix_dir}
-Ceph UserID | $(s3info info | grep username | awk -F': ' '{print $2}')
-Ceph Remote Name | ${_remote}
-Ceph Bucket Name | ${_bucket}
 User doing transfer | $USER
-
-
-## How to access the original data
-
-### Browse the data on ceph
-
-You can use a variety of tools to browse data stored on ceph. For example:
-
-1. rclone (e.g. \`rclone ls ${_remote}:${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.config/rclone/rclone.conf\` file. 
-2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.s3cfg\` file. Note: different MSI users might use different rclone remote names -- use *your* remote name. 
-3. GUI based file browser (e.g. FileZilla, Panic's Transmit, CyberDuck, etc.)
-
-
-### Browse the data via panfs \`snapshot\`
-
-The original data was deleted, but might still be stored on \`panfs\` as a snapshot for a short period of time (approximately 1 month or less). If this data was archived to ceph and deleted from panfs, it might be recovered from panfs for a short time. Review the available snapshots here:
-
-    ${_root_path_dir}/.snapshot
-
-
-### Restore from ceph back to panfs
-
-Depending on user permissions, the data can be copied from ceph back to panfs using \`rclone\` or other methods. For example, running \`${_myprefix}.3_restore.slurm\` job script should copy the data from ceph back to panfs in its original location.
 
 
 
