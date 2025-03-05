@@ -385,7 +385,7 @@ ${_archive_date_time}
 
 ## Introduction
 
-This directory (\`${_root_path_dir}\`) was archived from a PI's data_delivery directory to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
+The PI's data_delivery directory was backed up to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
 
 
 ## How this works
