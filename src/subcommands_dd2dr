@@ -91,7 +91,7 @@ dd2dr() {
             _group="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
-	-l|--log_dir
+	-l|--log_dir)
 	    _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
 	    shift
 	    ;;
