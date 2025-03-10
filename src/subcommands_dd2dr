@@ -48,7 +48,7 @@ dd2dr() {
     local _group=
     local _dry_run=
     local _log_dir="/home/$(id -ng)/shared/dd2dr"
-    local _threds=8
+    local _threads=8
     local _verbose=0
 
     # __get_option_value()
@@ -125,7 +125,6 @@ dd2dr() {
     _verb printf -- "--log_dir: %s\\n" "$_log_dir"
     _verb printf -- "--dry_run: %s\\n" "$_dry_run"
     _verb printf -- "--verbose: %s\\n" "$_verbose"
-    _verb printf -- "--delete_empty_dirs: %s\\n" "$_delete_empty_dirs"
     _verb printf -- "--threads: %s\\n" "$_threads"
 
 
@@ -173,6 +172,17 @@ dd2dr() {
     chmod g+rwx ${_myprefix_dir}
     cd ${_myprefix_dir}
     
+
+    # ---------------------------------------------------------------------
+    # Check available space in group
+    # ---------------------------------------------------------------------
+    AVAIL=$( groupquota -g ${_group} -p -U '' -cH | awk 'BEGIN { FS=",";OFS=","} {print $3-$2}' )
+    AVAILH=$( groupquota -g ${_group} -p -U 'G' -cH | sed 's/G//g' | awk 'BEGIN { FS=",";OFS=","} {print $3-$2}' )
+    DDTOTAL=$(du -Lhc /home/${_group}/data_delivery | tail -1 | cut -f1)
+    DDBYTES=$(du -Lbc /home/${_group}/data_delivery |tail -1 | cut -f1)
+    DDBYTES_TRANSFER=$(rsync -Lvru --dry-run --stats /home/${_group}/data_delivery /home/${_group}/shared/disaster_recovery/ | grep "Total transferred file size:" | tr " " "\t" | cut -f 5 | sed 's/\,//g')
+    DDDRBYTES=$(du -Lbc /home/${_group}/data_delivery |tail -1 | cut -f1)
+
     # ---------------------------------------------------------------------
     # Determine best slurm partition
     # ---------------------------------------------------------------------
@@ -218,13 +228,12 @@ echo "[dd2dr "\$(date)"] Script start."
 # ---------------------------------------------------------------------
 
 
-#_root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
 _group=${_group}
 _threads=${_threads}
-
+_archive_date_time=${_archive_date_time}
 
 
 # ---------------------------------------------------------------------
@@ -242,8 +251,8 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 # ---------------------------------------------------------------------
 
 echo "${_group} sync starting..."
-DATESTAMP=$(date +%Y%m%d%M%S)
-echo "${DATESTAMP}"
+#DATESTAMP=$(date +%Y%m%d%M%S)
+echo "${_archive_date_time}"
 #exit 6
 umask u=rwx,g=rx,o=
 
@@ -377,49 +386,47 @@ fi
 
 
 
-    tee ${_myprefix}.readme.md << HEREDOC > /dev/null
-# dd2dr archive
+#    tee ${_myprefix}.readme.md << HEREDOC > /dev/null
+## dd2dr archive
 
-Archive initated (Y-m-d-HMS):  
-${_archive_date_time}   
+#Archive initated (Y-m-d-HMS):  
+#${_archive_date_time}   
 
-## Introduction
+### Introduction
 
-The PI's data_delivery directory was backed up to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
-
-
-## How this works
-
-* A program called \`cephtools dd2dr\` found all the files in the directory above.
-* Then the program created a slurm job file (bash script) that can be run to copy all files from data_delivery to disaster_recovery.
-* The program also created this README file.
-* After running the slurm job scripts, you should review the stderr and stdout log files and the new file lists that get created during the \`*.1_copy.slurm\` job.
+#The PI's data_delivery directory was backed up to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
 
 
-## Notes:
+### How this works
 
-* A new dir is created next to the original that contains these archive-related files and scripts. This dir should have the same permissions as the original dir (that got archived). 
-* File modification times/dates should be preserved between transfers.
-
-
-
-## Variables
+#* A program called \`cephtools dd2dr\` found all the files in the directory above.
+#* Then the program created a slurm job file (bash script) that can be run to copy all files from data_delivery to disaster_recovery.
+#* The program also created this README file.
+#* After running the slurm job scripts, you should review the stderr and stdout log files and the new file lists that get created during the \`*.1_copy.slurm\` job.
 
 
-Variable Name | Value 
------------|----------
-Archive date and time | ${_archive_date_time}
-Archive transfer prefix | ${_myprefix}
-Directory path for archive files | ${_myprefix_dir}
-User doing transfer | $USER
+### Notes:
+
+#* A new dir is created next to the original that contains these archive-related files and scripts. This dir should have the same permissions as the original dir (that got archived). 
+#* File modification times/dates should be preserved between transfers.
 
 
 
-HEREDOC
+### Variables
 
 
+#Variable Name | Value 
+#-----------|----------
+#Archive date and time | ${_archive_date_time}
+#Archive transfer prefix | ${_myprefix}
+#Directory path for archive files | ${_myprefix_dir}
+#User doing transfer | $USER
+
+
+
+#HEREDOC
 
 
 
 
-
+}
