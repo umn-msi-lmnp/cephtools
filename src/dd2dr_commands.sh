@@ -3,17 +3,24 @@
 # This script will use rsync to copy files from 
 # data delivery (dd) to disaster recovery (dr) on a recurring basis
 
+# ---------------------------------------------------------------------
 # set variables
+# ---------------------------------------------------------------------
 GROUP="$1"
 DATESTAMP="$2"
 
-# 1. What's the group
+# ---------------------------------------------------------------------
+# Print some info
+# ---------------------------------------------------------------------
 echo "$GROUP sync starting..."
 echo "${DATESTAMP}"
 #exit 6
 umask u=rwx,g=rx,o=
 
-# 2. Check for any space issues
+# ---------------------------------------------------------------------
+# Check for any space issues
+# ---------------------------------------------------------------------
+
 # should I rely on groupquota or are there other lower level system tools that I could use...
 groupquota -g $GROUP -p -U 'G' -c
 AVAIL=$( groupquota -g $GROUP -p -U '' -cH | awk 'BEGIN { FS=",";OFS=","} {print $3-$2}' )
@@ -21,18 +28,27 @@ AVAILH=$( groupquota -g $GROUP -p -U 'G' -cH | sed 's/G//g' | awk 'BEGIN { FS=",
 
 echo "${AVAILH}G remaining in /home/${GROUP} total quota"
 
-## check data_delivery
+# ---------------------------------------------------------------------
+# Check data_delivery
+# ---------------------------------------------------------------------
+
 DDTOTAL=$(du -Lhc /home/$GROUP/data_delivery | tail -1 | cut -f1)
 echo "$DDTOTAL in /home/$GROUP/data_delivery"
 ### must use -b to get bytes that are comparable to $AVAIL from groupquota
 DDBYTES=$(du -Lbc /home/$GROUP/data_delivery |tail -1 | cut -f1)
 echo "$DDBYTES bytes in data_delivery"
 
-## total size of files that will be transfered
+# ---------------------------------------------------------------------
+# Total size of files that will be transfered
+# ---------------------------------------------------------------------
+
 DDBYTES_TRANSFER=$(rsync -Lvru --dry-run --stats /home/$GROUP/data_delivery /home/$GROUP/shared/disaster_recovery/ | grep "Total transferred file size:" | tr " " "\t" | cut -f 5 | sed 's/\,//g')
 echo "$DDBYTES_TRANSFER bytes to be transferred"
 
-# 3 The transfer
+# ---------------------------------------------------------------------
+# Transfer the files
+# ---------------------------------------------------------------------
+
 if [ "$DDBYTES_TRANSFER" -lt "$AVAIL" ]; then
     echo "$DDBYTES_TRANSFER < $AVAIL, syncing data_delivery to disaster_recovery"
     #echo "$DDBYTES < $AVAIL, syncing data_delivery to disaster_recovery"
