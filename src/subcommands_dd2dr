@@ -246,7 +246,7 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 # Start Script 
 # ---------------------------------------------------------------------
 
-"\${_cephtools_dir}/src/dd2dr_commands.sh" "\$_group" "\$_archive_date_time"
+"\${_cephtools_dir}/dd2dr_commands.sh" "\$_group" "\$_archive_date_time"
 
 
 # ---------------------------------------------------------------------
