@@ -82,7 +82,7 @@ dd2dr() {
 
         case "${__arg}" in
         -d|--dry_run)
-            _dry_run="--dry-run"
+            _dry_run=1
             ;;
         -v|--verbose)
             _verbose=1
@@ -227,7 +227,7 @@ echo "[dd2dr "\$(date)"] Script start."
 
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
-_dry_run=${_dry_run}
+#_dry_run=${_dry_run}
 _group=${_group}
 _threads=${_threads}
 _archive_date_time=${_archive_date_time}
@@ -246,7 +246,7 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 # Start Script 
 # ---------------------------------------------------------------------
 
-"\${_cephtools_dir}/dd2dr_commands.sh" "\$_group" "\$_archive_date_time"
+"\${_cephtools_dir}/dd2dr_commands.sh" \${_group} \${_archive_date_time}
 
 
 # ---------------------------------------------------------------------
@@ -275,13 +275,13 @@ HEREDOC
 if ((_dry_run))
 then
     # Do no launch the slurm jobs
-    _warn printf "Launch option --dry-run was specified. Dirs and slurm job files created, but not launched.\\n"
+    _warn printf "Launch option --dry_run was specified. Dirs and slurm job files created, but not launched.\\n"
 else
         sbatch_output=$(sbatch "${_myprefix}.1_dd2dr.slurm")
         job_id=$(echo "${sbatch_output}" | awk '{print $4}')
         sbatch_job_ids+=("${job_id}")
         _verb printf "%s\n" "${sbatch_output}"
-        _info printf "$${_myprefix}.1_dd2dr.slurm job file created and launched.\n"
+        _info printf "\${_myprefix}.1_dd2dr.slurm job file created and launched.\n"
 fi
 
 
@@ -292,47 +292,49 @@ fi
 
 
 
-#    tee ${_myprefix}.readme.md << HEREDOC > /dev/null
-## dd2dr archive
+    tee ${_myprefix}.readme.md << HEREDOC > /dev/null
+# dd2dr archive
 
-#Archive initated (Y-m-d-HMS):  
-#${_archive_date_time}   
+Archive initated (Y-m-d-HMS):  
+${_archive_date_time}   
 
-### Introduction
+## Introduction
 
-#The PI's data_delivery directory was backed up to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
-
-
-### How this works
-
-#* A program called \`cephtools dd2dr\` found all the files in the directory above.
-#* Then the program created a slurm job file (bash script) that can be run to copy all files from data_delivery to disaster_recovery.
-#* The program also created this README file.
-#* After running the slurm job scripts, you should review the stderr and stdout log files and the new file lists that get created during the \`*.1_copy.slurm\` job.
+The PI's data_delivery directory was backed up to their disaster_recovery space. All data inside the directory was copied using \`rclone\` which uses MD5 checksums on every transfer to ensure data integrity. This is necessary as data only stays in data_delivery for a year and often PIs need access to data for more than a year before publication.  
 
 
-### Notes:
+## How this works
 
-#* A new dir is created next to the original that contains these archive-related files and scripts. This dir should have the same permissions as the original dir (that got archived). 
-#* File modification times/dates should be preserved between transfers.
+* A program called \`cephtools dd2dr\` found all the files in the directory above.
+* Then the program created and launched a slurm job file (bash script) that can be run to copy all files from data_delivery to disaster_recovery.
+* The program also created this README file.
+* After the script has run, you should review the stderr and stdout log files and the new file lists that get created during the \`*.1_copy.slurm\` job.
+
+
+## Notes:
+
+* A new dir is created next to the original that contains these archive-related files and scripts. This dir should have the same permissions as the original dir (that got archived). 
+* File modification times/dates should be preserved between transfers.
 
 
 
-### Variables
+## Variables
 
 
 #Variable Name | Value 
 #-----------|----------
-#Archive date and time | ${_archive_date_time}
-#Archive transfer prefix | ${_myprefix}
-#Directory path for archive files | ${_myprefix_dir}
-#User doing transfer | $USER
+Archive date and time | ${_archive_date_time}
+Archive transfer prefix | ${_myprefix}
+Directory path for archive files | ${_myprefix_dir}
+User doing transfer | $USER
 
 
 
-#HEREDOC
+HEREDOC
 
 
 
 
 }
+
+

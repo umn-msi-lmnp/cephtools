@@ -1,4 +1,4 @@
-#!/bin/bash -l
+#!/bin/env bash
 
 # This script will use rsync to copy files from 
 # data delivery (dd) to disaster recovery (dr) on a recurring basis
