@@ -1,0 +1,53 @@
+
+# ---------------------------------------------------------------------
+# Rclone
+# ---------------------------------------------------------------------
+
+# copied from clia_transfer 
+  
+_set_rclone_config() {
+    remote="clia_transfer"
+    type="sftp"
+    host="162.96.42.75"
+    user="msiftp"
+    key_file="/users/2/knut0297/.ssh/id_rsa_msiftp_mdl"
+    md5sum_command="none"
+    sha1sum_command="none"
+    shell_type="unix"
+
+    export RCLONE_CONFIG_${remote^^}_TYPE="${type}"
+    export RCLONE_CONFIG_${remote^^}_HOST="${host}"
+    export RCLONE_CONFIG_${remote^^}_USER="${user}"
+    export RCLONE_CONFIG_${remote^^}_KEY_FILE="${key_file}"
+    export RCLONE_CONFIG_${remote^^}_MD5SUM_COMMAND="${md5sum_command}"
+    export RCLONE_CONFIG_${remote^^}_SHA1SUM_COMMAND="${sha1sum_command}"
+    export RCLONE_CONFIG_${remote^^}_SHELL_TYPE="${shell_type}"
+
+    # commands from Todd
+    export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+
+
+    export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+    export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}') 
+    export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}') 
+    export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+    export RCLONE_CONFIG_MYREMOTE_ACL=private
+    export RCLONE_CONFIG_MYREMOTE_PROVIDER=ceph
+
+    rclone lsd MYREMOTE:
+}
+
+_unset_rclone_config() {
+    local var
+    for var in "${!RCLONE_@}"; do
+        unset "$var"
+    done
+}
+
+_get_timestamp() {
+    _timestamp="$(date +%Y-%m-%dT%H%M%S)"
+    _year=$(echo "$_timestamp" | cut -d'-' -f1)
+    _month=$(echo "$_timestamp" | cut -d'-' -f2)
+    _day=$(echo "$_timestamp" | cut -d'-' -f3 | cut -d'T' -f1)
+    _time=$(echo "$_timestamp" | cut -d'T' -f2)
+} 
