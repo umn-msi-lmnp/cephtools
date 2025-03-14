@@ -422,8 +422,23 @@ fi
 EOF
 
 
+# ---------------------------------------------------------------------
+# Launch jobs
+# ---------------------------------------------------------------------
 
 
+
+if ((_dry_run))
+then
+    # Do no launch the slurm jobs
+    _warn printf "Launch option --dry_run was specified. Dirs and slurm job files created, but not launched.\\n"
+else
+        sbatch_output=$(sbatch "${_myprefix}.1_copy.slurm")
+        job_id=$(echo "${sbatch_output}" | awk '{print $4}')
+        sbatch_job_ids+=("${job_id}")
+        _verb printf "%s\n" "${sbatch_output}"
+        _info printf "\${_myprefix}.1_copy.slurm job file created and launched.\n"
+fi
 
 
 
