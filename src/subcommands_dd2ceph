@@ -427,18 +427,13 @@ EOF
 # ---------------------------------------------------------------------
 
 
+# no dry run option here, since dry_run means that rclone doesn't actually transfer anything 
 
-if ((_dry_run))
-then
-    # Do no launch the slurm jobs
-    _warn printf "Launch option --dry_run was specified. Dirs and slurm job files created, but not launched.\\n"
-else
-        sbatch_output=$(sbatch "${_myprefix}.1_copy.slurm")
-        job_id=$(echo "${sbatch_output}" | awk '{print $4}')
-        sbatch_job_ids+=("${job_id}")
-        _verb printf "%s\n" "${sbatch_output}"
-        _info printf "\${_myprefix}.1_copy.slurm job file created and launched.\n"
-fi
+sbatch_output=$(sbatch "${_myprefix}.1_copy.slurm")
+job_id=$(echo "${sbatch_output}" | awk '{print $4}')
+sbatch_job_ids+=("${job_id}")
+_verb printf "%s\n" "${sbatch_output}"
+_info printf "\${_myprefix}.1_copy.slurm job file created and launched.\n"
 
 
 
@@ -469,7 +464,6 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1
 * Only new files are transfered.
 * Then the program created a slurm job file (bash script) that can be run to copy all files from panfs to ceph.
 * The program also created this README file.
-* The program does not actually run this slrum job script. You must do that manually after reviewing the file list, etc.
 
 
 ## Notes:
@@ -545,7 +539,6 @@ Next steps:
 1. Move into log dir: cd ${_myprefix_dir}
 2. Review the *.readme.md file for details.
 3. Review the *.filelist.txt file. Any files not already on ceph, will be copied to ceph.
-4. Launch the copy slurm job file: sbatch ${_myprefix}.1_copy.slurm
 
 
 VERSION: ${_VERSION}
