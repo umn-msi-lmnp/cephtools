@@ -335,6 +335,21 @@ cd \${_myprefix_dir}
 MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
+# ---------------------------------------------------------------------
+# Set the environment
+# ---------------------------------------------------------------------
+
+export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+
+
+export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
+export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
+export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+export RCLONE_CONFIG_MYREMOTE_ACL=private
+export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+
+#rclone lsd MYREMOTE:
 
 
 # ---------------------------------------------------------------------
@@ -344,7 +359,10 @@ MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 # Copy the files to ceph
-rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+#rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+# new version
+rclone copy "/" "MYREMOTE:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+
 
 if [ ! \$? -eq 0 ]
 then
