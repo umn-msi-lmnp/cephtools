@@ -8,7 +8,7 @@
 describe "bucketpolicy" <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION>
+    ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION> --list user1000,user2000
 
 Options:
     -b|--bucket <STRING>    Name of the ceph bucket for policy. Required.
@@ -273,7 +273,7 @@ bucketpolicy() {
         #_username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
         _username_msi_csv="$(cat ${_list})"
         readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
-
+	# 
 
         # Use the MSI user id (uid) with the "s3info" function (if possible) to return the ceph username. Generate a comma 
         # separated list of ceph usernames for each MSI user. This entire concatenated string will be supplied

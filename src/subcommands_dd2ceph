@@ -211,6 +211,28 @@ dd2ceph() {
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDoes the bucket exist?\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\nOr the MSI group PI should create the bucket using 's3cmd mb s3://%s'\\n" "${_bucket}" "${_bucket}" "${_bucket}"
     fi
 
+    # ---------------------------------------------------------------------
+    # Check s3cmd specific info
+    # ---------------------------------------------------------------------
+
+    # Only need to check that we can access s3cmd commands
+    S3CMD_CONFIG=${S3CMD_CONFIG:-"$HOME/.s3cfg"}
+    S3CMD="$(which s3cmd)"
+    if command -v s3cmd &> /dev/null
+    then
+        _verb printf "Using s3cmd found in PATH: %s\\n" "$(which s3cmd)"
+        _verb printf "%s\\n" "$(s3cmd --version)" 
+    else
+        _exit_1 printf "s3cmd could not be found in PATH\\n"
+    fi
+
+    # check that bucket exists
+      # Make sure access to bucket is possible
+    if ! s3cmd ls s3://${_bucket} &>/dev/null; then
+        _info printf "Bucket was made: %s" "${_bucket}"
+    else
+        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n If bucket does not exist run cephtools bucketpolicy first\\n" "${_bucket}" "${_bucket}"
+    fi
 
     
 
