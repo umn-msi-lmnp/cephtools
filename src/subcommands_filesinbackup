@@ -1,0 +1,16 @@
+# short script to get list of files on Tier 2 and in disaster recovery 
+
+# options: group ID, bucket name 
+
+echo "[dd2ceph "\$(date)"] Getting file list from ceph..."
+rclone lsf -R --copy-links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+
+# list files in dr
+rclone lsf -R --copy-links ${_root_path_dir} > ${_myprefix}.filelist.txt
+# _myprefix the files with full pathname
+sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
+
+# command to email lists to PI 
+
+# look at code from Todd
+
