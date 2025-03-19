@@ -35,8 +35,8 @@ Help (print this screen):
     ${_ME} help dd2ceph
 
 Version: ${_VERSION}
-Questions: Todd Knutson (knut0297@umn.edu)
-GitHub: https://github.umn.edu/knut0297org/cephtools
+Questions: Todd Knutson (knut0297@umn.edu) or Christine O'Connor (oconnorc@umn.edu)
+GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
 
