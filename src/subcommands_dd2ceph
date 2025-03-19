@@ -141,10 +141,10 @@ dd2ceph() {
 
     
     # If required options are empty or null, exit.
-    if [ -z "${_remote}" ]
-    then
-        _exit_1 printf "The '--remote' option must be specified and not be empty or null."
-    fi
+    #if [ -z "${_remote}" ]
+    #then
+    #    _exit_1 printf "The '--remote' option must be specified and not be empty or null."
+    #fi
     
 
     _root_path_dir=$(readlink -m "${_path}")
@@ -206,7 +206,7 @@ dd2ceph() {
        #rclone lsd MYREMOTE:
 
     # Make sure access to bucket is possible
-    if ! rclone lsf ${_remote}:${_bucket} &>/dev/null
+    if ! rclone lsf MYREMOTE:${_bucket} &>/dev/null
     then
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDoes the bucket exist?\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\nOr the MSI group PI should create the bucket using 's3cmd mb s3://%s'\\n" "${_bucket}" "${_bucket}" "${_bucket}"
     fi
@@ -410,7 +410,7 @@ fi
 
 echo "[dd2ceph "\$(date)"] Starting verification..."
 echo "[dd2ceph "\$(date)"] Getting file list from ceph..."
-rclone lsf -R --copy-links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+rclone lsf -R --copy-links MYREMOTE:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
 
 # _myprefix the files with full pathname
 sed -i -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt
