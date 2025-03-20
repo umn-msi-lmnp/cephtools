@@ -31,7 +31,7 @@ Description:
 Help (print this screen):
     ${_ME} help filesinbackup
 
-Version: ${_VERSION}
+Version: ${VERSION_SHORT}
 Questions: Todd Knutson (knut0297@umn.edu) or Christine O'Connor (oconnorc@umn.edu)
 GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------

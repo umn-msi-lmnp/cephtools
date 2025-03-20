@@ -3,6 +3,18 @@ PREFIX=./build
 DESTDIR=
 BUILD=$(DESTDIR)$(PREFIX)
 
+
+# Update the version variables, and make the vaiables available here
+GIT_CURRENT_BRANCH:=$(shell git symbolic-ref --short HEAD)
+GIT_LATEST_COMMIT:=$(shell git rev-parse HEAD)
+GIT_LATEST_COMMIT_SHORT=$(shell git rev-parse HEAD | cut -c1-7)
+GIT_LATEST_COMMIT_DIRTY=$(shell git diff-index --quiet HEAD -- && echo "" || echo "-dirty")
+GIT_LATEST_COMMIT_DATETIME:=$(shell git show -s --format="%cI" "$(GIT_LATEST_COMMIT)")
+GIT_REMOTE:=$(shell git ls-remote --get-url)
+
+
+
+
 # Generate file paths for some targets
 MAN_NAMES:=cephtools.1 cephtools-dd2ceph.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
 MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
@@ -50,5 +62,18 @@ copy_files: ./src/dd2dr_commands.sh
 # 	pandoc -f markdown -t html $^ -o $@ --self-contained 
 #
 #
+
+
+# Update target files with latest version data
+update_version: $(BUILD)/bin/cephtools
+	sed -i 's|^GIT_CURRENT_BRANCH=.*|GIT_CURRENT_BRANCH=$(GIT_CURRENT_BRANCH)|g' $^
+	sed -i 's|^GIT_LATEST_COMMIT=.*|GIT_LATEST_COMMIT=$(GIT_LATEST_COMMIT)|g' $^
+	sed -i 's|^GIT_LATEST_COMMIT_SHORT=.*|GIT_LATEST_COMMIT_SHORT=$(GIT_LATEST_COMMIT_SHORT)|g' $^
+	sed -i 's|^GIT_LATEST_COMMIT_DIRTY=.*|GIT_LATEST_COMMIT_DIRTY=$(GIT_LATEST_COMMIT_DIRTY)|g' $^
+	sed -i 's|^GIT_LATEST_COMMIT_DATETIME=.*|GIT_LATEST_COMMIT_DATETIME=$(GIT_LATEST_COMMIT_DATETIME)|g' $^
+	sed -i 's|^GIT_REMOTE=.*|GIT_REMOTE=$(GIT_REMOTE)|g' $^
+
+
+
 clean:
 	rm -rf $(BUILD)

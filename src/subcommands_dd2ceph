@@ -34,7 +34,7 @@ Description:
 Help (print this screen):
     ${_ME} help dd2ceph
 
-Version: ${_VERSION}
+Version: ${VERSION_SHORT}
 Questions: Todd Knutson (knut0297@umn.edu) or Christine O'Connor (oconnorc@umn.edu)
 GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
@@ -585,7 +585,7 @@ Next steps:
 3. Review the *.filelist.txt file. Any files not already on ceph, will be copied to ceph.
 
 
-VERSION: ${_VERSION}
+VERSION: ${VERSION_SHORT}
 QUESTIONS: Todd Knutson (knut0297@umn.edu)
 REPO: https://github.umn.edu/knut0297org/cephtools
 ---------------------------------------------------------------------

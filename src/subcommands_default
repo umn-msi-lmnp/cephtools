@@ -21,7 +21,7 @@ cephtools
 
 Tools for transfering data between panfs (tier1) and ceph (tier2) MSI storage.
 
-Version: ${_VERSION}
+Version: ${VERSION_SHORT}
 
 Usage:
   ${_ME} <subcommand> [--subcommand-options] [<arguments>]
@@ -71,10 +71,10 @@ Usage:
 Description:
   Display the current program version.
 
-  To save you the trouble, the current version is ${_VERSION}
+  To save you the trouble, the current version is ${VERSION_SHORT}
 HEREDOC
 version() {
-  printf "%s\\n" "${_VERSION}"
+  printf "%s\\n" "${VERSION_SHORT}"
 }
 
 

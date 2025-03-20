@@ -29,7 +29,7 @@ Description:
 Help (print this screen):
     ${_ME} help dd2dr
 
-Version: ${_VERSION}
+Version: ${VERSION_SHORT}
 Questions: Todd Knutson (knut0297@umn.edu) Christine O'Connor (oconnorc@umn.edu)
 GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------

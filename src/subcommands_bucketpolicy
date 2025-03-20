@@ -53,7 +53,7 @@ Description:
 Help (print this screen):
     ${_ME} help bucketpolicy
 
-Version: ${_VERSION}
+Version: ${VERSION_SHORT}
 Questions: Todd Knutson (knut0297@umn.edu) or Christine O'Connor (oconnorc@umn.edu)
 GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
@@ -516,7 +516,7 @@ do_not_setpolicy=${_do_not_setpolicy}
 policy_json=${_bucket}.bucket_policy.json
 
 
-VERSION: ${_VERSION}
+VERSION: ${VERSION_SHORT}
 QUESTIONS: Todd Knutson (knut0297@umn.edu)
 REPO: https://github.umn.edu/knut0297org/cephtools
 
@@ -543,7 +543,7 @@ policy_json=${_bucket}.bucket_policy.json
 \`\`\`
 
 
-VERSION: ${_VERSION}  
+VERSION: ${VERSION_SHORT}  
 QUESTIONS: Todd Knutson (knut0297@umn.edu)  
 REPO: https://github.umn.edu/knut0297org/cephtools  
 
@@ -607,7 +607,7 @@ Next steps:
 3. Repeat this process with new group members are added or removed, so the policy is updated.
 
 
-VERSION: ${_VERSION}
+VERSION: ${VERSION_SHORT}
 QUESTIONS: Todd Knutson (knut0297@umn.edu)
 REPO: https://github.umn.edu/knut0297org/cephtools
 ---------------------------------------------------------------------
