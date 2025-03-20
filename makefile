@@ -31,7 +31,7 @@ SRC_1_PREREQUISITES:=$(SRC_1_NAMES:%=./src/%)
 all: $(BUILD)/bin/cephtools copy_files update_version
 
 # Combine all the bash fragments into a single script
-$(BUILD)/bin/cephtools: src/head_1 src/version src/head_2 src/subcommands_panfs2ceph src/subcommands_dd2ceph src/subcommands_dd2dr subcommands_bucketpolicy src/subcommands_default src/main
+$(BUILD)/bin/cephtools: src/head_1 src/version src/head_2 src/subcommands_panfs2ceph src/subcommands_dd2ceph src/subcommands_dd2dr src/subcommands_bucketpolicy src/subcommands_default src/main
 	mkdir -p $(BUILD)/bin
 	cat $^ > $@
 	chmod u+x $@
