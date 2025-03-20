@@ -70,7 +70,7 @@ bucketpolicy() {
 
     # Initialize program option variables.
     local _bucket=
-    local _make_bucket=0
+    local _make_bucket=
     local _policy="GROUP_READ"
     local _group=
     local _do_not_setpolicy=0
@@ -202,11 +202,15 @@ bucketpolicy() {
 
     # Make sure access to bucket is possible
     if ! s3cmd ls s3://${_bucket} &>/dev/null; then
-        if s3cmd mb s3://${_bucket} &>/dev/null; then
-            s3cmd mb s3://${_bucket}
-            _info printf "Bucket was made: %s" "${_bucket}"
+        if ((make_bucket))
+            if s3cmd mb s3://${_bucket} &>/dev/null; then
+                s3cmd mb s3://${_bucket}
+                _info printf "Bucket was made: %s" "${_bucket}"
+            else
+                _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
+            fi
         else
-            _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
+            _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
         fi
     else
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
