@@ -1,16 +1,16 @@
-SHELL:=/bin/bash
-PREFIX=./build
+SHELL := /bin/bash
+PREFIX = ./build
 DESTDIR=
 BUILD=$(DESTDIR)$(PREFIX)
 
 
 # Update the version variables, and make the vaiables available here
-GIT_CURRENT_BRANCH:=$(shell git symbolic-ref --short HEAD)
-GIT_LATEST_COMMIT:=$(shell git rev-parse HEAD)
-GIT_LATEST_COMMIT_SHORT=$(shell git rev-parse HEAD | cut -c1-7)
-GIT_LATEST_COMMIT_DIRTY=$(shell git diff-index --quiet HEAD -- && echo "" || echo "-dirty")
-GIT_LATEST_COMMIT_DATETIME:=$(shell git show -s --format="%cI" "$(GIT_LATEST_COMMIT)")
-GIT_REMOTE:=$(shell git ls-remote --get-url)
+GIT_CURRENT_BRANCH := $(shell git symbolic-ref --short HEAD)
+GIT_LATEST_COMMIT := $(shell git rev-parse HEAD)
+GIT_LATEST_COMMIT_SHORT := $(shell git rev-parse HEAD | cut -c1-7)
+GIT_LATEST_COMMIT_DIRTY := $(shell git diff --quiet || echo "-dirty")
+GIT_LATEST_COMMIT_DATETIME := $(shell git show -s --format="%cI" "$(GIT_LATEST_COMMIT)")
+GIT_REMOTE := $(shell git ls-remote --get-url)
 
 
 
