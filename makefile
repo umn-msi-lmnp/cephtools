@@ -28,7 +28,7 @@ SRC_1_PREREQUISITES:=$(SRC_1_NAMES:%=./src/%)
 
 .PHONY: all copy_files
 # all: $(BUILD)/bin/cephtools $(MAN_TARGETS) $(MAN_TARGETS_HTML) $(DOC_TARGETS)
-all: $(BUILD)/bin/cephtools copy_files
+all: $(BUILD)/bin/cephtools copy_files update_version
 
 # Combine all the bash fragments into a single script
 $(BUILD)/bin/cephtools: src/head_1 src/version src/head_2 src/subcommands* src/main
