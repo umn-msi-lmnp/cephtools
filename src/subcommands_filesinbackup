@@ -213,7 +213,6 @@ filesinbackup() {
     # ---------------------------------------------------------------------
 
     # Only need to check that we can access s3cmd commands
-    S3CMD_CONFIG=${S3CMD_CONFIG:-"$HOME/.s3cfg"}
     S3CMD="$(which s3cmd)"
     if command -v s3cmd &> /dev/null
     then

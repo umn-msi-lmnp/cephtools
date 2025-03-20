@@ -216,7 +216,6 @@ dd2ceph() {
     # ---------------------------------------------------------------------
 
     # Only need to check that we can access s3cmd commands
-    S3CMD_CONFIG=${S3CMD_CONFIG:-"$HOME/.s3cfg"}
     S3CMD="$(which s3cmd)"
     if command -v s3cmd &> /dev/null
     then
@@ -539,7 +538,7 @@ User doing transfer | $USER
 You can use a variety of tools to browse data stored on ceph. For example:
 
 1. rclone (e.g. \`rclone ls MYREMOTE:${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.config/rclone/rclone.conf\` file. 
-2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.s3cfg\` file. 
+2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`).  
 3. GUI based file browser (e.g. FileZilla, Panic's Transmit, CyberDuck, etc.)
 
 

@@ -778,7 +778,7 @@ User doing transfer | $USER
 You can use a variety of tools to browse data stored on ceph. For example:
 
 1. rclone (e.g. \`rclone ls ${_remote}:${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.config/rclone/rclone.conf\` file. 
-2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.s3cfg\` file. Note: different MSI users might use different rclone remote names -- use *your* remote name. 
+2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`). Note: different MSI users might use different rclone remote names -- use *your* remote name. 
 3. GUI based file browser (e.g. FileZilla, Panic's Transmit, CyberDuck, etc.)
 
 
