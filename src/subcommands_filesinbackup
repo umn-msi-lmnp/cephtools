@@ -12,9 +12,12 @@ Usage:
 
 Options:                            
     -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
-                            transfer. Required
+                            transfer. [Default = "data-delivery-$(id -ng)"]
     
     -g|--group <STRING>     MSI group id. Required
+
+    -l|--log_dir <STRING>   Absolute or relative path to the directory where log files
+                            are saved. [Default = "/home/$(id -ng)/shared/filesinbackup"]
     
     -v|--verbose            Verbose mode (print additional info).
                             
@@ -35,7 +38,7 @@ GitHub: https://github.umn.edu/lmnp/cephtools
 HEREDOC
 
 
-dd2ceph() {
+filesinbackup() {
 #     echo ALL ARGS:
 #     echo "${@:-}"
 #     echo "${#}"
@@ -45,9 +48,9 @@ dd2ceph() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _bucket="$(id -ng)-data-archive"
+    local _bucket="data-delivery-$(id -ng)"
     local _path="/home/$(id -ng)/data_delivery"
-    local _log_dir="/home/$(id -ng)/shared/dd2ceph"
+    local _log_dir="/home/$(id -ng)/shared/filesinbackup"
     local _dry_run=
     local _verbose=
     local _threads="16"
@@ -92,8 +95,8 @@ dd2ceph() {
             _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
-        -p|--path)
-            _path="$(__get_option_value "${__arg}" "${__val:-}")"
+        -g|--group)
+            _group="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         -l|--log_dir)
@@ -112,7 +115,7 @@ dd2ceph() {
             _exit_1 printf "Unexpected option: %s\\n" "${__arg}"
             ;;
         *)
-            describe --get dd2ceph
+            describe --get filesinbackup
             _exit_1 printf "Unexpected positional arg: %s\\n" "${__arg}"
             ;;
         esac
@@ -127,9 +130,8 @@ dd2ceph() {
 
     _verb printf -- "Program options used:\\n"
     _verb printf -- "--bucket: %s\\n" "$_bucket"
-    _verb printf -- "--path: %s\\n" "$_path"
+    _verb printf -- "--group: %s\\n" "$_group"
     _verb printf -- "--log_dir: %s\\n" "$_log_dir"
-    _verb printf -- "--dry_run: %s\\n" "$_dry_run"
     _verb printf -- "--verbose: %s\\n" "$_verbose"
     _verb printf -- "--threads: %s\\n" "$_threads"
 
@@ -236,14 +238,14 @@ dd2ceph() {
     # Create archive working dir
     # ---------------------------------------------------------------------
 
-    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
-    _myprefix="dd2ceph_${_archive_date_time}"
-    _myprefix_dir=${_log_dir}/${_bucket}___${_myprefix}
+#    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+#    _myprefix="dd2ceph_${_archive_date_time}"
+#    _myprefix_dir=${_log_dir}/${_bucket}___${_myprefix}
 
-    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
-    mkdir -p ${_myprefix_dir}
-    chmod g+rwx ${_myprefix_dir}
-    cd ${_myprefix_dir}
+#    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
+#    mkdir -p ${_myprefix_dir}
+#    chmod g+rwx ${_myprefix_dir}
+#    cd ${_myprefix_dir}
 
 
 
@@ -264,30 +266,6 @@ dd2ceph() {
     sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
 
 
-
-
-
-    # ---------------------------------------------------------------------
-    # Check for filenames or pathnames that are too long
-    # ---------------------------------------------------------------------
-
-    # This check is probably pointless because I think the limit is the same for both
-    # panfs and ceph -- so if files are on panfs, they should also fit on ceph.
-
-    # On object storage (S3, ceph), filenames are irrelevant. Everything is a filename (with dirs being 
-    # represented by slash delimiters). Thus, we only need to test for path length.
-    # https://stackoverflow.com/questions/6870824/what-is-the-maximum-length-of-a-filename-in-s3
-
-    pathname_max=1024
-
-    # Are there any with filenames that are too long? They need to be less than 1024 characters (I think?).
-    awk '{ PATHNAME=$0; print length(PATHNAME)"\t"PATHNAME}' ${_myprefix}.filelist.txt | awk -v pathname_max=$pathname_max -v out_file="${_myprefix}.filelist.paths_too_long.txt" '{if ($1 >= pathname_max) {print $0 > out_file}}'
-
-
-    if [[ -s ${_myprefix}.filelist.paths_too_long.txt ]]
-    then
-        _exit_1 printf "Some pathnames are too long (> %s char) for ceph. See %s.filelist.paths_too_long.txt for a list. Shorten them before proceeding." "${pathname_max}" "${_myprefix}"
-    fi
 
 
 
@@ -322,15 +300,15 @@ dd2ceph() {
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=${_threads}
-#SBATCH --time=24:00:00
-#SBATCH --mem=32gb
+#SBATCH --time=2:00:00
+#SBATCH --mem=2gb
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=$USER@umn.edu
 #SBATCH --partition=$_partition
 
-echo "[dd2ceph "\$(date)"] Script start."
+echo "[filesinbackup "\$(date)"] Script start."
 
 
 # ---------------------------------------------------------------------
@@ -341,7 +319,6 @@ echo "[dd2ceph "\$(date)"] Script start."
 _root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
-_dry_run=${_dry_run}
 #_remote=${_remote}
 _bucket=${_bucket}
 _threads=${_threads}
