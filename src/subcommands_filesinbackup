@@ -49,11 +49,10 @@ filesinbackup() {
 
     # Initialize program option variables.
     local _bucket="data-delivery-$(id -ng)"
-    local _path="/home/$(id -ng)/data_delivery"
-    local _log_dir="/home/$(id -ng)/shared/filesinbackup"
-    local _dry_run=
+    local _disaster_recovery_path="/home/$(id -ng)/shared/disaster_recovery"
+    local _log_dir="/home/$(id -ng)/shared/cephtools/filesinbackup"
     local _verbose=
-    local _threads="16"
+    local _threads="8"
 
     # __get_option_value()
     #
@@ -85,9 +84,6 @@ filesinbackup() {
         __val="${2:-}"
 
         case "${__arg}" in
-        -d|--dry_run)
-            _dry_run="--dry-run"
-            ;;
         -v|--verbose)
             _verbose=1
             ;;
@@ -237,16 +233,14 @@ filesinbackup() {
     # Create archive working dir
     # ---------------------------------------------------------------------
 
-#    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
-#    _myprefix="dd2ceph_${_archive_date_time}"
-#    _myprefix_dir=${_log_dir}/${_bucket}___${_myprefix}
+    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    _myprefix="filesinbackup_${_archive_date_time}"
+    _myprefix_dir=${_log_dir}/${_myprefix}
 
-#    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
-#    mkdir -p ${_myprefix_dir}
-#    chmod g+rwx ${_myprefix_dir}
-#    cd ${_myprefix_dir}
-
-
+    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
+    mkdir -p ${_myprefix_dir}
+    chmod g+rwx ${_myprefix_dir}
+    cd ${_myprefix_dir}
 
 
 
@@ -362,19 +356,9 @@ rclone lsd MYREMOTE:
 rclone copy "/" "MYREMOTE:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 
-if [ ! \$? -eq 0 ]
-then
-    # rclone exit status was not zero
-    echo "[dd2ceph "\$(date)"] Rclone copy process: FAIL" 2>&1 | tee \${_myprefix}.COPY_FAILED
-else
-    echo "[dd2ceph "\$(date)"] Rclone copy process: SUCCESS"
-fi
-
-
-
 
 # ---------------------------------------------------------------------
-# Verify
+# List files in back up directories
 # ---------------------------------------------------------------------
 
 
