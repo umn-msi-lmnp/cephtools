@@ -341,16 +341,14 @@ rclone lsf -R --copy-links \${_disaster_recovery_path} > \${_attachement_2}
 # ---------------------------------------------------------------------
 
 
-
-
-EMAIL_SUBJECT="Your group's disaster_recovery and tier2 files: ${_timestamp}"
-EMAIL_NAME="Todd"
-EMAIL_TO="knut0297@umn.edu"
-EMAIL_REPLY="knut0297@umn.edu"
+EMAIL_SUBJECT="Your group's disaster_recovery and tier2 files: ${_archive_date_time}"
+EMAIL_NAME=$USER
+EMAIL_TO=$USER@umn.edu
+EMAIL_REPLY=$USER@umn.edu
 
 EMAIL_BODY="Hi ${EMAIL_NAME},
 
-It's so fun to send emails from the command line!
+Here are lists of files in disaster recovery and in \${_bucket}
 
 Goodbye!
 "
@@ -373,14 +371,14 @@ Content-Type: text/plain
 ${EMAIL_BODY}
 
 --XYZ
-Content-Type: text/plain; name="${ATTACHMENT_1}"
-Content-Disposition: attachment; filename="${ATTACHMENT_1}"
+Content-Type: text/plain; name="${_attachement_1}"
+Content-Disposition: attachment; filename="${_attachement_1}"
 
 $(cat ${ATTACHMENT_1})
 
 --XYZ
-Content-Type: text/plain; name="${ATTACHMENT_2}"
-Content-Disposition: attachment; filename="${ATTACHMENT_2}"
+Content-Type: text/plain; name="${_attachement_2}"
+Content-Disposition: attachment; filename="${_attachement_2}"
 
 $(cat ${ATTACHMENT_2})
 
@@ -412,7 +410,7 @@ EOF
 # ---------------------------------------------------------------------
 
 
-# no dry run option here, since dry_run means that rclone doesn't actually transfer anything 
+# no dry run option here
 
 sbatch_output=$(sbatch "${_myprefix}.list.slurm")
 job_id=$(echo "${sbatch_output}" | awk '{print $4}')
