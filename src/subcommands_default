@@ -52,6 +52,7 @@ Options:
 Description:
   Display the list of available subcommands.
 HEREDOC
+
 subcommands() {
   if [[ "${1:-}" == "--raw" ]]
   then
