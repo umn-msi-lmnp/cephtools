@@ -18,7 +18,7 @@ Options:
                             transfered. [Default = "/home/$(id -ng)/data_delivery"]
                             
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
-                            are saved. [Default = "/home/$(id -ng)/shared/dd2ceph"]
+                            are saved. [Default = "/home/$(id -ng)/shared/cephtools/dd2ceph"]
     
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
@@ -52,7 +52,7 @@ dd2ceph() {
     # Initialize program option variables.
     local _bucket="$(id -ng)-data-archive"
     local _path="/home/$(id -ng)/data_delivery"
-    local _log_dir="/home/$(id -ng)/shared/dd2ceph"
+    local _log_dir="/home/$(id -ng)/shared/cephtools/dd2ceph"
     local _dry_run=
     local _verbose=
     local _threads="16"
