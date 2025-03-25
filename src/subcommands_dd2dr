@@ -16,7 +16,7 @@ Options:
     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 8].
 
     -l|--log_dir 	    Absolute or relative path to directory where log files are
-    			    saved. [Default: "/home/GROUP/shared/dd2dr"]
+    			    saved. [Default: "/home/$(id -ng)/shared/cephtools/dd2dr"]
 			    
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
