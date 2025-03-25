@@ -1,4 +1,4 @@
-
+	
 
 
 # ---------------------------------------------------------------------
@@ -51,7 +51,7 @@ filesinbackup() {
     local _bucket="data-delivery-$(id -ng)"
     local _disaster_recovery_path="/home/$(id -ng)/shared/disaster_recovery"
     local _log_dir="/home/$(id -ng)/shared/cephtools/filesinbackup"
-    local _group="$(id -ng)
+    local _group=$(id -ng)
     local _verbose=
     local _threads="8"
 
@@ -141,11 +141,11 @@ filesinbackup() {
     #fi
     
 
-    _root_path_dir=$(readlink -m "${_path}")
-    if [ ! -d "${_root_path_dir}" ]
-    then
-        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
-    fi
+#    _root_path_dir=$(readlink -m "${_path}")
+#    if [ ! -d "${_root_path_dir}" ]
+#    then
+#        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
+#    fi
 
 
     if command -v rclone &>/dev/null
@@ -327,8 +327,8 @@ _attachement_1=\${_myprefix}.filelist_from_ceph.txt
 _attachement_2=\${_myprefix}.filelist_from_dr.txt
 # files on ceph/Tier2
 echo "[filesinbackup "\$(date)"] Getting file list from ceph..."
-#rclone lsf -R --copy-links MYREMOTE:\${_bucket}\${_root_path_dir} > \${_attachement_1}
-s3cmd ls --recursuve s3://\${_bucket}  > \${_attachement_1}
+rclone lsf -R MYREMOTE:\${_bucket} > \${_attachement_1}
+#s3cmd ls --recursuve s3://\${_bucket}  > \${_attachement_1}
 ## need to use s3cmd to get all files in Tier2 bucket that 
 
 # files in disaster_recovery
@@ -356,33 +356,33 @@ Goodbye!"
 
 
 ## Send the email by piping a HEREDOC to the sendmail command
-#sendmail -t << HEREDOC
-#Subject: \${EMAIL_SUBJECT}
-#To: \${EMAIL_TO}
-#Cc: \${EMAIL_TO}
-#Reply-To: \${EMAIL_REPLY}
-#MIME-Version: 1.0
-#Content-Type: multipart/mixed; boundary=XYZ
+sendmail -t << HEREDOC
+Subject: \${EMAIL_SUBJECT}
+To: \${EMAIL_TO}
+Cc: \${EMAIL_TO}
+Reply-To: \${EMAIL_REPLY}
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary=XYZ
 
-#--XYZ
-#Content-Type: text/plain
+--XYZ
+Content-Type: text/plain
 
-#\${EMAIL_BODY}
+\${EMAIL_BODY}
 
-#--XYZ
-#Content-Type: text/plain; name="\${_attachement_1}"
-#Content-Disposition: attachment; filename="\${_attachement_1}"
+--XYZ
+Content-Type: text/plain; name="\${_attachement_1}"
+Content-Disposition: attachment; filename="\${_attachement_1}"
 
-#\$(cat \${attachement_1})
+\$(cat \${_attachement_1})
 
-#--XYZ
-#Content-Type: text/plain; name="\${_attachement_2}"
-#Content-Disposition: attachment; filename="\${_attachement_2}"
+--XYZ
+Content-Type: text/plain; name="\${_attachement_2}"
+Content-Disposition: attachment; filename="\${_attachement_2}"
 
-#\$(cat \${attachment_2})
+\$(cat \${_attachment_2})
 
-#--XYZ--
-#HEREDOC
+--XYZ--
+HEREDOC
 
 # ---------------------------------------------------------------------
 # Job summary info
@@ -411,11 +411,11 @@ EOF
 
 # no dry run option here
 
-#sbatch_output=$(sbatch "${_myprefix}.list.slurm")
-#job_id=$(echo "${sbatch_output}" | awk '{print $4}')
-#sbatch_job_ids+=("${job_id}")
-#_verb printf "%s\n" "${sbatch_output}"
-#_info printf "\${_myprefix}.list.slurm job file created and launched.\n"
+sbatch_output=$(sbatch "${_myprefix}.list.slurm")
+job_id=$(echo "${sbatch_output}" | awk '{print $4}')
+sbatch_job_ids+=("${job_id}")
+_verb printf "%s\n" "${sbatch_output}"
+_info printf "\${_myprefix}.list.slurm job file created and launched.\n"
 
 
 
