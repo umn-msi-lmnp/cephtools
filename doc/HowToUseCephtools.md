@@ -26,18 +26,18 @@ Run ```cephtools filesinbackup```. This can be automated using scron. This funct
 
 # Frequently Asked Questions
 
-Why is GROUP_READ_WRITE recommended as a bucket policy? 
+**Q: Why is GROUP_READ_WRITE recommended as a bucket policy?**
 
-  This policy give all members of an MSI group the ability to read and write files to a bucket on Tier 2, which means that others in your group can add files to the group bucket. It is better to have more data organized in one place, so it's easier to keep track of what data are where and what has been backed up. 
-
-
-What if I want to copy other data (not in data_delivery) to Tier 2? 
-
-  You can use ```panf2ceph```. See [this](https://github.umn.edu/lmnp/cephtools/blob/main/doc/vignette_panfs2ceph.md) vignette for more information. 
+A: This policy give all members of an MSI group the ability to read and write files to a bucket on Tier 2, which means that others in your group can add files to the group bucket. It is better to have more data organized in one place, so it's easier to keep track of what data are where and what has been backed up. 
 
 
-How frequently will/should data be automatically backed up? 
+**Q: What if I want to copy other data (not in data_delivery) to Tier 2?**
 
-  We recommend setting up scron jobs to back up data_delivery to disaster_recovery and Tier 2 every day or at least every week. This will allow analysts to source raw data files from disaster_recovery, making it easier to return to the same project after time has passed. Lists of files in disaster_recovery and on Tier 2 should be compiled every month or at least once a quarter. 
+A: You can use ```panf2ceph```. See [this](https://github.umn.edu/lmnp/cephtools/blob/main/doc/vignette_panfs2ceph.md) vignette for more information. 
+
+
+**Q: How frequently will/should data be automatically backed up?**
+
+A: We recommend setting up scron jobs to back up data_delivery to disaster_recovery and Tier 2 every day or at least every week. This will allow analysts to source raw data files from disaster_recovery, making it easier to return to the same project after time has passed. Lists of files in disaster_recovery and on Tier 2 should be compiled every month or at least once a quarter. 
 
 
