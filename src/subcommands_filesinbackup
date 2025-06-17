@@ -1,4 +1,4 @@
-
+	
 
 
 # ---------------------------------------------------------------------
@@ -14,10 +14,10 @@ Options:
     -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
                             transfer. [Default = "data-delivery-$(id -ng)"]
     
-    -g|--group <STRING>     MSI group id. Required
+    -g|--group <STRING>     MSI group id. [Default = "$(id -ng)"]
 
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files
-                            are saved. [Default = "/home/$(id -ng)/shared/filesinbackup"]
+                            are saved. [Default = "/home/$(id -ng)/shared/cephtools/filesinbackup"]
     
     -v|--verbose            Verbose mode (print additional info).
                             
@@ -25,7 +25,7 @@ Options:
     
 
 Description:
-  Print list of files in a group's disater_recovery folder and a list of files in a group's space on Tier 2 
+  Print list of files in a group's disater_recovery folder and a list of files in a bucket on Tier 2 
   and emails those lists to the group PI. 
   
 Help (print this screen):
@@ -49,11 +49,11 @@ filesinbackup() {
 
     # Initialize program option variables.
     local _bucket="data-delivery-$(id -ng)"
-    local _path="/home/$(id -ng)/data_delivery"
-    local _log_dir="/home/$(id -ng)/shared/filesinbackup"
-    local _dry_run=
+    local _disaster_recovery_path="/home/$(id -ng)/shared/disaster_recovery"
+    local _log_dir="/home/$(id -ng)/shared/cephtools/filesinbackup"
+    local _group=$(id -ng)
     local _verbose=
-    local _threads="16"
+    local _threads="8"
 
     # __get_option_value()
     #
@@ -85,9 +85,6 @@ filesinbackup() {
         __val="${2:-}"
 
         case "${__arg}" in
-        -d|--dry_run)
-            _dry_run="--dry-run"
-            ;;
         -v|--verbose)
             _verbose=1
             ;;
@@ -144,11 +141,11 @@ filesinbackup() {
     #fi
     
 
-    _root_path_dir=$(readlink -m "${_path}")
-    if [ ! -d "${_root_path_dir}" ]
-    then
-        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
-    fi
+#    _root_path_dir=$(readlink -m "${_path}")
+#    if [ ! -d "${_root_path_dir}" ]
+#    then
+#        _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
+#    fi
 
 
     if command -v rclone &>/dev/null
@@ -221,15 +218,6 @@ filesinbackup() {
     else
         _exit_1 printf "s3cmd could not be found in PATH\\n"
     fi
-
-    # check that bucket exists
-      # Make sure access to bucket is possible
-    if ! s3cmd ls s3://${_bucket} &>/dev/null; then
-        _info printf "Bucket was made: %s" "${_bucket}"
-    else
-        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n If bucket does not exist run cephtools bucketpolicy first\\n" "${_bucket}" "${_bucket}"
-    fi
-
     
 
 
@@ -237,32 +225,14 @@ filesinbackup() {
     # Create archive working dir
     # ---------------------------------------------------------------------
 
-#    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
-#    _myprefix="dd2ceph_${_archive_date_time}"
-#    _myprefix_dir=${_log_dir}/${_bucket}___${_myprefix}
+    _archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    _myprefix="filesinbackup_${_archive_date_time}"
+    _myprefix_dir=${_log_dir}/${_myprefix}
 
-#    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
-#    mkdir -p ${_myprefix_dir}
-#    chmod g+rwx ${_myprefix_dir}
-#    cd ${_myprefix_dir}
-
-
-
-
-
-
-    # ---------------------------------------------------------------------
-    # Get a file list
-    # ---------------------------------------------------------------------
-
-
-
-    # Print a list of files that will be archived
-    _verb printf "Creating the archive file list. This might take a while for large dirs...\\n"
-
-    rclone lsf -R --copy-links ${_root_path_dir} > ${_myprefix}.filelist.txt
-    # _myprefix the files with full pathname
-    sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
+    _verb printf "Archive dir name: %s\\n" ${_myprefix_dir}
+    mkdir -p ${_myprefix_dir}
+    chmod g+rwx ${_myprefix_dir}
+    cd ${_myprefix_dir}
 
 
 
@@ -294,7 +264,7 @@ filesinbackup() {
     #######################################################################
 
 
-    tee ${_myprefix}.1_copy.slurm << EOF > /dev/null
+    tee ${_myprefix}.list.slurm << EOF > /dev/null
 #!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -315,14 +285,12 @@ echo "[filesinbackup "\$(date)"] Script start."
 # ---------------------------------------------------------------------
 
 
-_root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
-#_remote=${_remote}
 _bucket=${_bucket}
 _threads=${_threads}
-
-
+_disaster_recovery_path=${_disaster_recovery_path}
+_archive_date_time=${_archive_date_time}
 
 # ---------------------------------------------------------------------
 # Load software
@@ -350,79 +318,77 @@ export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
 rclone lsd MYREMOTE:
 
 
+
 # ---------------------------------------------------------------------
-# rclone
+# List files in back up directories
 # ---------------------------------------------------------------------
 
+_attachement_1=\${_myprefix}.filelist_from_ceph.txt
+_attachement_2=\${_myprefix}.filelist_from_dr.txt
+# files on ceph/Tier2
+echo "[filesinbackup "\$(date)"] Getting file list from ceph..."
+rclone lsf -R MYREMOTE:\${_bucket} > \${_attachement_1}
+#s3cmd ls --recursuve s3://\${_bucket}  > \${_attachement_1}
+## need to use s3cmd to get all files in Tier2 bucket that 
 
-
-# Copy the files to ceph
-#rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
-# new version
-rclone copy "/" "MYREMOTE:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
-
-
-if [ ! \$? -eq 0 ]
-then
-    # rclone exit status was not zero
-    echo "[dd2ceph "\$(date)"] Rclone copy process: FAIL" 2>&1 | tee \${_myprefix}.COPY_FAILED
-else
-    echo "[dd2ceph "\$(date)"] Rclone copy process: SUCCESS"
-fi
-
+# files in disaster_recovery
+rclone lsf -R --copy-links \${_disaster_recovery_path} > \${_attachement_2}
 
 
 
 # ---------------------------------------------------------------------
-# Verify
+# Send email 
 # ---------------------------------------------------------------------
 
 
+EMAIL_SUBJECT="Your group\'s disaster_recovery and tier2 files: \${_archive_date_time}"
+EMAIL_NAME=\${USER}
+EMAIL_TO=\${USER}@umn.edu
+EMAIL_REPLY=\${USER}@umn.edu
 
-echo "[dd2ceph "\$(date)"] Starting verification..."
-echo "[dd2ceph "\$(date)"] Getting file list from ceph..."
-rclone lsf -R --copy-links MYREMOTE:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+EMAIL_BODY="Hi \${EMAIL_NAME},
 
-# _myprefix the files with full pathname
-sed -i -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt
+Here are lists of files in disaster recovery and in \${_bucket}
 
-
-
-
-# Compare the sorted files on ceph (just uploaded) against the list of files from panfs
-comm -23 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_ceph.txt) > \${_myprefix}.files_on_panfs_but_not_ceph.txt
-
-comm -13 <(sort \${_myprefix}.filelist.txt) <(sort \${_myprefix}.filelist_from_ceph.txt) > \${_myprefix}.files_on_ceph_but_not_panfs.txt
-
-
-if [[ ! -s \${_myprefix}.files_on_panfs_but_not_ceph.txt ]]
-then
-   # The file above is empty.
-   echo "[dd2ceph "\$(date)"] There are no files in '\${_myprefix}.filelist.txt' that are missing from ceph."
-else
-    echo "[dd2ceph "\$(date)"] There are files listed in '\${_myprefix}.filelist.txt' that are not found on ceph."
-    echo "[dd2ceph "\$(date)"] Review: '\${_myprefix}.files_on_panfs_but_not_ceph.txt'" >&2
-fi
-
-
-if [[ ! -s \${_myprefix}.files_on_ceph_but_not_panfs.txt ]]
-then
-   # The file above is empty.
-   echo "[dd2ceph "\$(date)"] There are no files on ceph that are not listed in '\${_myprefix}.filelist.txt'."
-else
-    echo "[dd2ceph "\$(date)"] There are files on ceph that are not listed in '\${_myprefix}.filelist.txt'." 
-    echo "[dd2ceph "\$(date)"] Review: '\${_myprefix}.files_on_ceph_but_not_panfs.txt'" >&2
-fi
+Goodbye!"
 
 
 
 
+## Send the email by piping a HEREDOC to the sendmail command
+sendmail -t << HEREDOC
+Subject: \${EMAIL_SUBJECT}
+To: \${EMAIL_TO}
+Cc: \${EMAIL_TO}
+Reply-To: \${EMAIL_REPLY}
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary=XYZ
+
+--XYZ
+Content-Type: text/plain
+
+\${EMAIL_BODY}
+
+--XYZ
+Content-Type: text/plain; name="\${_attachement_1}"
+Content-Disposition: attachment; filename="\${_attachement_1}"
+
+\$(cat \${_attachement_1})
+
+--XYZ
+Content-Type: text/plain; name="\${_attachement_2}"
+Content-Disposition: attachment; filename="\${_attachement_2}"
+
+\$(cat \${_attachment_2})
+
+--XYZ--
+HEREDOC
 
 # ---------------------------------------------------------------------
 # Job summary info
 # ---------------------------------------------------------------------
 
-echo "[dd2ceph "\$(date)"] Script end."
+echo "[filesinbackup "\$(date)"] Script end."
 
 if [ ! -z \${SLURM_JOB_ID+x} ]; then
     scontrol show job "\${SLURM_JOB_ID}"
@@ -443,29 +409,16 @@ EOF
 # ---------------------------------------------------------------------
 
 
-# no dry run option here, since dry_run means that rclone doesn't actually transfer anything 
+# no dry run option here
 
-sbatch_output=$(sbatch "${_myprefix}.1_copy.slurm")
+sbatch_output=$(sbatch "${_myprefix}.list.slurm")
 job_id=$(echo "${sbatch_output}" | awk '{print $4}')
 sbatch_job_ids+=("${job_id}")
 _verb printf "%s\n" "${sbatch_output}"
-_info printf "\${_myprefix}.1_copy.slurm job file created and launched.\n"
+_info printf "\${_myprefix}.list.slurm job file created and launched.\n"
 
 
 
-# short script to get list of files on Tier 2 and in disaster recovery 
+}
 
-# options: group ID, bucket name 
-
-echo "[dd2ceph "\$(date)"] Getting file list from ceph..."
-rclone lsf -R --copy-links \${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
-
-# list files in dr
-rclone lsf -R --copy-links ${_root_path_dir} > ${_myprefix}.filelist.txt
-# _myprefix the files with full pathname
-sed -i -e "s|^|${_root_path_dir}/|" ${_myprefix}.filelist.txt
-
-# command to email lists to PI 
-
-# look at code from Todd
 
