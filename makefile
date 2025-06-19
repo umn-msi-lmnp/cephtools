@@ -1,79 +1,97 @@
 SHELL := /bin/bash
-PREFIX = ./build
-DESTDIR=
-BUILD=$(DESTDIR)$(PREFIX)
 
+# Paths
+PREFIX     := ./build
+DESTDIR    :=
+BUILD      := $(DESTDIR)$(PREFIX)
+MODULEPATH := /projects/standard/lmnp/knut0297/software/modulesfiles
 
-# Update the version variables, and make the vaiables available here
-GIT_CURRENT_BRANCH := $(shell git symbolic-ref --short HEAD)
-GIT_LATEST_COMMIT := $(shell git rev-parse HEAD)
-GIT_LATEST_COMMIT_SHORT := $(shell git rev-parse HEAD | cut -c1-7)
-GIT_LATEST_COMMIT_DIRTY := $(shell git diff --quiet || echo "-dirty")
-GIT_LATEST_COMMIT_DATETIME := $(shell git show -s --format="%cI" "$(GIT_LATEST_COMMIT)")
-GIT_REMOTE := $(shell git ls-remote --get-url)
+# Git Metadata
+GIT_CURRENT_BRANCH        := $(shell git symbolic-ref --short HEAD)
+GIT_LATEST_COMMIT         := $(shell git rev-parse HEAD)
+GIT_LATEST_COMMIT_SHORT   := $(shell echo $(GIT_LATEST_COMMIT) | cut -c1-7)
+GIT_LATEST_COMMIT_DIRTY   := $(shell git diff --quiet || echo "-dirty")
+GIT_LATEST_COMMIT_DATETIME:= $(shell git show -s --format="%cI" $(GIT_LATEST_COMMIT))
+GIT_REMOTE                := $(shell git ls-remote --get-url)
 
+# File Lists
+MAN_NAMES       := cephtools.1 cephtools-dd2ceph.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
+MAN_TARGETS     := $(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
+MAN_TARGETS_HTML:= $(MAN_NAMES:%=$(BUILD)/share/man_html/%.html)
+DOC_NAMES       := vignette_dd2ceph.html vignette_getting_started.html vignette_panfs2ceph.html vignette_bucketpolicy.html
+DOC_TARGETS     := $(DOC_NAMES:%=$(BUILD)/share/doc/%)
+SCRIPT_TARGET   := $(BUILD)/bin/cephtools
+SRC_1_NAMES     := dd2dr_commands.sh
+SRC_1_TARGETS   := $(SRC_1_NAMES:%=$(BUILD)/bin/%)
+SRC_1_SRC       := $(SRC_1_NAMES:%=src/%)
 
+# Top-level Targets
+.PHONY: all docs copy_files update_version cephtools clean
 
+all: cephtools copy_files update_version docs
 
-# Generate file paths for some targets
-MAN_NAMES:=cephtools.1 cephtools-dd2ceph.1 cephtools-panfs2ceph.1 cephtools-bucketpolicy.1
-MAN_TARGETS:=$(MAN_NAMES:%=$(BUILD)/share/man/man1/%)
-MAN_TARGETS_HTML:=$(MAN_NAMES:%=$(BUILD)/share/man_html/%.html)
-DOC_NAMES:=vignette_dd2ceph.html vignette_getting_started.html
-DOC_TARGETS:=$(DOC_NAMES:%=$(BUILD)/share/doc/%)
-# file path for dd2dr_commands.sh
-SRC_1_NAMES:=dd2dr_commands.sh
-SRC_1_TARGETS:=$(SRC_1_NAMES:%=$(BUILD)/bin/%)
-SRC_1_PREREQUISITES:=$(SRC_1_NAMES:%=./src/%)
+cephtools: $(SCRIPT_TARGET)
 
-.PHONY: all copy_files
-# all: $(BUILD)/bin/cephtools $(MAN_TARGETS) $(MAN_TARGETS_HTML) $(DOC_TARGETS)
-all: $(BUILD)/bin/cephtools copy_files update_version
-
-# Combine all the bash fragments into a single script
-$(BUILD)/bin/cephtools: src/head_1 src/version src/head_2 src/subcommands_panfs2ceph src/subcommands_dd2ceph src/subcommands_dd2dr src/subcommands_bucketpolicy src/subcommands_filesinbackup src/subcommands_default src/main
-	mkdir -p $(BUILD)/bin
+$(SCRIPT_TARGET): \
+	src/head_1 \
+	src/version \
+	src/head_2 \
+	src/subcommands_panfs2ceph \
+	src/subcommands_dd2ceph \
+	src/subcommands_dd2dr \
+	src/subcommands_bucketpolicy \
+	src/subcommands_filesinbackup \
+	src/subcommands_default \
+	src/main
+	mkdir -p $(dir $@)
 	cat $^ > $@
 	chmod u+x $@
 
-# Keep dd2dr_commands.sh separate
-copy_files: ./src/dd2dr_commands.sh
-	@mkdir -p $(BUILD)/bin
-	@cp $^ $(BUILD)/bin
-	@chmod u+x $^
+copy_files: $(SRC_1_SRC)
+	mkdir -p $(BUILD)/bin
+	cp $^ $(BUILD)/bin
+	chmod u+x $(BUILD)/bin/$(notdir $^)
 
-#
-# # Convert markdown (ronn format) to man page format
-# $(BUILD)/share/man/man1/%: doc/%.ronn
-# 	mkdir -p $(BUILD)/share/man/man1; \
-# 	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load ronn-ng; \
-# 	ronn --roff $^ --output-dir $(BUILD)/share/man/man1
-#
-# # Convert markdown (ronn format) to HTML format
-# $(BUILD)/share/man_html/%.html: doc/%.ronn
-# 	mkdir -p $(BUILD)/share/man_html; \
-# 	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load ronn-ng; \
-# 	ronn --html $^ --output-dir $(BUILD)/share/man_html
-#
-# # Convert markdown vignettes to HTML format
-# $(BUILD)/share/doc/%.html: doc/%.md
-# 	mkdir -p $(BUILD)/share/doc; \
-# 	MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$(MODULEPATH)" module load pandoc; \
-# 	pandoc -f markdown -t html $^ -o $@ --self-contained 
-#
-#
+docs: $(MAN_TARGETS) $(MAN_TARGETS_HTML) $(DOC_TARGETS)
 
+# Ronn to man
+$(BUILD)/share/man/man1/%: doc/%.ronn
+	MODULEPATH="$(MODULEPATH):$$MODULEPATH" module load ronn-ng; \
+	if ! ronn --version >/dev/null 2>&1; then \
+		echo "Warning: 'ronn' not usable. Skipping $@."; \
+	else \
+		mkdir -p $(dir $@); \
+		ronn --roff $< --output-dir $(dir $@); \
+	fi
 
-# Update target files with latest version data
-update_version: $(BUILD)/bin/cephtools
-	sed -i 's|^GIT_CURRENT_BRANCH=.*|GIT_CURRENT_BRANCH=$(GIT_CURRENT_BRANCH)|g' $^
-	sed -i 's|^GIT_LATEST_COMMIT=.*|GIT_LATEST_COMMIT=$(GIT_LATEST_COMMIT)|g' $^
-	sed -i 's|^GIT_LATEST_COMMIT_SHORT=.*|GIT_LATEST_COMMIT_SHORT=$(GIT_LATEST_COMMIT_SHORT)|g' $^
-	sed -i 's|^GIT_LATEST_COMMIT_DIRTY=.*|GIT_LATEST_COMMIT_DIRTY=$(GIT_LATEST_COMMIT_DIRTY)|g' $^
-	sed -i 's|^GIT_LATEST_COMMIT_DATETIME=.*|GIT_LATEST_COMMIT_DATETIME=$(GIT_LATEST_COMMIT_DATETIME)|g' $^
-	sed -i 's|^GIT_REMOTE=.*|GIT_REMOTE=$(GIT_REMOTE)|g' $^
+# Ronn to HTML
+$(BUILD)/share/man_html/%.html: doc/%.ronn
+	MODULEPATH="$(MODULEPATH):$$MODULEPATH" module load ronn-ng; \
+	if ! ronn --version >/dev/null 2>&1; then \
+		echo "Warning: 'ronn' not usable. Skipping $@."; \
+	else \
+		mkdir -p $(dir $@); \
+		ronn --html $< --output-dir $(dir $@); \
+	fi
 
+# Pandoc for vignettes
+$(BUILD)/share/doc/%.html: doc/%.md
+	MODULEPATH="$(MODULEPATH):$$MODULEPATH" module load pandoc; \
+	TITLE=$(basename $(basename $(notdir $@))); \
+	if ! pandoc --version >/dev/null 2>&1; then \
+		echo "Warning: 'pandoc' not usable. Skipping $@."; \
+	else \
+		mkdir -p $(dir $@); \
+		pandoc -f markdown -t html $< -o $@ --embed-resources --standalone --metadata title="$$TITLE"; \
+	fi
 
+update_version: $(SCRIPT_TARGET)
+	sed -i 's|^GIT_CURRENT_BRANCH=.*|GIT_CURRENT_BRANCH=$(GIT_CURRENT_BRANCH)|' $<
+	sed -i 's|^GIT_LATEST_COMMIT=.*|GIT_LATEST_COMMIT=$(GIT_LATEST_COMMIT)|' $<
+	sed -i 's|^GIT_LATEST_COMMIT_SHORT=.*|GIT_LATEST_COMMIT_SHORT=$(GIT_LATEST_COMMIT_SHORT)|' $<
+	sed -i 's|^GIT_LATEST_COMMIT_DIRTY=.*|GIT_LATEST_COMMIT_DIRTY=$(GIT_LATEST_COMMIT_DIRTY)|' $<
+	sed -i 's|^GIT_LATEST_COMMIT_DATETIME=.*|GIT_LATEST_COMMIT_DATETIME=$(GIT_LATEST_COMMIT_DATETIME)|' $<
+	sed -i 's|^GIT_REMOTE=.*|GIT_REMOTE=$(GIT_REMOTE)|' $<
 
 clean:
 	rm -rf $(BUILD)
