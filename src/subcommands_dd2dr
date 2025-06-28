@@ -13,8 +13,6 @@ Usage:
 Options:
     -g|--group <STRING>     MSI group ID (required)
 
-    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 8].
-
     -l|--log_dir 	    Absolute or relative path to directory where log files are
     			    saved. [Default: "/home/$(id -ng)/shared/cephtools/dd2dr"]
 			    
@@ -227,19 +225,14 @@ echo "[dd2dr "\$(date)"] Script start."
 
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
-#_dry_run=${_dry_run}
+_dry_run=${_dry_run}
 _group=${_group}
 _threads=${_threads}
 _archive_date_time=${_archive_date_time}
 _cephtools_dir=${_cephtools_dir}
 
-# ---------------------------------------------------------------------
-# Load software
-# ---------------------------------------------------------------------
-
 cd \${_myprefix_dir}
 
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 # ---------------------------------------------------------------------
