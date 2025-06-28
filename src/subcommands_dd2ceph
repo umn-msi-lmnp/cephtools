@@ -59,7 +59,7 @@ dd2ceph() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _remote=
+    local _remote=myremote
     local _bucket="$(id -ng)-data-archive"
     local _path="/home/$(id -ng)/data_delivery"
     local _log_dir="/home/$(id -ng)/shared/cephtools/dd2ceph"
@@ -144,6 +144,22 @@ dd2ceph() {
     # Check and print input options
     # ---------------------------------------------------------------------
 
+
+    if [[ "$_remote" == "myremote" ]]; then
+        if s3info; then
+            export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+            export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+            export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
+            export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
+            export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+            export RCLONE_CONFIG_MYREMOTE_ACL=private
+            export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+        else
+            _exit_1 printf "s3info failed\\n"
+        fi
+    fi
+
+
     _verb printf -- "Program options used:\\n"
     _verb printf -- "--remote: %s\\n" "$_remote"
     _verb printf -- "--bucket: %s\\n" "$_bucket"
@@ -193,26 +209,6 @@ dd2ceph() {
     fi
 
 
-    # ---------------------------------------------------------------------
-    # Set the environment
-    # ---------------------------------------------------------------------
-    # set the environment here as well so I can check bucket access
-
-    if [[ -n "$_remote" ]]; then
-        _remote="myremote"
-        if s3info; then
-            export RCLONE_CONFIG_MYREMOTE_TYPE=s3
-            export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
-            export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
-            export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
-            export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
-            export RCLONE_CONFIG_MYREMOTE_ACL=private
-            export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
-        else
-            echo "s3info failed"
-            exit 1
-        fi
-    fi
 
     # Make sure the remote exists
     if ! rclone listremotes | grep -q "^$_remote:\$"
@@ -242,7 +238,7 @@ dd2ceph() {
 
     # check that bucket exists
       # Make sure access to bucket is possible
-    if ! s3cmd ls s3://${_bucket} &>/dev/null; then
+    if \s3cmd ls s3://${_bucket} &>/dev/null; then
         _info printf "Bucket was made: %s" "${_bucket}"
     else
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n If bucket does not exist run cephtools bucketpolicy first\\n" "${_bucket}" "${_bucket}"
@@ -380,9 +376,7 @@ module load rclone/1.64.1
 # Set the environment
 # ---------------------------------------------------------------------
 
-
-if [[ -n "$_remote" ]]; then
-    _remote="myremote"
+if [[ "$_remote" == "myremote" ]]; then
     if s3info; then
         export RCLONE_CONFIG_MYREMOTE_TYPE=s3
         export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
