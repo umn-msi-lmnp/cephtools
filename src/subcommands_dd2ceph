@@ -8,9 +8,16 @@
 describe "dd2ceph" <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} dd2ceph [options] --bucket <BUCKET> --remote <REMOTE> --path <DIR_PATH>
+    ${_ME} dd2ceph [options] --bucket <BUCKET> --path <DIR_PATH>
 
 Options:                            
+    -r|--remote <STRING>    [Optional] Rclone remote name. (use "rclone listremotes" for available
+                            remotes). Rclone remotes must be set up using "rclone init"
+                            and can be viewed at: ~/.config/rclone/rclone.conf. This option
+                            is not required. If you do not specify --remote, the tool will 
+                            automatically identify your MSI ceph keys and set the remote. 
+                            This option was left here for backward compatibility. 
+
     -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
                             transfer. [Default = "$(id -ng)-data-archive"]
     
@@ -52,6 +59,7 @@ dd2ceph() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
+    local _remote=
     local _bucket="$(id -ng)-data-archive"
     local _path="/home/$(id -ng)/data_delivery"
     local _log_dir="/home/$(id -ng)/shared/cephtools/dd2ceph"
@@ -95,6 +103,10 @@ dd2ceph() {
         -v|--verbose)
             _verbose=1
             ;;
+        -r|--remote)
+             _remote="$(__get_option_value "${__arg}" "${__val:-}")"
+             shift
+             ;;
         -b|--bucket)
             _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
@@ -133,6 +145,7 @@ dd2ceph() {
     # ---------------------------------------------------------------------
 
     _verb printf -- "Program options used:\\n"
+    _verb printf -- "--remote: %s\\n" "$_remote"
     _verb printf -- "--bucket: %s\\n" "$_bucket"
     _verb printf -- "--path: %s\\n" "$_path"
     _verb printf -- "--log_dir: %s\\n" "$_log_dir"
@@ -143,12 +156,6 @@ dd2ceph() {
 
     
     # If required options are empty or null, exit.
-    #if [ -z "${_remote}" ]
-    #then
-    #    _exit_1 printf "The '--remote' option must be specified and not be empty or null."
-    #fi
-    
-
     _root_path_dir=$(readlink -m "${_path}")
     if [ ! -d "${_root_path_dir}" ]
     then
@@ -165,14 +172,14 @@ dd2ceph() {
             _verb printf "%s\\n" "$(command -v rclone)"
             _verb printf "%s\\n" "$(rclone --version)"
         else
-            _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
-            MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+            _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/common/software/modulefiles/manual/common/rclone/1.64.1"
+            module load rclone/1.64.1
             _verb printf "%s\\n" "$(command -v rclone)"
             _verb printf "%s\\n" "$(rclone --version)" 
         fi
     else
-        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
-        MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/common/software/modulefiles/manual/common/rclone/1.64.1"
+        module load rclone/1.64.1
         _verb printf "%s\\n" "$(command -v rclone)"
         _verb printf "%s\\n" "$(rclone --version)" 
     fi
@@ -185,30 +192,36 @@ dd2ceph() {
         chmod g+rwx ${_log_dir}
     fi
 
+
+    # ---------------------------------------------------------------------
+    # Set the environment
+    # ---------------------------------------------------------------------
+    # set the environment here as well so I can check bucket access
+
+    if [[ -n "$_remote" ]]; then
+        _remote="myremote"
+        if s3info; then
+            export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+            export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+            export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
+            export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
+            export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+            export RCLONE_CONFIG_MYREMOTE_ACL=private
+            export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+        else
+            echo "s3info failed"
+            exit 1
+        fi
+    fi
+
     # Make sure the remote exists
-#    if ! rclone listremotes | grep -q "^$_remote:\$"
-#    then
-#        _exit_1 printf "Rclone remote does not exist: %s\\nCheck available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n" "$_remote"
-#    fi
-
-     # ---------------------------------------------------------------------
-     # Set the environment
-     # ---------------------------------------------------------------------
-     # set the environment here as well so I can check bucket access
-     export RCLONE_CONFIG_MYREMOTE_TYPE=s3
-
-
-     export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
-     export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
-     export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
-     export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
-     export RCLONE_CONFIG_MYREMOTE_ACL=private
-     export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
-
-       #rclone lsd MYREMOTE:
+    if ! rclone listremotes | grep -q "^$_remote:\$"
+    then
+       _exit_1 printf "Rclone remote does not exist: %s\\nCheck available remotes by running 'rclone listremotes', or set one up by running 'rclone init'.\\n" "$_remote"
+    fi
 
     # Make sure access to bucket is possible
-    if ! rclone lsf MYREMOTE:${_bucket} &>/dev/null
+    if ! rclone lsf ${_remote}:${_bucket} &>/dev/null
     then
         _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDoes the bucket exist?\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\nOr the MSI group PI should create the bucket using 's3cmd mb s3://%s'\\n" "${_bucket}" "${_bucket}" "${_bucket}"
     fi
@@ -348,7 +361,7 @@ _root_path_dir=$_root_path_dir
 _myprefix=${_myprefix}
 _myprefix_dir=${_myprefix_dir}
 _dry_run=${_dry_run}
-#_remote=${_remote}
+_remote=${_remote}
 _bucket=${_bucket}
 _threads=${_threads}
 
@@ -360,24 +373,29 @@ _threads=${_threads}
 
 cd \${_myprefix_dir}
 
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+module load rclone/1.64.1
 
 
 # ---------------------------------------------------------------------
 # Set the environment
 # ---------------------------------------------------------------------
 
-export RCLONE_CONFIG_MYREMOTE_TYPE=s3
 
-
-export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
-export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
-export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
-export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
-export RCLONE_CONFIG_MYREMOTE_ACL=private
-export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
-
-rclone lsd MYREMOTE:
+if [[ -n "$_remote" ]]; then
+    _remote="myremote"
+    if s3info; then
+        export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+        export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+        export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=$(s3info --keys | awk '{print $1}')
+        export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=$(s3info --keys | awk '{print $2}')
+        export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+        export RCLONE_CONFIG_MYREMOTE_ACL=private
+        export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+    else
+        echo "s3info failed"
+        exit 1
+    fi
+fi
 
 
 # ---------------------------------------------------------------------
@@ -387,9 +405,7 @@ rclone lsd MYREMOTE:
 
 
 # Copy the files to ceph
-#rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
-# new version
-rclone copy "/" "MYREMOTE:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
+rclone copy "/" "\${_remote}:\${_bucket}" --files-from-raw "\${_myprefix}.filelist.txt" --copy-links \${_dry_run} -v --transfers \${_threads} --s3-chunk-size 50M --s3-upload-concurrency 10
 
 
 if [ ! \$? -eq 0 ]
@@ -411,7 +427,7 @@ fi
 
 echo "[dd2ceph "\$(date)"] Starting verification..."
 echo "[dd2ceph "\$(date)"] Getting file list from ceph..."
-rclone lsf -R --copy-links MYREMOTE:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
+rclone lsf -R --copy-links ${_remote}:\${_bucket}\${_root_path_dir} > \${_myprefix}.filelist_from_ceph.txt
 
 # _myprefix the files with full pathname
 sed -i -e "s|^|\${_root_path_dir}/|" \${_myprefix}.filelist_from_ceph.txt
@@ -513,7 +529,7 @@ This directory (\`${_root_path_dir}\`) was archived from MSI's \`panfs\` (tier 1
 
 * A program called \`dd2ceph\` found all the files in the directory above (old and new) and created a file list text file.
 * Only new files are transfered.
-* Then the program created and ran a slurm job file (bash script) to copy all files from panfs to ceph.
+* Then the program created a slurm job file (bash script) that can be run to copy all files from panfs to ceph.
 * The program also created this README file.
 * The program does not actually run this slrum job script. You must do that manually after reviewing the file list, etc.
 
@@ -535,6 +551,7 @@ Directory to archive | ${_root_path_dir}
 Directory name for archive files | ${_myprefix}
 Directory path for archive files | ${_myprefix_dir}
 Ceph UserID | $(s3info info | grep username | awk -F': ' '{print $2}')
+Ceph Remote Name | ${_remote}
 Ceph Bucket Name | ${_bucket}
 User doing transfer | $USER
 
@@ -545,7 +562,7 @@ User doing transfer | $USER
 
 You can use a variety of tools to browse data stored on ceph. For example:
 
-1. rclone (e.g. \`rclone ls MYREMOTE:${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.config/rclone/rclone.conf\` file. 
+1. rclone (e.g. \`rclone ls ${_remote}:${_bucket}${_root_path_dir}\`). This requires a properly configured \`~/.config/rclone/rclone.conf\` file. 
 2. s3cmd (e.g. \`s3cmd ls -r s3://${_bucket}${_root_path_dir}\`).  
 3. GUI based file browser (e.g. FileZilla, Panic's Transmit, CyberDuck, etc.)
 
@@ -585,7 +602,7 @@ EOF
 ---------------------------------------------------------------------
 cephtools dd2ceph summary
 
-Achrive transfer files created and file transfer script started! 
+Achrive transfer files created -- but you're not done yet!
 Next steps:
 1. Move into log dir: cd ${_myprefix_dir}
 2. Review the *.readme.md file for details.
