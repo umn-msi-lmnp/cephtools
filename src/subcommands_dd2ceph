@@ -20,8 +20,10 @@ Options:
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
                             are saved. [Default = "/home/$(id -ng)/shared/cephtools/dd2ceph"]
     
-    -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
-                            transfered or deleted when scripts run.
+    -d|--dry_run            Dry run option will be enabled in the rclone commands (so nothing 
+                            will be transfered or deleted when scripts run). Also, the slurm 
+                            scripts will be written, but not automatically launched, so you can
+                            review them.
     
     -v|--verbose            Verbose mode (print additional info).
                             
