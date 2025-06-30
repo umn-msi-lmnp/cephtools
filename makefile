@@ -28,7 +28,7 @@ SRC_1_SRC       := $(SRC_1_NAMES:%=src/%)
 # Top-level Targets
 .PHONY: all docs copy_files update_version cephtools clean
 
-all: cephtools copy_files update_version docs
+all: cephtools copy_files update_version
 
 cephtools: $(SCRIPT_TARGET)
 
