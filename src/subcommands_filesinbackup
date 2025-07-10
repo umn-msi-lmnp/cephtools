@@ -17,7 +17,7 @@ Options:
     -g|--group <STRING>     MSI group id. [Default = "$(id -ng)"]
 
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files
-                            are saved. [Default = "/home/$(id -ng)/shared/cephtools/filesinbackup"]
+                            are saved. [Default = "$MSIPROJECT/shared/cephtools/filesinbackup"]
     
     -v|--verbose            Verbose mode (print additional info).
                             
@@ -32,7 +32,7 @@ Help (print this screen):
     ${_ME} help filesinbackup
 
 Version: ${VERSION_SHORT}
-Questions: Todd Knutson (knut0297@umn.edu) or Christine O'Connor (oconnorc@umn.edu)
+Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
 GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
@@ -49,8 +49,8 @@ filesinbackup() {
 
     # Initialize program option variables.
     local _bucket="data-delivery-$(id -ng)"
-    local _disaster_recovery_path="/home/$(id -ng)/shared/disaster_recovery"
-    local _log_dir="/home/$(id -ng)/shared/cephtools/filesinbackup"
+    local _disaster_recovery_path="$MSIPROJECT/shared/disaster_recovery"
+    local _log_dir="/$MSIPROJECT/shared/cephtools/filesinbackup"
     local _group=$(id -ng)
     local _verbose=
     local _threads="8"
@@ -157,14 +157,14 @@ filesinbackup() {
             _verb printf "%s\\n" "$(command -v rclone)"
             _verb printf "%s\\n" "$(rclone --version)"
         else
-            _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
-            MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+            _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/projects/standard/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+            MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
             _verb printf "%s\\n" "$(command -v rclone)"
             _verb printf "%s\\n" "$(rclone --version)" 
         fi
     else
-        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
-        MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/projects/standard/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+        MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
         _verb printf "%s\\n" "$(command -v rclone)"
         _verb printf "%s\\n" "$(rclone --version)" 
     fi
@@ -298,7 +298,7 @@ _archive_date_time=${_archive_date_time}
 
 cd \${_myprefix_dir}
 
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
 
 
 # ---------------------------------------------------------------------

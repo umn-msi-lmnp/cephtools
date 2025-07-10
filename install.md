@@ -55,10 +55,10 @@ git checkout <commit>
 The repo contains a makefile that will build the final bash script and manual pages. By default, a "build" dir is created inside the cephtools repo that will contain the program.
 
 ```
-# Move into the repo dir (cephtools) and run make
+# Move into the repo dir (cephtools) and run make. This will not make the documentation files (need to do separatley).
 make
 
-# If you have ronn-ng, you can build the docs too
+# If you have ronn-ng installed (a dependency for building man files from markdown files), you can build the docs too
 make docs
 
 # Update paths

@@ -20,7 +20,7 @@ The various subcommands can be found by running: `cephtools subcommands`
 
 ## BUGS
 
-See the *Issues* section on GitHub: [https://github.umn.edu/knut0297org/cephtools](https://github.umn.edu/knut0297org/cephtools)
+See the *Issues* section on GitHub: [https://github.umn.edu/lmnp/cephtools](https://github.umn.edu/lmnp/cephtools)
     
 ## AUTHOR
 

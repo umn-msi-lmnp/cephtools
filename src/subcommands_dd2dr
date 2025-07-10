@@ -28,7 +28,7 @@ Help (print this screen):
     ${_ME} help dd2dr
 
 Version: ${VERSION_SHORT}
-Questions: Todd Knutson (knut0297@umn.edu) Christine O'Connor (oconnorc@umn.edu)
+Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
 GitHub: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
@@ -149,8 +149,8 @@ dd2dr() {
         _verb printf "%s\\n" "$(command -v rclone)"
         _verb printf "%s\\n" "$(rclone --version)" 
     else
-        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/home/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
-        MODULEPATH="/home/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
+        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/projects/standard/lmnp/knut0297/software/modulesfiles/rclone/1.57.0"
+        MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles" module load rclone/1.57.0
         _verb printf "%s\\n" "$(command -v rclone)"
         _verb printf "%s\\n" "$(rclone --version)" 
     fi

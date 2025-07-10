@@ -32,7 +32,7 @@ The slurm jobscripts must be launched manually. This allows for time to review t
 * The data is not compressed or tar archived (e.g. *.tar.gz*) before transfer. This is intentional. If all files from a large project (i.e. > 1 TB) were concatenated with `tar`, a small data corruption in this huge single file could make recovery of any underlying files difficult. Instead, individual files should be compressed on *panfs* prior to transfer to *ceph*. 
 * Uploading individual files allows for easier data browsing directly on *ceph* and/or restoring individual files.
 * Each file is transferred to *ceph* as an absolute path name. This creates a lot of "pseudo" dirs on *ceph*, but it helps indicate where the data originally came from on *panfs*
-* You must have a properly configured `rclone` installation running on *panfs*. For help setting up `rclone`, see: [https://github.umn.edu/knut0297org/software_tips/tree/master/rclone](https://github.umn.edu/knut0297org/software_tips/tree/master/rclone)
+* You must have a properly configured `rclone` installation running on *panfs*. For help setting up `rclone`, see: [https://github.umn.edu/lmnp/tips/tree/master/rclone](https://github.umn.edu/lmnp/tips/tree/master/rclone)
 * A new dir is created next to the original input that contains the archive-related files and scripts. This dir is named using the same input path with a suffix (including date and time). 
 * Empty directories are copied to ceph by default. Ceph and other bucket-based storage platforms (e.g. *S3*) do not support empty dirs, so `panfs2ceph` creates a hidden file (`.empty_dir`) inside the _previously_ empty dir on *panfs*. This trick ensures empty dirs are preserved in *ceph*. If you do not want to do this, you can set an option `-e`. In which case, no `.empty_dir` files will get created and empty dirs will not be copied to ceph.
 * Setting the `--threads` option will create slurm jobscripts using this thread count. `rclone` can transfer data in a multi-threaded way. So this can dramatically increase your overall transfer speed.
@@ -74,7 +74,7 @@ The various subcommands can be found by running: `cephtools subcommands`
 
 ## BUGS
 
-See the *Issues* section on GitHub: [https://github.umn.edu/knut0297org/cephtools](https://github.umn.edu/knut0297org/cephtools)
+See the *Issues* section on GitHub: [https://github.umn.edu/lmnp/cephtools](https://github.umn.edu/lmnp/cephtools)
     
 ## AUTHOR
 

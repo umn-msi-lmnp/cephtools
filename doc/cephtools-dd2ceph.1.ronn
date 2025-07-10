@@ -30,7 +30,7 @@ The slurm jobscript must be launched manually. This allows for time to review th
 * The data is not compressed or tar archived (e.g. *.tar.gz*) before transfer. This is intentional. If all files from a large project (i.e. > 1 TB) were concatenated with `tar`, a small data corruption in this huge single file could make recovery of any underlying files difficult. Instead, individual files should be compressed on *panfs* prior to transfer to *ceph*. 
 * Uploading individual files allows for easier data browsing directly on *ceph* and/or restoring individual files.
 * Each file is transferred to *ceph* as an absolute path name. This creates a lot of "pseudo" dirs on *ceph*, but it helps indicate where the data originally came from on *panfs*
-* You must have a properly configured `rclone` installation running on *panfs*. For help setting up `rclone`, see: [https://github.umn.edu/knut0297org/software_tips/tree/master/rclone](https://github.umn.edu/knut0297org/software_tips/tree/master/rclone)
+* You must have a properly configured `rclone` installation running on *panfs*. For help setting up `rclone`, see: [https://github.umn.edu/lmnp/tips/tree/master/rclone](https://github.umn.edu/lmnp/tips/tree/master/rclone)
 * Setting the `--threads` option will create slurm jobscripts using this thread count. `rclone` can transfer data in a multi-threaded way. So this can dramatically increase your overall transfer speed.
 * If a bucket does not already exist on *ceph*, it will get created automatically.
 * After the data is transferred to *ceph*, the files are verified. Files on *ceph* are listed by rclone and compared against the original input file list. If differences occur, an error will occur. This process occurs at the end of the "copy" jobscript.
@@ -54,7 +54,7 @@ The various subcommands can be found by running: `cephtools subcommands`
 
 ## BUGS
 
-See the *Issues* section on GitHub: [https://github.umn.edu/knut0297org/cephtools](https://github.umn.edu/knut0297org/cephtools)
+See the *Issues* section on GitHub: [https://github.umn.edu/lmnp/cephtools](https://github.umn.edu/lmnp/cephtools)
     
 ## AUTHOR
 

@@ -26,7 +26,7 @@ SRC_1_TARGETS   := $(SRC_1_NAMES:%=$(BUILD)/bin/%)
 SRC_1_SRC       := $(SRC_1_NAMES:%=src/%)
 
 # Top-level Targets
-.PHONY: all docs copy_files update_version cephtools clean
+.PHONY: all cephtools copy_files update_version docs clean
 
 all: cephtools copy_files update_version
 

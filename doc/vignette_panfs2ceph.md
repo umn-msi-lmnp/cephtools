@@ -21,7 +21,7 @@ If necessary, run `newgrp` and set the MYGROUP variable. Then load `cephtools`.
 MYGROUP=$(id -ng)
 
 # Load cephtools
-MODULEPATH="/home/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
 ```
 
 ## Create a bucket
@@ -50,17 +50,17 @@ cephtools bucketpolicy --bucket $MYGROUP-$USER-tier1-archive --policy GROUP_READ
 
 ## Create transfer scripts
 
-NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/knut0297org/software_tips/tree/main/rclone#umn-tier2-ceph).
+NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/lmnp/tips/tree/main/rclone#umn-tier2-ceph).
 
 ```
-cephtools panfs2ceph --bucket $BUCKET_NAME --remote ceph --path /home/group/shared/project
+cephtools panfs2ceph --bucket $BUCKET_NAME --remote ceph --path /projects/standard/group/shared/project
 ```
 
 By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, input directory and working directory paths are shown below:
 
-| Input dir path name          | Working dir path name                                  |
-| ---------------------------- | ------------------------------------------------------ |
-| `/home/group/shared/project` | `/home/group/shared/project___panfs2ceph_archive_DATE` |
+| Input dir path name                       | Working dir path name                                               |
+| ----------------------------------------- | ------------------------------------------------------------------- |
+| `/projects/standard/group/shared/project` | `/projects/standard/group/shared/project___panfs2ceph_archive_DATE` |
 
 Inside the working directory:
 

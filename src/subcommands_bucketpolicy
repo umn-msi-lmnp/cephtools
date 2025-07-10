@@ -54,8 +54,8 @@ Help (print this screen):
     ${_ME} help bucketpolicy
 
 Version: ${VERSION_SHORT}
-Questions: Todd Knutson (knut0297@umn.edu) or Christine O'Connor (oconnorc@umn.edu)
-GitHub: https://github.umn.edu/lmnp/cephtools
+Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
+Repo: https://github.umn.edu/lmnp/cephtools  
 ---------------------------------------------------------------------
 HEREDOC
 
@@ -521,8 +521,8 @@ policy_json=${_bucket}.bucket_policy.json
 
 
 VERSION: ${VERSION_SHORT}
-QUESTIONS: Todd Knutson (knut0297@umn.edu)
-REPO: https://github.umn.edu/knut0297org/cephtools
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
 
 ## Policy
 
@@ -548,8 +548,8 @@ policy_json=${_bucket}.bucket_policy.json
 
 
 VERSION: ${VERSION_SHORT}  
-QUESTIONS: Todd Knutson (knut0297@umn.edu)  
-REPO: https://github.umn.edu/knut0297org/cephtools  
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
 
 
 ## MSI users included in the access policy
@@ -612,8 +612,8 @@ Next steps:
 
 
 VERSION: ${VERSION_SHORT}
-QUESTIONS: Todd Knutson (knut0297@umn.edu)
-REPO: https://github.umn.edu/knut0297org/cephtools
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
 
