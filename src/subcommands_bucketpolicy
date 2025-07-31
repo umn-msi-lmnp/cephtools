@@ -201,8 +201,10 @@ bucketpolicy() {
 
     # Make sure access to bucket is possible
     if ! s3cmd ls s3://${_bucket} &>/dev/null; then
+        # The command above had a non-zero exit code indicating the bucket does not exist or access is denied.
         if ((_make_bucket))
         then
+            # The make-bucket option was specified, so try to make the bucket.
             if s3cmd mb s3://${_bucket} &>/dev/null; then
                 s3cmd mb s3://${_bucket}
                 _info printf "Bucket was made: %s" "${_bucket}"
@@ -210,10 +212,8 @@ bucketpolicy() {
                 _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
             fi
         else
-            _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
+            _exit_1 printf "Errors occured when accessing bucket and you did not specify the --make-bucket flag, so attempting to make the bucket did not occur. Bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
         fi
-    else
-        _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
     fi
 
 
