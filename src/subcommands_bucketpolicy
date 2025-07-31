@@ -201,7 +201,7 @@ bucketpolicy() {
 
     # Make sure access to bucket is possible
     if ! s3cmd ls s3://${_bucket} &>/dev/null; then
-        if ((make_bucket))
+        if ((_make_bucket))
         then
             if s3cmd mb s3://${_bucket} &>/dev/null; then
                 s3cmd mb s3://${_bucket}
