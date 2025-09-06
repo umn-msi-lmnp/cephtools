@@ -21,7 +21,7 @@ If necessary, run `newgrp` and set the MYGROUP variable. Then load `cephtools`.
 MYGROUP=$(id -ng)
 
 # Load cephtools
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+module load cephtools
 ```
 
 ## Create a bucket

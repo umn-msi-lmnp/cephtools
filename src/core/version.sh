@@ -3,13 +3,13 @@
 # ---------------------------------------------------------------------
 
 # Change this version manually, by a human
-# Manually set this to to current version of the program. Adhere to the
+# Manually set this to current version of the program. Adhere to the
 # semantic versioning specification: http://semver.org
 #
 # MAJOR version when you make incompatible API changes,
 # MINOR version when you add functionality in a backwards compatible manner, and
 # PATCH version when you make backwards compatible bug fixes.
-SEMANTIC_VERSION="2.8.2"
+SEMANTIC_VERSION="3.0.0"
 
 # The following empty variables get set when running the "makefile"
 GIT_CURRENT_BRANCH=

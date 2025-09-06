@@ -31,7 +31,7 @@ _The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `GRO
    Load `cephtools` software.
 
    ```
-   MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+   module load cephtools
    ```
 
 2. Create the ceph (tier2) bucket.
@@ -78,7 +78,7 @@ After the PI's bucket has a group READ/WRITE bucket policy set, _the following m
    Load `cephtools` software.
 
    ```
-   MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
+   module load cephtools
    ```
 
 2. Change into the working directory (created above).

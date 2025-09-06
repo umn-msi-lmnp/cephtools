@@ -1,1 +1,19 @@
 build/
+
+# Test outputs and temporary files
+tests_outputs/
+*.log
+*.tmp
+*_test_*
+test_*/
+
+# SLURM job files
+*.e[0-9]*
+*.o[0-9]*
+slurm-*.out
+
+# Plugin generated outputs (with timestamps)
+*_archive_*
+*_backup_*
+filesinbackup_*
+panfs2ceph_*
