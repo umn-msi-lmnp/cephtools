@@ -46,7 +46,7 @@ For example, it can be helpful to allow anyone in your MSI group read-only acces
 mkdir -p $MSIPROJECT/shared/cephtools/bucketpolicy
 cd $MSIPROJECT/shared/cephtools/bucketpolicy
 
-cephtools bucketpolicy --verbose --bucket $MYGROUP-$USER-tier1-archive --policy GROUP_READ --group $MYGROUP
+cephtools bucketpolicy --verbose --bucket $BUCKET_NAME --policy GROUP_READ --group $MYGROUP
 ```
 
 ## Create transfer scripts
