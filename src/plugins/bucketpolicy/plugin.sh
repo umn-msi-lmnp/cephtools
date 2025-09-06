@@ -17,7 +17,7 @@ plugin_describe() {
 cat <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION> --list user1000,user2000
+    ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION>
 
 Options:
     -b|--bucket <STRING>    Name of the ceph bucket for policy. Required.
@@ -57,7 +57,7 @@ Options:
 
 
 Description:
-  Create and set bucket policies for tier 2 (ceph).
+  Create and set bucket policies for tier 2 (ceph). To overwrite a current policy, just rerun. 
   
 Help (print this screen):
     ${_ME} help bucketpolicy

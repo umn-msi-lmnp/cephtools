@@ -28,10 +28,11 @@ If necessary, run `newgrp GROUPNAME` to change your current group and set a MYGR
 MYGROUP=$(id -ng)
 ```
 
-Load `cephtools` software.
+Load `cephtools` software, or make sure it's in your PATH.
 
 ```
 module load cephtools
+which cephtools
 ```
 
 ## Create a bucket
@@ -53,8 +54,8 @@ For example, it can be helpful to allow anyone in your MSI group read-only acces
 
 ```
 # Change into a common place to store policies
-mkdir -p $HOME/ceph/$BUCKET_NAME
-cd $HOME/ceph/$BUCKET_NAME
+mkdir -p $MSIPROJECT/shared/cephtools/bucketpolicy
+cd $MSIPROJECT/shared/cephtools/bucketpolicy
 
 cephtools bucketpolicy -v --bucket $BUCKET_NAME --policy GROUP_READ --group $MYGROUP
 ```

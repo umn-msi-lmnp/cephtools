@@ -2,7 +2,7 @@
 
 ## Introduction
 
-The purpose of the `panfs2ceph` subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps.
+The purpose of the `panfs2ceph` subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps. Notably, this tool was built when tier 1 storage was located on Panasas (panfs) -- now, most tier 1 data is stored on the VAST storage platform. Either way, panfs2ceph is really for transferring data from tier 1 to tier 2, regardless of their names.
 
 A common use case for this tool is this:
 
@@ -20,15 +20,16 @@ If necessary, run `newgrp` and set the MYGROUP variable. Then load `cephtools`.
 # newgrp GROUPNAME
 MYGROUP=$(id -ng)
 
-# Load cephtools
+# Load cephtools or make sure it's in your PATH
 module load cephtools
+which cephtools
 ```
 
 ## Create a bucket
 
 You need to create a ceph bucket before transferring data with `cephtools`. After the bucket is created, a bucket policy can be applied to the bucket (i.e. `cephtools bucketpolicy`), controlling access to the bucket for only certain MSI users. If you don't want to share the data with anyone, no bucket policy is needed.
 
-What should I name my bucket? The [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/) can be found here. If you are archiving up projects for a particular group, I suggest a format like this: `GROUP-USER-tier1-archive`.
+What should I name my bucket? The [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/) can be found here. If you are archiving projects for a particular group, I suggest a format like this: `GROUP-USER-tier1-archive`.
 
 ```
 MYGROUP=$(id -ng)
@@ -42,25 +43,25 @@ For example, it can be helpful to allow anyone in your MSI group read-only acces
 
 ```
 # Change into a common place to store policies
-mkdir -p $HOME/ceph/$BUCKET_NAME
-cd $HOME/ceph/$BUCKET_NAME
+mkdir -p $MSIPROJECT/shared/cephtools/bucketpolicy
+cd $MSIPROJECT/shared/cephtools/bucketpolicy
 
-cephtools bucketpolicy --bucket $MYGROUP-$USER-tier1-archive --policy GROUP_READ --group $MYGROUP
+cephtools bucketpolicy --verbose --bucket $MYGROUP-$USER-tier1-archive --policy GROUP_READ --group $MYGROUP
 ```
 
 ## Create transfer scripts
 
-NOTE: you will need to supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/lmnp/tips/tree/main/rclone#umn-tier2-ceph).
+NOTE: you can supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/lmnp/tips/tree/main/rclone#umn-tier2-ceph). However, the --remote option is not required and cephtools will automatically find your MSI tier 2 keys and automatically use a temporary rclone remote.
 
 ```
-cephtools panfs2ceph --bucket $BUCKET_NAME --remote ceph --path /projects/standard/group/shared/project
+cephtools panfs2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
 ```
 
 By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, input directory and working directory paths are shown below:
 
 | Input dir path name                       | Working dir path name                                               |
 | ----------------------------------------- | ------------------------------------------------------------------- |
-| `/projects/standard/group/shared/project` | `/projects/standard/group/shared/project___panfs2ceph_archive_DATE` |
+| `$MSIPROJECT/shared/myproject` | `$MSIPROJECT/shared/myproject___panfs2ceph_archive_DATE` |
 
 Inside the working directory:
 

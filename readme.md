@@ -10,7 +10,7 @@ In general, `cephtools` creates slurm job scripts that use these standard tools 
 
 There are a few ways to start using cephtools. See the [Install Options](./install.md) file for details.
 
-## Examples
+## Tutorials
 
 - See the [Getting Started Guide](./doc/vignette_getting_started.md) for a basic workflow using the cephtools subcommands and FAQs.
 - See the [Data Delivery Archive](./doc/vignette_dd2ceph.md) tutorial for how to transfer data (e.g. fastqs) from "data_delivery" to ceph.

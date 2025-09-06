@@ -6,7 +6,7 @@ This vignette describes the basic purpose for each of the `cephtools` subcommand
 
 ## `panfs2ceph`: Transfer a directory from panfs (tier1) to ceph (tier2)
 
-The purpose of this subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps. By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, if the input is `/projects/standard/group/shared/project`, the working directory will be created at `/projects/standard/group/shared/project___panfs2ceph_archive_DATE`.
+The purpose of this subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps. By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, if the input is `/projects/standard/GROUP/shared/myproject`, the working directory will be created at `/projects/standard/GROUP/shared/myproject___panfs2ceph_archive_DATE`.
 
 Inside the working directory:
 
@@ -25,6 +25,8 @@ A few bucket policy presets exist:
 - `GROUP_READ`: This policy gives all current users of an MSI group read-only access to all files in bucket. This is great for sharing data with coworkers.
 - `GROUP_READ_WRITE`: This policy gives all current users of an MSI group read and write access to all files in bucket. This is great for allowing coworkers to write files into your bucket.
 - `OTHERS_READ`: Allows anyone read-only access to the bucket (i.e. world public read-only access). This policy will expose all files in the bucket to the entire Internet for viewing or downloading. This can be a good option for hosting a public static website (or simple R markdown report, etc.).
+- `LIST_READ`: Allows a specific list of users to have read-only access to the bucket. Must be a comma separated x500 list without spaces.
+- `LIST_READ_WRITE`: Allows a specific list of users to have read and write access to the bucket. Must be a comma separated x500 list without spaces.
 
 ## `dd2ceph`: Backup all files in a group's data_delivery folder to ceph (tier2)
 
@@ -34,6 +36,10 @@ Inside the working directory:
 
 - A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to a ceph bucket.
 - A `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
+
+## `filesinbackup`: Create file lists from tier 2 bucket and `shared/disaster_recovery`
+
+The purpose of this subcommand is to generate a list of files that are stored in a tier 2 bucket. It also generates a file list for all files in the $MSIPROJECT/shared/disaster_recovery. Finally, the tool will compare these file lists and report differences. Many people backup files in these two locations, but it's helpful to have a current list of files.  
 
 ## FAQs
 
