@@ -133,10 +133,10 @@ plugin_main() {
     fi
 
     _verb printf "Program options used:\\n"
-    _verb printf "--group: %s\\n" "$_group"
-    _verb printf "--log_dir: %s\\n" "$_log_dir"
-    _verb printf "--threads: %s\\n" "$_threads"
-    _verb printf "--dry_run: %s\\n" "$([[ ${_dry_run} -eq 1 ]] && echo "yes" || echo "no")"
+    _verb printf "group: %s\\n" "$_group"
+    _verb printf "log_dir: %s\\n" "$_log_dir"
+    _verb printf "threads: %s\\n" "$_threads"
+    _verb printf "dry_run: %s\\n" "$([[ ${_dry_run} -eq 1 ]] && echo "yes" || echo "no")"
 
     # Execute the main workflow
     _execute_dd2dr_workflow "$_group" "$_log_dir" "$_dry_run" "$_threads"

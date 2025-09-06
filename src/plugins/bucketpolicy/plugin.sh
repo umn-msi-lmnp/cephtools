@@ -104,7 +104,11 @@ plugin_main() {
       then
         printf "%s\\n" "${__val}"
       else
-        _exit_1 printf "%s requires a valid argument.\\n" "${__arg}"
+        if [[ -z "${__val:-}" ]]; then
+          _exit_1 printf "%s requires a valid argument. Did you forget to define a variable?\\n" "${__arg}"
+        else
+          _exit_1 printf "%s requires a valid argument (got '%s' which looks like another option).\\n" "${__arg}" "${__val}"
+        fi
       fi
     }
 
@@ -119,7 +123,7 @@ plugin_main() {
       local bucket_name="${1:-}"
       
       if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be empty\\n"
+        _exit_1 printf "Bucket name cannot be empty. Check that your variable is defined (e.g., export BUCKET_NAME=my-bucket).\\n"
       fi
       
       # Remove trailing slash if present
@@ -128,6 +132,16 @@ plugin_main() {
       # Check if bucket name is now empty after removing slash
       if [[ -z "$bucket_name" ]]; then
         _exit_1 printf "Bucket name cannot be just a slash. Please provide a valid bucket name.\\n"
+      fi
+      
+      # Basic S3 bucket name validation
+      if [[ ${#bucket_name} -lt 3 ]] || [[ ${#bucket_name} -gt 63 ]]; then
+        _exit_1 printf "Bucket name must be between 3 and 63 characters long: '%s'\\n" "$bucket_name"
+      fi
+      
+      # Check for invalid characters (basic check)
+      if [[ "$bucket_name" =~ [^a-zA-Z0-9._-] ]]; then
+        _exit_1 printf "Bucket name contains invalid characters. Use only letters, numbers, dots, hyphens, and underscores: '%s'\\n" "$bucket_name"
       fi
       
       # Warn about other potential issues
@@ -220,12 +234,12 @@ plugin_main() {
     fi
 
     _verb printf "Program options used:\\n"
-    _verb printf "--bucket: %s\\n" "$_bucket"
-    _verb printf "--policy: %s\\n" "$_policy"
-    _verb printf "--group: %s\\n" "$_group"
-    _verb printf "--list: %s\\n" "$_list"
-    _verb printf "--make_bucket: %s\\n" "$([[ ${_make_bucket} -eq 1 ]] && echo "yes" || echo "no")"
-    _verb printf "--do_not_setpolicy: %s\\n" "$([[ ${_do_not_setpolicy} -eq 1 ]] && echo "yes" || echo "no")"
+    _verb printf "bucket: %s\\n" "$_bucket"
+    _verb printf "policy: %s\\n" "$_policy"
+    _verb printf "group: %s\\n" "$_group"
+    _verb printf "list: %s\\n" "$_list"
+    _verb printf "make_bucket: %s\\n" "$([[ ${_make_bucket} -eq 1 ]] && echo "yes" || echo "no")"
+    _verb printf "do_not_setpolicy: %s\\n" "$([[ ${_do_not_setpolicy} -eq 1 ]] && echo "yes" || echo "no")"
 
     # Execute the main workflow
     _execute_bucketpolicy_workflow "$_bucket" "$_policy" "$_group" "$_list" "$_make_bucket" "$_do_not_setpolicy"
@@ -246,6 +260,11 @@ _execute_bucketpolicy_workflow() {
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
 
+    # Set S3CMD_CONFIG for MSI environment if not already set
+    if [[ -z "${S3CMD_CONFIG:-}" ]]; then
+        export S3CMD_CONFIG="/etc/msi/s3cfg-generic"
+    fi
+
     # Check s3cmd availability
     if ! command -v s3cmd &> /dev/null; then
         _exit_1 printf "s3cmd could not be found in PATH\\n"
@@ -255,7 +274,8 @@ _execute_bucketpolicy_workflow() {
 
     # Check if bucket exists
     local bucket_exists=0
-    if s3cmd ls s3://${bucket} &>/dev/null; then
+    _verb printf "Checking if bucket exists: %s\\n" "${bucket}"
+    if timeout 10 s3cmd ls s3://${bucket} >/dev/null 2>/dev/null; then
         bucket_exists=1
         _info printf "Bucket exists: %s\\n" "${bucket}"
     else
