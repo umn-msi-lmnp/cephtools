@@ -31,7 +31,7 @@ run_test_suite() {
     local script_path="$2"
     local description="$3"
     
-    ((TOTAL_SUITES++))
+    TOTAL_SUITES=$((TOTAL_SUITES + 1))
     
     echo -e "${BLUE}========================================${NC}"
     echo -e "${BLUE}Running: $suite_name${NC}"
@@ -50,7 +50,7 @@ run_test_suite() {
     # Run the test suite
     if bash "$script_path"; then
         echo -e "${GREEN}✅ $suite_name PASSED${NC}"
-        ((PASSED_SUITES++))
+        PASSED_SUITES=$((PASSED_SUITES + 1))
         return 0
     else
         echo -e "${RED}❌ $suite_name FAILED${NC}"

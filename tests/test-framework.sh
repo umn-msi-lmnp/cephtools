@@ -58,14 +58,14 @@ cleanup_tests() {
 start_test() {
     local test_description="$1"
     CURRENT_TEST="$test_description"
-    ((TEST_TOTAL++))
+    TEST_TOTAL=$((TEST_TOTAL + 1))
     echo -e "  ${YELLOW}Testing:${NC} $test_description"
 }
 
 # Mark test as passed
 pass_test() {
     local message="${1:-}"
-    ((TEST_PASSED++))
+    TEST_PASSED=$((TEST_PASSED + 1))
     if [[ -n "$message" ]]; then
         echo -e "    ${GREEN}✓${NC} $message"
     else
@@ -76,7 +76,7 @@ pass_test() {
 # Mark test as failed
 fail_test() {
     local message="$1"
-    ((TEST_FAILED++))
+    TEST_FAILED=$((TEST_FAILED + 1))
     echo -e "    ${RED}✗${NC} $CURRENT_TEST"
     echo -e "      ${RED}Error:${NC} $message"
     return 1
