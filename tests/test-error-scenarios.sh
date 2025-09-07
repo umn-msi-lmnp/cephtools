@@ -240,9 +240,8 @@ test_disk_space_scenarios() {
     
     setup_mock_cephtools
     
-    # Mock groupquota showing insufficient space
-    create_mock_command "groupquota" "testgroup,1000G,999G,1000G" 0  # Only 1G free
-    create_mock_command "rsync" "rsync version 3.2.3" 0
+
+
     
     # Create SLURM script for dd2dr
     if "$CEPHTOOLS_BIN" dd2dr --group testgroup --dry_run 2>/dev/null; then

@@ -8,7 +8,7 @@
 # Plugin metadata
 PLUGIN_NAME="filesinbackup"
 
-PLUGIN_DESCRIPTION="List files in disaster recovery and ceph bucket for comparison"
+PLUGIN_DESCRIPTION="List files in disaster recovery and ceph bucket"
 
 ###############################################################################
 # Plugin Interface Functions
@@ -45,8 +45,7 @@ Options:
     
 
 Description:
-  Print list of files in a group's disaster_recovery folder and a list of files in a bucket on Tier 2 
-  and emails those lists to the group PI. 
+  Generate lists of files in a group's disaster_recovery folder and in a bucket on Tier 2 storage. 
   
 Help (print this screen):
     ${_ME} help filesinbackup
@@ -294,49 +293,7 @@ _generate_file_lists() {
     fi
 }
 
-_create_comparison_report() {
-    local bucket="$1"
-    local group="$2" 
-    local work_dir="$3"
 
-    local report_file="${work_dir}/backup_comparison_report.txt"
-    
-    cat > "$report_file" <<EOF
-Backup Comparison Report
-========================
-Generated: $(date)
-Group: ${group}
-Bucket: ${bucket}
-
-Summary:
---------
-Disaster Recovery Files: $(wc -l < "${work_dir}/disaster_recovery_files.txt")
-Ceph Bucket Files: $(wc -l < "${work_dir}/ceph_bucket_files.txt")
-
-Files only in Disaster Recovery:
-EOF
-
-    # Files in disaster recovery but not in ceph
-    comm -23 "${work_dir}/disaster_recovery_files.txt" "${work_dir}/ceph_bucket_files.txt" >> "$report_file"
-    
-    cat >> "$report_file" <<EOF
-
-Files only in Ceph Bucket:
-EOF
-
-    # Files in ceph but not in disaster recovery
-    comm -13 "${work_dir}/disaster_recovery_files.txt" "${work_dir}/ceph_bucket_files.txt" >> "$report_file"
-
-    cat >> "$report_file" <<EOF
-
-Files in both locations:
-EOF
-
-    # Files in both locations
-    comm -12 "${work_dir}/disaster_recovery_files.txt" "${work_dir}/ceph_bucket_files.txt" >> "$report_file"
-
-    _info printf "Created comparison report: %s\\n" "$report_file"
-}
 
 _create_filesinbackup_slurm_script() {
     local remote="$1"
@@ -383,16 +340,17 @@ fi)
 # Change to working directory
 cd ${work_dir}
 
-echo "Starting filesinbackup analysis at \$(date)"
+echo "Starting filesinbackup listing at \$(date)"
 echo "Group: ${group}"
 echo "Bucket: ${bucket}"
 echo "Disaster Recovery Directory: ${disaster_recovery_dir}"
 
-# Generate updated file lists
+# Generate file lists
 echo "Generating disaster recovery file list..."
 if [[ -d "${disaster_recovery_dir}" ]]; then
-    find "${disaster_recovery_dir}" -type f -printf '%P\\n' 2>/dev/null | sort > ${prefix}.disaster_recovery_files.txt
+    find "${disaster_recovery_dir}" -type f -exec realpath {} \\; 2>/dev/null | sort > ${prefix}.disaster_recovery_files.txt
     echo "Found \$(wc -l < ${prefix}.disaster_recovery_files.txt) files in disaster recovery"
+    echo "File list saved as: ${prefix}.disaster_recovery_files.txt"
 else
     echo "Disaster recovery directory not found: ${disaster_recovery_dir}"
     touch ${prefix}.disaster_recovery_files.txt
@@ -400,28 +358,16 @@ fi
 
 echo "Generating ceph bucket file list..."
 if rclone lsf ${remote}:${bucket} &>/dev/null; then
-    rclone lsf -R ${remote}:${bucket} 2>/dev/null | sort > ${prefix}.ceph_bucket_files.txt
-    echo "Found \$(wc -l < ${prefix}.ceph_bucket_files.txt) files in ceph bucket"
+    rclone lsf -R ${remote}:${bucket} 2>/dev/null | sed "s|^|s3://${bucket}/|" | sort > ${prefix}.${bucket}_tier2_files.txt
+    echo "Found \$(wc -l < ${prefix}.${bucket}_tier2_files.txt) files in ceph bucket"
+    echo "File list saved as: ${prefix}.${bucket}_tier2_files.txt"
 else
     echo "Cannot access ceph bucket or bucket is empty: ${bucket}"
-    touch ${prefix}.ceph_bucket_files.txt
+    touch ${prefix}.${bucket}_tier2_files.txt
 fi
 
-# Create comparison files
-echo "Creating comparison files..."
-
-# Files in disaster recovery but not in ceph
-comm -23 ${prefix}.disaster_recovery_files.txt ${prefix}.ceph_bucket_files.txt > ${prefix}.missing_from_ceph.txt
-
-# Files in ceph but not in disaster recovery  
-comm -13 ${prefix}.disaster_recovery_files.txt ${prefix}.ceph_bucket_files.txt > ${prefix}.missing_from_disaster_recovery.txt
-
-echo "Created comparison files:"
-echo "  ${prefix}.missing_from_ceph.txt"
-echo "  ${prefix}.missing_from_disaster_recovery.txt"
-
-echo "Analysis completed at \$(date)"
-echo "Reports available in: ${work_dir}"
+echo "File listing completed at \$(date)"
+echo "File lists available in: ${work_dir}"
 EOF
 
     chmod +x "$script_name"

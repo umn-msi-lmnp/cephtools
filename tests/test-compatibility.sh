@@ -266,7 +266,7 @@ test_tool_versions() {
     start_test "External tool version compatibility"
     
     # Test version checking for critical tools
-    local tools_to_check=("rclone" "rsync" "s3cmd")
+    local tools_to_check=("rclone" "s3cmd")
     
     for tool in "${tools_to_check[@]}"; do
         if command -v "$tool" >/dev/null 2>&1; then
@@ -279,10 +279,7 @@ test_tool_versions() {
                     create_mock_command "rclone" "rclone v1.64.1" 0
                     pass_test "rclone mocked with compatible version"
                     ;;
-                "rsync")
-                    create_mock_command "rsync" "rsync version 3.2.3" 0
-                    pass_test "rsync mocked with compatible version"
-                    ;;
+
                 "s3cmd")
                     create_mock_command "s3cmd" "s3cmd version 2.3.0" 0
                     pass_test "s3cmd mocked with compatible version"

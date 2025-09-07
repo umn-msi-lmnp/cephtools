@@ -30,11 +30,9 @@ test_msi_specific_commands() {
     start_test "MSI-specific commands availability"
     
     # Create mocks for MSI-specific commands
-    create_mock_command "groupquota" "testgroup,1000G,500G,2000G"
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12"
     create_mock_command "getent" "testgroup:x:1001:user1,user2,user3"
     
-    assert_command_exists "groupquota"
     assert_command_exists "s3info" 
     assert_command_exists "getent"
 }
@@ -170,35 +168,7 @@ test_s3cmd_bucket_creation() {
     fi
 }
 
-###############################################################################
-# rsync Dependency Tests
-###############################################################################
 
-test_rsync_availability() {
-    start_test "rsync command availability"
-    
-    # Test when rsync is not available
-    assert_command_not_exists "rsync"
-    
-    # Test when rsync is available
-    create_mock_command "rsync" "rsync version 3.2.3" 0
-    assert_command_exists "rsync"
-}
-
-test_rsync_dry_run_capability() {
-    start_test "rsync dry-run and stats capability"
-    
-    create_logging_mock_command "rsync" "Total transferred file size: 1,234,567 bytes" 0
-    
-    # Test dry run with stats (used in dd2dr)
-    rsync -Lvru --dry-run --stats /source /dest >/dev/null 2>&1 || true
-    
-    if was_mock_called "rsync" "--dry-run --stats"; then
-        pass_test "rsync dry-run with stats capability"
-    else
-        fail_test "rsync dry-run with stats not working"
-    fi
-}
 
 ###############################################################################
 # Module System Tests  
@@ -248,13 +218,11 @@ test_dd2dr_dependencies() {
     start_test "dd2dr plugin dependencies"
     
     # Set up all required dependencies for dd2dr
-    create_mock_command "rsync" "rsync version 3.2.3" 0
-    create_mock_command "groupquota" "testgroup,1000G,500G,2000G" 0
+    create_mock_command "rclone" "rclone v1.64.1" 0
     create_mock_command "module" "Module loaded" 0
     
     # Test that all dependencies are available
-    assert_command_exists "rsync"
-    assert_command_exists "groupquota"
+    assert_command_exists "rclone"
     assert_command_exists "module"
 }
 
@@ -362,8 +330,7 @@ main() {
     test_s3cmd_bucket_operations
     test_s3cmd_bucket_creation
     
-    test_rsync_availability
-    test_rsync_dry_run_capability
+
     
     test_module_system
     

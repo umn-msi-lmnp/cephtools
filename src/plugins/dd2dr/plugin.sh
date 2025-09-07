@@ -217,7 +217,7 @@ _create_comprehensive_dd2dr_script() {
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rsync
+module load rclone
 
 # Change to working directory
 cd ${work_dir}
@@ -231,75 +231,24 @@ echo "\$GROUP sync starting..."
 echo "\${DATESTAMP}"
 umask u=rwx,g=rx,o=
 
-# Check for any space issues
-echo "Checking group quota..."
-if command -v groupquota >/dev/null 2>&1; then
-    groupquota -g \$GROUP -p -U 'G' -c
-    AVAIL=\$(groupquota -g \$GROUP -p -U '' -cH | awk 'BEGIN { FS=",";OFS=","} {print \$3-\$2}')
-    AVAILH=\$(groupquota -g \$GROUP -p -U 'G' -cH | sed 's/G//g' | awk 'BEGIN { FS=",";OFS=","} {print \$3-\$2}')
-    echo "\${AVAILH}G remaining in \$MSIPROJECT total quota"
+# Transfer the files from data_delivery to disaster_recovery
+echo "Starting sync from data_delivery to disaster_recovery..."
+
+# Use rclone to copy files
+rclone copy ${data_delivery_path} ${disaster_recovery_path}/ \\
+    --transfers ${threads} \\
+    --checkers ${threads} \\
+    --progress \\
+    --stats 30s \\
+    ${dry_run_flag}
+
+# Check if rclone finished successfully
+if [ "\$?" -eq 0 ]; then
+    echo "rclone copy finished successfully!"
+    echo "Sync complete"
 else
-    echo "groupquota command not available, skipping quota check"
-    AVAIL=999999999999999  # Large number to allow transfer
-    AVAILH="N/A"
-fi
-
-# Check data_delivery
-echo "Checking data_delivery size..."
-DDTOTAL=\$(du -Lhc ${data_delivery_path} | tail -1 | cut -f1)
-echo "\$DDTOTAL in ${data_delivery_path}"
-DDBYTES=\$(du -Lbc ${data_delivery_path} | tail -1 | cut -f1)
-echo "\$DDBYTES bytes in data_delivery"
-
-# Total size of files that will be transferred
-echo "Calculating transfer size..."
-DDBYTES_TRANSFER=\$(rsync -Lvru --dry-run --stats ${data_delivery_path} ${disaster_recovery_path}/ | grep "Total transferred file size:" | tr " " "\t" | cut -f 5 | sed 's/\,//g')
-echo "\$DDBYTES_TRANSFER bytes to be transferred"
-
-# Transfer the files
-if [ "\$DDBYTES_TRANSFER" -lt "\$AVAIL" ]; then
-    echo "\$DDBYTES_TRANSFER < \$AVAIL, syncing data_delivery to disaster_recovery"
-    
-    # Use rsync with -L to copy links as files
-    rsync -Lvru ${dry_run_flag} ${data_delivery_path} ${disaster_recovery_path}/
-    
-    # Check if rsync finished successfully
-    if [ "\$?" -eq 0 ]; then
-        echo "rsync finished successfully!"
-        
-        # Check new space availability
-        if command -v groupquota >/dev/null 2>&1; then
-            AVAILHNEW=\$(groupquota -g \$GROUP -U 'G' -cH | sed 's/G//g' | awk 'BEGIN { FS=",";OFS=","} {print \$3-\$2}')
-            echo "Previous space available was \${AVAILH}G"
-            echo "New space available is \${AVAILHNEW}G"
-        fi
-        echo "Sync complete"
-    else
-        echo "rsync did not finish successfully"
-        exit 5
-    fi
-    
-else
-    echo "\$DDBYTES > \$AVAIL Not enough space for syncing!"
-    echo "Checking disaster_recovery data_delivery size..."
-    
-    if [ -d "${disaster_recovery_path}/data_delivery" ]; then
-        DDDRBYTES=\$(du -Lbc ${disaster_recovery_path}/data_delivery | tail -1 | cut -f1)
-        echo "\$DDDRBYTES in disaster_recovery data_delivery"
-        
-        if [ "\$DDBYTES" -eq "\$DDDRBYTES" ]; then
-            echo "\$DDBYTES (dd size) equal to \$DDDRBYTES (dddr size)"
-            echo "Nothing needs to transfer, but space is not available"
-        else
-            echo "Data sizes differ but insufficient space for transfer"
-            echo "Manual intervention may be required"
-            exit 20
-        fi
-    else
-        echo "Disaster recovery directory structure not found"
-        echo "Insufficient space for initial sync"
-        exit 10
-    fi
+    echo "rclone copy did not finish successfully"
+    exit 5
 fi
 
 echo "dd2dr sync completed at \$(date)"
@@ -322,5 +271,4 @@ EOF
     chmod +x "$script_name"
     
     _info printf "Created dd2dr SLURM script: %s\\n" "$script_name"
-    _info printf "Submit with: sbatch %s\\n" "$script_name"
 }

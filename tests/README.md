@@ -21,10 +21,10 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 
 #### 2. Dependency Validation (`test-dependencies.sh`)
 - ✅ **System Commands**: bash, date, mkdir, chmod, find, grep, awk, sed, etc.
-- ✅ **MSI Commands**: groupquota, s3info, getent availability
+- ✅ **MSI Commands**: s3info, getent availability
 - ✅ **rclone**: Version checking (≥1.57), remote validation, bucket access
 - ✅ **s3cmd**: Availability, bucket operations, policy management
-- ✅ **rsync**: Availability, dry-run capability with stats
+
 - ✅ **Module System**: Module loading and availability
 - ✅ **Environment Variables**: MSIPROJECT, USER validation
 - ✅ **Plugin-Specific Dependencies**: Per-plugin dependency validation
@@ -55,7 +55,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **MSI Environment**: Environment detection, module system
 - ✅ **SLURM Integration**: SLURM command availability
 - ✅ **Network Tools**: Connectivity utilities, DNS resolution
-- ✅ **Tool Versions**: Python, rclone, rsync, s3cmd versions
+- ✅ **Tool Versions**: Python, rclone, s3cmd versions
 - ✅ **Locale Support**: Character encoding, timezone handling
 - ✅ **Resource Limits**: File descriptors, process limits
 - ✅ **Path Handling**: Cross-platform path resolution
@@ -95,7 +95,7 @@ make test-compatibility # System compatibility
 ### ✅ **Comprehensive Coverage**
 
 #### **System Validation**
-- Dependency checking (rclone, s3cmd, rsync, etc.)
+- Dependency checking (rclone, s3cmd, etc.)
 - Bucket existence and access permissions
 - s3cmd connectivity and credentials
 - Module system integration

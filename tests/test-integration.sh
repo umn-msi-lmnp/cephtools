@@ -23,8 +23,8 @@ setup_full_mock_environment() {
     create_mock_command "rclone" "rclone v1.64.1" 0
     create_mock_command "s3cmd" "s3cmd version 2.3.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
-    create_mock_command "rsync" "rsync version 3.2.3" 0
-    create_mock_command "groupquota" "testgroup,2000G,1000G,2000G" 0
+
+
     create_mock_command "getent" "testgroup:x:1001:user1,user2,user3" 0
     create_mock_command "module" "" 0
     create_mock_command "sbatch" "Submitted batch job 12345" 0
@@ -32,7 +32,7 @@ setup_full_mock_environment() {
     # Mock successful operations
     create_logging_mock_command "rclone"
     create_logging_mock_command "s3cmd"
-    create_logging_mock_command "rsync"
+
     
     # Create test data
     create_test_data "$MSIPROJECT/data_delivery" 5
@@ -171,8 +171,8 @@ test_dd2dr_workflow() {
         verify_slurm_script_basics "$slurm_script" "testgroup"
         
         # Check for dd2dr-specific content
-        assert_contains "$(cat "$slurm_script")" "rsync" "Contains rsync commands"
-        assert_contains "$(cat "$slurm_script")" "groupquota" "Contains quota checking"
+        assert_contains "$(cat "$slurm_script")" "rclone" "Contains rclone commands"
+
         assert_contains "$(cat "$slurm_script")" "data_delivery" "References data_delivery"
         assert_contains "$(cat "$slurm_script")" "disaster_recovery" "References disaster_recovery"
     else
@@ -188,8 +188,7 @@ test_dd2dr_quota_checking() {
     local output_dir="$TEST_OUTPUT_DIR/dd2dr_quota"
     mkdir -p "$output_dir"
     
-    # Mock groupquota with specific output
-    create_mock_command "groupquota" "testgroup,2000G,500G,2000G" 0
+
     
     local original_dir=$(pwd)
     cd "$output_dir"
@@ -201,7 +200,7 @@ test_dd2dr_quota_checking() {
     local slurm_script=$(find "$output_dir" -name "*.slurm" | head -1)
     if [[ -n "$slurm_script" ]]; then
         # Should contain quota checking logic
-        assert_contains "$(cat "$slurm_script")" "groupquota" "Contains groupquota command"
+
         assert_contains "$(cat "$slurm_script")" "AVAIL=" "Contains quota calculation"
         assert_contains "$(cat "$slurm_script")" "remaining in" "Contains quota reporting"
     else

@@ -691,7 +691,170 @@ EOF
 
     chmod +x "${script_prefix}.2_verify.slurm"
     
+    # Create deletion script
+    cat > "${script_prefix}.3_delete.slurm" <<EOF
+#!/bin/bash
+#SBATCH --time=8:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=${threads}
+#SBATCH --mem=16gb
+#SBATCH --mail-type=ALL
+#SBATCH --error=%x.e%j
+#SBATCH --output=%x.o%j
+
+# Load required modules
+module load rclone
+
+# Set up credentials
+$(if command -v s3info >/dev/null 2>&1; then
+    echo "export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=\$(s3info --keys | awk '{print \$1}')"
+    echo "export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=\$(s3info --keys | awk '{print \$2}')"
+    echo "export RCLONE_CONFIG_MYREMOTE_TYPE=\"s3\""
+    echo "export RCLONE_CONFIG_MYREMOTE_PROVIDER=\"Ceph\""
+    echo "export RCLONE_CONFIG_MYREMOTE_ENDPOINT=\"https://s3.msi.umn.edu\""
+fi)
+
+# Safety checks before deletion
+echo "Starting deletion process at \$(date)"
+echo "WARNING: This will permanently delete the original data from tier 1 storage!"
+echo "Source directory to delete: ${path}"
+
+# Verify that copy and verify jobs completed successfully
+echo "Checking if previous jobs completed successfully..."
+
+# Check if verification log exists and shows success
+if [[ ! -f "${script_prefix}.2_verify.rclone.log" ]]; then
+    echo "ERROR: Verification log not found. Please ensure copy and verify jobs completed successfully."
+    echo "Expected log file: ${script_prefix}.2_verify.rclone.log"
+    exit 1
+fi
+
+# Check verification log for errors
+if grep -i "error\|failed\|[1-9][0-9]* differences\|differences found: [1-9]" "${script_prefix}.2_verify.rclone.log" >/dev/null 2>&1; then
+    echo "ERROR: Verification log shows errors or differences."
+    echo "Please review the verification log before proceeding with deletion:"
+    echo "  ${script_prefix}.2_verify.rclone.log"
+    exit 1
+fi
+
+echo "Verification checks passed. Proceeding with deletion..."
+
+# Perform the deletion with progress and multi-threading
+echo "Deleting original data from tier 1 storage..."
+echo "Using ${threads} threads for optimal performance"
+
+rclone purge "${path}" \\
+    --progress \\
+    --multi-thread-streams=${threads} \\
+    ${dry_run} \\
+    --log-file "${script_prefix}.3_delete.rclone.log" \\
+    --log-level INFO \\
+    --stats 30s
+
+if [[ \$? -eq 0 ]]; then
+    echo "Deletion completed successfully at \$(date)"
+    echo "Original data has been removed from: ${path}"
+    echo "Data remains safely stored in: ${remote}:${bucket}/${path_basename}"
+else
+    echo "ERROR: Deletion failed. Please check the log file:"
+    echo "  ${script_prefix}.3_delete.rclone.log"
+    exit 1
+fi
+
+echo "Deletion process completed at \$(date)"
+EOF
+
+    chmod +x "${script_prefix}.3_delete.slurm"
+    
+    # Create restore script
+    cat > "${script_prefix}.4_restore.slurm" <<EOF
+#!/bin/bash
+#SBATCH --time=24:00:00
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=${threads}
+#SBATCH --mem=32gb
+#SBATCH --mail-type=ALL
+#SBATCH --error=%x.e%j
+#SBATCH --output=%x.o%j
+
+# Load required modules
+module load rclone
+
+# Set up credentials
+$(if command -v s3info >/dev/null 2>&1; then
+    echo "export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=\$(s3info --keys | awk '{print \$1}')"
+    echo "export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=\$(s3info --keys | awk '{print \$2}')"
+    echo "export RCLONE_CONFIG_MYREMOTE_TYPE=\"s3\""
+    echo "export RCLONE_CONFIG_MYREMOTE_PROVIDER=\"Ceph\""
+    echo "export RCLONE_CONFIG_MYREMOTE_ENDPOINT=\"https://s3.msi.umn.edu\""
+fi)
+
+# Restore process
+echo "Starting restore process at \$(date)"
+echo "Source: ${remote}:${bucket}/${path_basename}"
+echo "Destination: ${path}"
+
+# Safety checks
+if [[ -e "${path}" ]]; then
+    echo "WARNING: Destination path already exists: ${path}"
+    echo "This restore operation will overwrite existing files with the same names."
+    echo "Continuing in 10 seconds... (Press Ctrl+C to abort)"
+    sleep 10
+fi
+
+# Verify source exists in tier 2 storage
+echo "Verifying source data exists in tier 2 storage..."
+if ! rclone lsd "${remote}:${bucket}/${path_basename}" >/dev/null 2>&1; then
+    echo "ERROR: Source data not found in tier 2 storage"
+    echo "Expected location: ${remote}:${bucket}/${path_basename}"
+    echo "Please verify the bucket and path are correct"
+    exit 1
+fi
+
+echo "Source data confirmed in tier 2 storage"
+
+# Create parent directory if it doesn't exist
+parent_dir="\$(dirname "${path}")"
+if [[ ! -d "\$parent_dir" ]]; then
+    echo "Creating parent directory: \$parent_dir"
+    mkdir -p "\$parent_dir" || {
+        echo "ERROR: Failed to create parent directory: \$parent_dir"
+        exit 1
+    }
+fi
+
+# Perform the restore
+echo "Starting restore from tier 2 back to tier 1..."
+rclone copy "${remote}:${bucket}/${path_basename}" "${path}" \\
+    --transfers ${threads} \\
+    --progress \\
+    --stats 30s \\
+    ${dry_run} \\
+    --log-file "${script_prefix}.4_restore.rclone.log" \\
+    --log-level INFO
+
+if [[ \$? -eq 0 ]]; then
+    echo "Restore completed successfully at \$(date)"
+    echo "Data has been restored to: ${path}"
+    
+    # Generate file list for verification
+    echo "Generating restored file list..."
+    find "${path}" -type f > "${script_prefix}.restored_files.txt"
+    echo "Restored file list: ${script_prefix}.restored_files.txt"
+else
+    echo "ERROR: Restore failed. Please check the log file:"
+    echo "  ${script_prefix}.4_restore.rclone.log"
+    exit 1
+fi
+
+echo "Restore process completed at \$(date)"
+EOF
+
+    chmod +x "${script_prefix}.4_restore.slurm"
+    
     _info printf "Created SLURM scripts:\\n"
     _info printf "  Transfer: %s\\n" "${script_prefix}.1_copy.slurm"
     _info printf "  Verify: %s\\n" "${script_prefix}.2_verify.slurm"
+    _info printf "  Delete: %s\\n" "${script_prefix}.3_delete.slurm"
+    _info printf "  Restore: %s\\n" "${script_prefix}.4_restore.slurm"
 }
