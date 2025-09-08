@@ -179,7 +179,7 @@ _execute_dd2dr_workflow() {
     local work_dir="${log_dir}/dd2dr_${group}_${timestamp}"
     
     _info printf "Creating working directory: %s\\n" "$work_dir"
-    mkdir -p "$work_dir"
+    mkdir -p -m u=rwx,g=rx,o= "$work_dir"
     cd "$work_dir"
 
     # Create comprehensive dd2dr SLURM script with full functionality
@@ -216,6 +216,9 @@ _create_comprehensive_dd2dr_script() {
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
 
+# Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
+umask 0007
+
 # Load required modules
 module load rclone
 
@@ -229,7 +232,6 @@ DATESTAMP="${timestamp}"
 # Print some info
 echo "\$GROUP sync starting..."
 echo "\${DATESTAMP}"
-umask u=rwx,g=rx,o=
 
 # Transfer the files from data_delivery to disaster_recovery
 echo "Starting sync from data_delivery to disaster_recovery..."
