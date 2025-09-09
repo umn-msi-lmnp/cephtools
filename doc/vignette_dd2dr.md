@@ -29,7 +29,7 @@ The `dd2dr` command provides a simple, automated way to sync your group's `data_
 Keep a record of all data transfers in a shared (common) location. Make sure group permissions are set for this folder.
 
 ```bash
-mkdir -p -m ug+rwxs,o-rwx $MSIPROJECT/shared/cephtools/dd2dr
+mkdir -m ug+rwxs -p $MSIPROJECT/shared/cephtools/dd2dr
 cd $MSIPROJECT/shared/cephtools/dd2dr
 ```
 
@@ -110,7 +110,7 @@ Options:
 # Set up (one time)
 module load cephtools
 MYGROUP=$(id -ng)
-mkdir -p $MSIPROJECT/shared/cephtools/dd2dr
+mkdir -m ug+rwxs -p $MSIPROJECT/shared/cephtools/dd2dr
 cd $MSIPROJECT/shared/cephtools/dd2dr
 
 # Regular backup routine

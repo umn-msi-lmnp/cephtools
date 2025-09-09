@@ -43,7 +43,7 @@ For example, it can be helpful to allow anyone in your MSI group read-only acces
 
 ```
 # Change into a common place to store policies
-mkdir -p $MSIPROJECT/shared/cephtools/bucketpolicy
+mkdir -m ug+rwxs -p $MSIPROJECT/shared/cephtools/bucketpolicy
 cd $MSIPROJECT/shared/cephtools/bucketpolicy
 
 cephtools bucketpolicy --verbose --bucket $BUCKET_NAME --policy GROUP_READ --group $MYGROUP

@@ -45,7 +45,7 @@ _The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `GRO
    Keep a record of all data transfers in shared (common) location. Make sure group permissions are set at this folder.
 
    ```
-   mkdir -p -m ug+rwxs,o-rwx /projects/standard/$MYGROUP/shared/dd2ceph
+   mkdir -m ug+rwxs -p /projects/standard/$MYGROUP/shared/dd2ceph
    cd /projects/standard/$MYGROUP/shared/dd2ceph
    ```
 

@@ -250,12 +250,12 @@ plugin_main() {
 ###############################################################################
 
 _execute_bucketpolicy_workflow() {
-    local bucket="$1"
-    local policy="$2"
-    local group="$3"
-    local list="$4"
-    local make_bucket="$5"
-    local do_not_setpolicy="$6"
+    local _bucket="$1"
+    local _policy="$2"
+    local _group="$3"
+    local _list="$4"
+    local _make_bucket="$5"
+    local _do_not_setpolicy="$6"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -266,84 +266,381 @@ _execute_bucketpolicy_workflow() {
     fi
 
     # Check s3cmd availability
-    if ! command -v s3cmd &> /dev/null; then
+    S3CMD="$(which s3cmd)"
+    if command -v s3cmd &> /dev/null
+    then
+        _verb printf "Using s3cmd found in PATH: %s\\n" "$(which s3cmd)"
+        _verb printf "%s\\n" "$(s3cmd --version)" 
+    else
         _exit_1 printf "s3cmd could not be found in PATH\\n"
     fi
 
-    _verb printf "Using s3cmd: %s\\n" "$(which s3cmd)"
-
-    # Check if bucket exists
-    local bucket_exists=0
-    _verb printf "Checking if bucket exists: %s\\n" "${bucket}"
-    if timeout 10 s3cmd ls s3://${bucket} >/dev/null 2>/dev/null; then
-        bucket_exists=1
-        _info printf "Bucket exists: %s\\n" "${bucket}"
-    else
-        _info printf "Bucket does not exist: %s\\n" "${bucket}"
-        
-        if [[ ${make_bucket} -eq 1 ]]; then
-            _info printf "Creating bucket: %s\\n" "${bucket}"
-            if ! s3cmd mb s3://${bucket}; then
-                _exit_1 printf "Failed to create bucket: %s\\n" "${bucket}"
+    # Make sure access to bucket is possible
+    if ! s3cmd ls s3://${_bucket} &>/dev/null; then
+        if ((_make_bucket))
+        then
+            if s3cmd mb s3://${_bucket} &>/dev/null; then
+                s3cmd mb s3://${_bucket}
+                _info printf "Bucket was made: %s" "${_bucket}"
+            else
+                _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
             fi
-            bucket_exists=1
         else
-            _exit_1 printf "Bucket does not exist and --make_bucket not specified: %s\\n" "${bucket}"
+            _exit_1 printf "Errors occured when accessing bucket: '%s'\\nDo you have access rights to the bucket?\\nCheck the bucket access policy using 's3cmd info s3://%s'\\nIf the bucket does not exist, use the -m|--make_bucket flag to create it.\\n" "${_bucket}" "${_bucket}"
         fi
     fi
 
-    # Generate the policy JSON
-    local policy_file="${bucket}_policy.json"
-    _generate_policy_json "$policy" "$bucket" "$group" "$list" "$policy_file"
+    # Create bucket policy vars
+    local _curr_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    local _bucket_policy="${_bucket}.bucket_policy.json"
+    local _bucket_policy_readme="${_bucket}.bucket_policy_readme.md"
+
+    # Get group user ids and generate policy based on type
+    local _users_with_access
+    local _all_ceph_username_string=()
+
+    if [[ "${_policy}" =~ ^.*GROUP.*$ ]]
+    then
+        # Find all usernames in the group
+        local _username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
+        readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
+
+        local _username_ceph=()
+        local _username_ceph_msi=()
+        for i in "${!_username_msi[@]}"
+        do
+            if s3info info --user "${_username_msi[$i]}" &>/dev/null
+            then
+                local _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _username_ceph+=("${_curr_ceph_username}")
+                _username_ceph_msi+=("${_username_msi[$i]}")
+                local _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
+                if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
+                    _all_ceph_username_string+="${_curr_ceph_username_string}"
+                else
+                    _all_ceph_username_string+=",${_curr_ceph_username_string}"
+                fi
+            else
+                _warn printf "s3info info command failed for username: %s.\\n" "${_username_msi[$i]}"
+            fi
+        done
+        _users_with_access=(${_username_ceph_msi[@]})
+    elif [[ "${_policy}" =~ ^.*OTHERS.*$ ]]
+    then
+        _users_with_access="All MSI users and the entire public Internet"
+    elif [[ "${_policy}" =~ ^.*LIST.*$ ]]
+    then
+        # Read in the specific users in the list
+        local _username_msi_csv
+        if [[ -f "$_list" ]]; then
+            _username_msi_csv="$(cat ${_list})"
+        else
+            _username_msi_csv="$_list"
+        fi
+        readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
+
+        local _username_ceph=()
+        local _username_ceph_msi=()
+        for i in "${!_username_msi[@]}"
+        do
+            if s3info info --user "${_username_msi[$i]}" &>/dev/null
+            then
+                local _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+                _username_ceph+=("${_curr_ceph_username}")
+                _username_ceph_msi+=("${_username_msi[$i]}")
+                local _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
+                if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
+                    _all_ceph_username_string+="${_curr_ceph_username_string}"
+                else
+                    _all_ceph_username_string+=",${_curr_ceph_username_string}"
+                fi
+            else
+                _warn printf "s3info info command failed for username: %s.\\n" "${_username_msi[$i]}"
+            fi
+        done
+        _users_with_access=(${_username_ceph_msi[@]})
+    fi
+
+    # Generate the policy JSON using original structure
+    _generate_policy_json_original "$_policy" "$_bucket" "$_all_ceph_username_string" "$_bucket_policy"
 
     # Apply the policy if requested
-    if [[ ${do_not_setpolicy} -eq 0 ]]; then
-        if [[ "$policy" == "NONE" ]]; then
-            _info printf "Removing bucket policy for: %s\\n" "${bucket}"
-            s3cmd delpolicy s3://${bucket} || _warn printf "Could not remove policy (may not exist)\\n"
+    if ((_do_not_setpolicy))
+    then
+        _verb printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
+    else
+        if _contains "${_policy}" "NONE"
+        then
+            if s3cmd delpolicy s3://${_bucket} &>/dev/null
+            then
+                _info printf "The bucket policy was removed.\\n"
+            else
+                _warn printf "The 's3cmd delpolicy' command failed.\\n"
+            fi
         else
-            _info printf "Setting bucket policy for: %s\\n" "${bucket}"
-            if ! s3cmd setpolicy "$policy_file" s3://${bucket}; then
-                _exit_1 printf "Failed to set bucket policy\\n"
+            if s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+            then
+                _info printf "The bucket policy was set.\\n"
+            else
+                _warn printf "The 's3cmd setpolicy' command failed.\\n"
             fi
         fi
-    else
-        _info printf "Policy file created but not applied: %s\\n" "$policy_file"
     fi
 
-    _info printf "Bucket policy operation completed successfully\\n"
+    # Create summary readme
+    _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme"
+
+    # Set file permissions
+    chmod ug+rw,o-rwx "${_bucket}.bucket_policy_readme.md"
+    chmod ug+rw,o-rwx "${_bucket}.bucket_policy.json"
+
+    # Print final instructions
+    heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
+    
+    heredoc2var instructions_message << HEREDOC > /dev/null
+
+---------------------------------------------------------------------
+cephtools bucketpolicy summary
+
+The bucket policy was modified for ceph bucket:
+${_bucket}
+
+Next steps:
+1. Review the readme file for details: ${_bucket}.bucket_policy_readme.md
+2. Review the JSON bucket policy for details: ${_bucket}.bucket_policy.json
+3. Repeat this process with new group members are added or removed, so the policy is updated.
+
+
+VERSION: ${VERSION_SHORT}
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+---------------------------------------------------------------------
+HEREDOC
+
+    echo "$instructions_message"
 }
 
-_generate_policy_json() {
-    local policy="$1"
-    local bucket="$2"
-    local group="$3" 
-    local list="$4"
-    local policy_file="$5"
+_generate_readme() {
+    local _policy="$1"
+    local _bucket="$2"
+    local _curr_date_time="$3"
+    local _do_not_setpolicy="$4"
+    local _users_with_access="$5"
+    local _bucket_policy_readme="$6"
 
-    case "$policy" in
-        "NONE")
-            # Empty policy to remove existing policy
-            echo '{}' > "$policy_file"
-            ;;
-        "GROUP_READ")
-            _generate_group_policy "$bucket" "$group" "read" "$policy_file"
-            ;;
-        "GROUP_READ_WRITE")
-            _generate_group_policy "$bucket" "$group" "readwrite" "$policy_file"
-            ;;
-        "OTHERS_READ")
-            _generate_public_read_policy "$bucket" "$policy_file"
-            ;;
-        "LIST_READ")
-            _generate_list_policy "$bucket" "$list" "read" "$policy_file"
-            ;;
-        "LIST_READ_WRITE")
-            _generate_list_policy "$bucket" "$list" "readwrite" "$policy_file"
-            ;;
-    esac
+    if _contains "${_policy}" "NONE"
+    then
+        tee "${_bucket_policy_readme}" << HEREDOC > /dev/null 
+# cephtools bucketpolicy readme
 
-    _verb printf "Generated policy file: %s\\n" "$policy_file"
+## Options
+
+Bucket policy initated (Y-m-d-HMS):  
+${_curr_date_time} 
+
+Options used:
+bucket=${_bucket}
+policy=${_policy}
+do_not_setpolicy=${_do_not_setpolicy}
+policy_json=${_bucket}.bucket_policy.json
+
+
+VERSION: ${VERSION_SHORT}
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+
+## Policy
+
+Any bucket policy that was present was removed. 
+
+HEREDOC
+    else
+        tee "${_bucket_policy_readme}" << HEREDOC > /dev/null 
+# cephtools bucketpolicy summary
+
+## Options used
+
+Bucket policy initated (Y-m-d-HMS):  
+${_curr_date_time}  
+
+
+\`\`\`
+bucket=${_bucket}  
+policy=${_policy}  
+do_not_setpolicy=${_do_not_setpolicy}  
+policy_json=${_bucket}.bucket_policy.json  
+\`\`\`
+
+
+VERSION: ${VERSION_SHORT}  
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+
+
+## MSI users included in the access policy
+
+\`\`\`
+$(printf "%s\n" "${_users_with_access[@]}")
+\`\`\`
+
+
+## Ceph Actions enabled
+
+See the ceph documentation for details:
+
+[https://docs.ceph.com/en/latest/radosgw/bucketpolicy/](https://docs.ceph.com/en/latest/radosgw/bucketpolicy/)
+
+See all "Actions" listed in the policy JSON file:  
+\`${_bucket}.bucket_policy.json\`
+
+
+HEREDOC
+    fi
+}
+
+_generate_policy_json_original() {
+    local _policy="$1"
+    local _bucket="$2"
+    local _all_ceph_username_string="$3"
+    local _bucket_policy="$4"
+
+    if _contains "${_policy}" "NONE"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+
+HEREDOC
+    elif _contains "${_policy}" "GROUP_READ"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_ceph_username_string}
+        ]},
+        "Action": [
+            "s3:ListBucket",
+            "s3:ListBucketVersions",
+            "s3:GetBucketAcl",
+            "s3:GetBucketCORS",
+            "s3:GetBucketLocation",
+            "s3:GetBucketLogging",
+            "s3:GetBucketNotification",
+            "s3:GetBucketPolicy",
+            "s3:GetBucketTagging",
+            "s3:GetBucketVersioning",
+            "s3:GetBucketWebsite",
+            "s3:GetObjectAcl",
+            "s3:GetObject",
+            "s3:GetObjectVersionAcl",
+            "s3:GetObjectVersion"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+    elif _contains "${_policy}" "GROUP_READ_WRITE"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_ceph_username_string}
+        ]},
+        "Action": [
+            "s3:*"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+    elif _contains "${_policy}" "LIST_READ"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_ceph_username_string}
+        ]},
+        "Action": [
+            "s3:ListBucket",
+            "s3:ListBucketVersions",
+            "s3:GetBucketAcl",
+            "s3:GetBucketCORS",
+            "s3:GetBucketLocation",
+            "s3:GetBucketLogging",
+            "s3:GetBucketNotification",
+            "s3:GetBucketPolicy",
+            "s3:GetBucketTagging",
+            "s3:GetBucketVersioning",
+            "s3:GetBucketWebsite",
+            "s3:GetObjectAcl",
+            "s3:GetObject",
+            "s3:GetObjectVersionAcl",
+            "s3:GetObjectVersion"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+    elif _contains "${_policy}" "LIST_READ_WRITE"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${_all_ceph_username_string}
+        ]},
+        "Action": [
+            "s3:*"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+
+HEREDOC
+    elif _contains "${_policy}" "OTHERS_READ"
+    then
+        tee "${_bucket_policy}" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Sid":"PublicRead",
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+            "s3:GetObject",
+            "s3:GetObjectVersion"
+        ],
+        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        }
+    ]
+}
+
+HEREDOC
+    else
+        _exit_1 printf "The '--policy' option is not recognized."
+    fi
 }
 
 _generate_group_policy() {
@@ -352,38 +649,49 @@ _generate_group_policy() {
     local access_type="$3"
     local policy_file="$4"
 
-    # Get group members
-    local group_members
-    if command -v getent >/dev/null 2>&1; then
-        group_members="$(getent group "$group" | cut -d: -f4 | tr ',' '\n' | sed 's/^/urn:msi:/' | paste -sd, -)"
-    else
-        _warn printf "getent not available, using current user only\\n"
-        group_members="urn:msi:$(id -un)"
-    fi
+    # Get group members and convert to ceph usernames using s3info
+    local username_msi_csv="$(getent group "${group}" | cut -d":" -f4-)"
+    readarray -t username_msi <<< "$(printf "%s\\n" "${username_msi_csv}" | sed -e 'y/,/\n/')"
+
+    local all_ceph_username_string=()
+    local username_ceph=()
+    for i in "${!username_msi[@]}"
+    do
+        if s3info info --user "${username_msi[$i]}" &>/dev/null
+        then
+            local curr_ceph_username="$(s3info info --user "${username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+            username_ceph+=("${curr_ceph_username}")
+            local curr_ceph_username_string="\"arn:aws:iam:::user/${curr_ceph_username}\""
+            if [ "${#all_ceph_username_string[@]}" -eq 0 ]; then
+                all_ceph_username_string+="${curr_ceph_username_string}"
+            else
+                all_ceph_username_string+=",${curr_ceph_username_string}"
+            fi
+        else
+            _warn printf "s3info info command failed for username: %s.\\n" "${username_msi[$i]}"
+        fi
+    done
 
     local actions
     if [[ "$access_type" == "readwrite" ]]; then
-        actions='"s3:GetBucketLocation","s3:ListBucket","s3:GetObject","s3:PutObject","s3:DeleteObject"'
+        actions='"s3:*"'
     else
-        actions='"s3:GetBucketLocation","s3:ListBucket","s3:GetObject"'
+        actions='"s3:ListBucket","s3:ListBucketVersions","s3:GetBucketAcl","s3:GetBucketCORS","s3:GetBucketLocation","s3:GetBucketLogging","s3:GetBucketNotification","s3:GetBucketPolicy","s3:GetBucketTagging","s3:GetBucketVersioning","s3:GetBucketWebsite","s3:GetObjectAcl","s3:GetObject","s3:GetObjectVersionAcl","s3:GetObjectVersion"'
     fi
 
     cat > "$policy_file" <<EOF
 {
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Sid": "Group${access_type}Access",
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": [$(echo "$group_members" | sed 's/,/","/g' | sed 's/^/"/' | sed 's/$/"/')
-                ]
-            },
-            "Action": [${actions}],
-            "Resource": [
-                "arn:aws:s3:::${bucket}",
-                "arn:aws:s3:::${bucket}/*"
-            ]
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${all_ceph_username_string}
+        ]},
+        "Action": [
+            ${actions}
+        ],
+        "Resource": ["arn:aws:s3:::${bucket}/*", "arn:aws:s3:::${bucket}"]
         }
     ]
 }
@@ -398,16 +706,15 @@ _generate_public_read_policy() {
 {
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Sid": "PublicReadAccess",
-            "Effect": "Allow",
-            "Principal": "*",
-            "Action": [
-                "s3:GetObject"
-            ],
-            "Resource": [
-                "arn:aws:s3:::${bucket}/*"
-            ]
+    {
+        "Sid":"PublicRead",
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": [
+            "s3:GetObject",
+            "s3:GetObjectVersion"
+        ],
+        "Resource": ["arn:aws:s3:::${bucket}/*", "arn:aws:s3:::${bucket}"]
         }
     ]
 }
@@ -420,31 +727,56 @@ _generate_list_policy() {
     local access_type="$3"
     local policy_file="$4"
 
-    # Convert comma-separated list to URN format
-    local user_arns="$(echo "$user_list" | tr ',' '\n' | sed 's/^/urn:msi:/' | paste -sd, - | sed 's/,/","/g' | sed 's/^/"/' | sed 's/$/"/')"
+    # Read in the specific users in the list (could be file or comma-separated string)
+    local username_msi_csv
+    if [[ -f "$user_list" ]]; then
+        username_msi_csv="$(cat ${user_list})"
+    else
+        username_msi_csv="$user_list"
+    fi
+    
+    readarray -t username_msi <<< "$(printf "%s\\n" "${username_msi_csv}" | sed -e 'y/,/\n/')"
+
+    # Use the MSI user id (uid) with the "s3info" function to return the ceph username
+    local all_ceph_username_string=()
+    local username_ceph=()
+    for i in "${!username_msi[@]}"
+    do
+        if s3info info --user "${username_msi[$i]}" &>/dev/null
+        then
+            local curr_ceph_username="$(s3info info --user "${username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
+            username_ceph+=("${curr_ceph_username}")
+            local curr_ceph_username_string="\"arn:aws:iam:::user/${curr_ceph_username}\""
+            if [ "${#all_ceph_username_string[@]}" -eq 0 ]; then
+                all_ceph_username_string+="${curr_ceph_username_string}"
+            else
+                all_ceph_username_string+=",${curr_ceph_username_string}"
+            fi
+        else
+            _warn printf "s3info info command failed for username: %s.\\n" "${username_msi[$i]}"
+        fi
+    done
 
     local actions
     if [[ "$access_type" == "readwrite" ]]; then
-        actions='"s3:GetBucketLocation","s3:ListBucket","s3:GetObject","s3:PutObject","s3:DeleteObject"'
+        actions='"s3:*"'
     else
-        actions='"s3:GetBucketLocation","s3:ListBucket","s3:GetObject"'
+        actions='"s3:ListBucket","s3:ListBucketVersions","s3:GetBucketAcl","s3:GetBucketCORS","s3:GetBucketLocation","s3:GetBucketLogging","s3:GetBucketNotification","s3:GetBucketPolicy","s3:GetBucketTagging","s3:GetBucketVersioning","s3:GetBucketWebsite","s3:GetObjectAcl","s3:GetObject","s3:GetObjectVersionAcl","s3:GetObjectVersion"'
     fi
 
     cat > "$policy_file" <<EOF
 {
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Sid": "List${access_type}Access",
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": [${user_arns}]
-            },
-            "Action": [${actions}],
-            "Resource": [
-                "arn:aws:s3:::${bucket}",
-                "arn:aws:s3:::${bucket}/*"
-            ]
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${all_ceph_username_string}
+        ]},
+        "Action": [
+            ${actions}
+        ],
+        "Resource": ["arn:aws:s3:::${bucket}/*", "arn:aws:s3:::${bucket}"]
         }
     ]
 }
