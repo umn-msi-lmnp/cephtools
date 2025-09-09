@@ -154,6 +154,11 @@ test-compatibility: all
 	@chmod +x tests/test-compatibility.sh
 	@tests/test-compatibility.sh
 
+test-real-s3: all
+	@echo "Running real S3 integration tests..."
+	@chmod +x tests/test-real-s3-integration.sh
+	@tests/test-real-s3-integration.sh
+
 # Help target for testing
 test-help:
 	@echo "Available test targets:"
@@ -163,6 +168,7 @@ test-help:
 	@echo "  test-integration  - Run integration tests with mocks"
 	@echo "  test-errors       - Run error scenario tests"
 	@echo "  test-compatibility- Run system compatibility tests"
+	@echo "  test-real-s3      - Run real S3 integration tests (creates actual buckets)"
 	@echo "  test              - Legacy basic tests"
 	@echo "  comprehensive-test- Legacy comprehensive tests"
 	@echo ""

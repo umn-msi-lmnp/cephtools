@@ -297,9 +297,13 @@ _execute_bucketpolicy_workflow() {
 
     # Get group user ids and generate policy based on type
     local _users_with_access
-    local _all_ceph_username_string=()
+    local _all_ceph_username_string=""
 
-    if [[ "${_policy}" =~ ^.*GROUP.*$ ]]
+    if [[ "${_policy}" == "NONE" ]]
+    then
+        _users_with_access="None (policy removed)"
+        # Skip user collection for NONE policy
+    elif [[ "${_policy}" =~ ^.*GROUP.*$ ]]
     then
         # Find all usernames in the group
         local _username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
@@ -315,8 +319,8 @@ _execute_bucketpolicy_workflow() {
                 _username_ceph+=("${_curr_ceph_username}")
                 _username_ceph_msi+=("${_username_msi[$i]}")
                 local _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
-                if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
-                    _all_ceph_username_string+="${_curr_ceph_username_string}"
+                if [ -z "$_all_ceph_username_string" ]; then
+                    _all_ceph_username_string="${_curr_ceph_username_string}"
                 else
                     _all_ceph_username_string+=",${_curr_ceph_username_string}"
                 fi
@@ -349,8 +353,8 @@ _execute_bucketpolicy_workflow() {
                 _username_ceph+=("${_curr_ceph_username}")
                 _username_ceph_msi+=("${_username_msi[$i]}")
                 local _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
-                if [ "${#_all_ceph_username_string[@]}" -eq 0 ]; then
-                    _all_ceph_username_string+="${_curr_ceph_username_string}"
+                if [ -z "$_all_ceph_username_string" ]; then
+                    _all_ceph_username_string="${_curr_ceph_username_string}"
                 else
                     _all_ceph_username_string+=",${_curr_ceph_username_string}"
                 fi
@@ -375,7 +379,7 @@ _execute_bucketpolicy_workflow() {
             then
                 _info printf "The bucket policy was removed.\\n"
             else
-                _warn printf "The 's3cmd delpolicy' command failed.\\n"
+                _warn printf "The 's3cmd delpolicy' command failed (policy may not have existed).\\n"
             fi
         else
             if s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null

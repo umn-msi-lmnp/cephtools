@@ -98,6 +98,13 @@ run_compatibility_tests() {
         "Cross-platform and environment compatibility"
 }
 
+run_real_s3_tests() {
+    run_test_suite \
+        "Real S3 Integration Tests" \
+        "$SCRIPT_DIR/test-real-s3-integration.sh" \
+        "Integration tests with actual MSI S3 service"
+}
+
 ###############################################################################
 # Test Summary and Reporting
 ###############################################################################
@@ -168,6 +175,7 @@ show_usage() {
     echo "  integration       Integration tests with mocks"
     echo "  errors            Error scenario tests"
     echo "  compatibility     System compatibility tests"
+    echo "  real-s3           Real S3 integration tests (creates actual buckets)"
     echo
     echo "Examples:"
     echo "  $0                          # Run all test suites"
@@ -205,7 +213,7 @@ main() {
                 skip_build=true
                 shift
                 ;;
-            basic|dependencies|integration|errors|compatibility)
+            basic|dependencies|integration|errors|compatibility|real-s3)
                 specific_tests+=("$1")
                 shift
                 ;;
@@ -254,7 +262,11 @@ main() {
     local overall_success=true
     
     # Run specified tests or all tests
-    for test_name in "${specific_tests[@]:-basic dependencies integration errors compatibility}"; do
+    if [[ ${#specific_tests[@]} -eq 0 ]]; then
+        specific_tests=(basic dependencies integration errors compatibility real-s3)
+    fi
+    
+    for test_name in "${specific_tests[@]}"; do
         case $test_name in
             basic)
                 run_basic_tests || overall_success=false
@@ -270,6 +282,9 @@ main() {
                 ;;
             compatibility)
                 run_compatibility_tests || overall_success=false
+                ;;
+            real-s3)
+                run_real_s3_tests || overall_success=false
                 ;;
         esac
         echo

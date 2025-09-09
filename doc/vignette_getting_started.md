@@ -11,8 +11,9 @@ The purpose of this subcommand is to backup a single directory, and all its cont
 Inside the working directory:
 
 - A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to a ceph bucket.
-- A `PREFIX.2_delete.slurm` job file can be launched to delete all the data from panfs.
-- A `PREFIX.3_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
+- A `PREFIX.2_verify.slurm` job file can be launched to verify all the data was transferred correctly.
+- A `PREFIX.3_delete.slurm` job file can be launched to delete all the data from panfs.
+- A `PREFIX.4_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
 - Finally, a `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
 
 ## `bucketpolicy`: Allow others to access your ceph (tier2) bucket
@@ -36,6 +37,15 @@ Inside the working directory:
 
 - A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to a ceph bucket.
 - A `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
+
+## `dd2dr`: Backup all files in a group's data_delivery folder to disaster_recovery (tier1)
+
+The purpose of this subcommand is to backup all of the data in the group's special "data_delivery" or "data_release" directories to MSI's Tier 1 `disaster_recovery` directory for backup and long-term storage. The folder `$MSIPROJECT/shared/disaster_recovery` is special because all data in the directory are backed up automatically off-site (not at MSI in Walter library). The tool finds all files (and follows symbolic links) in the directory and copies it to `disaster_recovery`. The tool will create a working directory and output a file list and a slurm job script to complete the steps. By default, the working directory is created at `$MSIPROJECT/shared/cephtools/dd2dr`.
+
+Inside the working directory:
+
+- A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to the disaster recovery directory.
+- A `PREFIX.readme.md` file is created that describes the process and where the files in disaster recovery are located.
 
 ## `filesinbackup`: Create file lists from tier 2 bucket and `shared/disaster_recovery`
 
