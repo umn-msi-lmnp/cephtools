@@ -243,26 +243,7 @@ plugin_main() {
 # Helper Functions
 ###############################################################################
 
-_check_rclone_version() {
-    if command -v rclone &>/dev/null; then
-        local rclone_minor_ver="$(rclone --version | head -n 1 | sed 's/rclone v..//' | sed 's/\..*$//')"
-        if [ "$rclone_minor_ver" -ge "57" ]; then
-            _verb printf "Using rclone found in PATH:\\n"
-            _verb printf "%s\\n" "$(command -v rclone)"
-            _verb printf "%s\\n" "$(rclone --version)"
-        else
-            _warn printf "rclone in your PATH was a version less than 1.57, so using the module: %s\\n" "/common/software/modulefiles/manual/common/rclone/1.64.1"
-            module load rclone/1.64.1
-            _verb printf "%s\\n" "$(command -v rclone)"
-            _verb printf "%s\\n" "$(rclone --version)" 
-        fi
-    else
-        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "/common/software/modulefiles/manual/common/rclone/1.64.1"
-        module load rclone/1.64.1
-        _verb printf "%s\\n" "$(command -v rclone)"
-        _verb printf "%s\\n" "$(rclone --version)" 
-    fi
-}
+# Note: _check_rclone_version() is now defined in common.sh
 
 _validate_remote_and_bucket() {
     local remote="$1"
@@ -375,7 +356,7 @@ _create_dd2ceph_scripts() {
 #SBATCH -e ${myprefix}.stderr
 
 # Load required modules
-module load rclone/1.64.1
+module load rclone/1.71.0-r1
 
 # Set umask for group-writable files (660) and directories (770)
 umask 0007

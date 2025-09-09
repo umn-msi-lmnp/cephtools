@@ -20,7 +20,7 @@ setup_full_mock_environment() {
     setup_mock_cephtools "$PROJECT_ROOT"
     
     # Mock all external commands
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3cmd" "s3cmd version 2.3.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
 

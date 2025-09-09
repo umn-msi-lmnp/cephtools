@@ -102,7 +102,7 @@ test_nonexistent_paths() {
     start_test "Non-existent path handling"
     
     setup_mock_cephtools
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Test with non-existent source path for dd2ceph
     local nonexistent_path="/this/path/does/not/exist"
@@ -220,7 +220,7 @@ test_credential_failures() {
     
     # Mock s3info that fails (no credentials available)
     create_failing_mock_command "s3info" "No credentials configured" 1
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Plugins using s3info should handle credential failures
     if "$CEPHTOOLS_BIN" filesinbackup --group testgroup 2>/dev/null; then
@@ -275,7 +275,7 @@ test_large_dataset_scenarios() {
         echo "Large file $i" > "$large_data_dir/largefile$i.txt"
     done
     
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Test should handle large datasets appropriately
     if "$CEPHTOOLS_BIN" dd2ceph --bucket test --path "$large_data_dir" --dry_run 2>/dev/null; then
@@ -296,7 +296,7 @@ test_module_loading_failures() {
     setup_mock_cephtools
     
     # Mock module command that fails
-    create_failing_mock_command "module" "Module 'rclone/1.64.1' not found" 1
+    create_failing_mock_command "module" "Module 'rclone/1.71.0-r1' not found" 1
     
     # Should handle module loading failures gracefully
     # (In practice, the generated SLURM scripts contain module load commands)
@@ -368,7 +368,7 @@ test_corrupted_configuration() {
     mkdir -p "$rclone_config_dir"
     echo "corrupted config data" > "$rclone_config_dir/rclone.conf"
     
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Should handle corrupted config gracefully
     if "$CEPHTOOLS_BIN" dd2ceph --bucket test --path /tmp --dry_run 2>/dev/null; then
@@ -417,7 +417,7 @@ test_dd2ceph_specific_errors() {
     setup_mock_cephtools
     
     # Mock rclone version check failure
-    create_mock_command "rclone" "rclone v1.30.0" 0  # Old version
+    create_mock_command "rclone" "rclone v1.60.0" 0  # Old version
     
     # Should handle old rclone version appropriately
     if "$CEPHTOOLS_BIN" dd2ceph --bucket test --path /tmp --dry_run 2>/dev/null; then

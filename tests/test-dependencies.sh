@@ -48,18 +48,18 @@ test_rclone_availability() {
     assert_command_not_exists "rclone"
     
     # Test with old version rclone
-    create_mock_command "rclone" "rclone v1.55.1" 0
+    create_mock_command "rclone" "rclone v1.65.0" 0
     assert_command_exists "rclone"
     
     # Test with current version rclone
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     assert_command_exists "rclone"
 }
 
 test_rclone_configuration() {
     start_test "rclone configuration validation"
     
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Test listremotes command
     create_logging_mock_command "rclone"
@@ -178,14 +178,14 @@ test_module_system() {
     start_test "Module system availability"
     
     # Create mock module command
-    create_mock_command "module" "Module 'rclone/1.64.1' loaded successfully" 0
+    create_mock_command "module" "Module 'rclone/1.71.0-r1' loaded successfully" 0
     
     assert_command_exists "module"
     
     # Test module load
     create_logging_mock_command "module"
     
-    module load rclone/1.64.1 >/dev/null 2>&1 || true
+    module load rclone/1.71.0-r1 >/dev/null 2>&1 || true
     
     if was_mock_called "module" "load rclone"; then
         pass_test "Module loading capability"
@@ -202,7 +202,7 @@ test_dd2ceph_dependencies() {
     start_test "dd2ceph plugin dependencies"
     
     # Set up all required dependencies for dd2ceph
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3cmd" "s3cmd version 2.3.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
     create_mock_command "module" "Module loaded" 0
@@ -218,7 +218,7 @@ test_dd2dr_dependencies() {
     start_test "dd2dr plugin dependencies"
     
     # Set up all required dependencies for dd2dr
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "module" "Module loaded" 0
     
     # Test that all dependencies are available
@@ -230,7 +230,7 @@ test_filesinbackup_dependencies() {
     start_test "filesinbackup plugin dependencies"
     
     # Set up all required dependencies for filesinbackup
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
     create_mock_command "find" "" 0
     create_mock_command "comm" "" 0
@@ -250,7 +250,7 @@ test_panfs2ceph_dependencies() {
     start_test "panfs2ceph plugin dependencies"
     
     # Set up all required dependencies for panfs2ceph
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
     create_mock_command "module" "Module loaded" 0
     

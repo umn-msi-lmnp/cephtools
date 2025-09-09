@@ -214,6 +214,10 @@ _execute_filesinbackup_workflow() {
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
 
+    # Check rclone version and load appropriate module
+    _info printf "Checking rclone version...\\n"
+    _check_rclone_version
+
     # Create log directory if needed
     if [[ ! -d "$log_dir" ]]; then
         _info printf "Creating log directory: %s\\n" "$log_dir"
@@ -319,7 +323,7 @@ _create_filesinbackup_slurm_script() {
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone
+module load rclone/1.71.0-r1
 
 # Set umask for group-writable files (660) and directories (770)
 umask 0007

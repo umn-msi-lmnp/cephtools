@@ -513,9 +513,14 @@ _run_preflight_checks() {
     _check_disk_space "${path}" "${log_dir}"
     _info printf "✅ Disk space check completed\\n"
     
-    # 3. rclone connectivity (skip in dry run for speed)
+    # 3. rclone version check
+    _info printf "3. Checking rclone version...\\n"
+    _check_rclone_version
+    _info printf "✅ rclone version check completed\\n"
+    
+    # 4. rclone connectivity (skip in dry run for speed)
     if [[ -z "${dry_run}" ]]; then
-        _info printf "3. Testing rclone connectivity...\\n"
+        _info printf "4. Testing rclone connectivity...\\n"
         if ! _validate_rclone_connectivity "${remote}" "${bucket}"; then
             _error printf "❌ rclone connectivity check failed\\n"
             checks_passed=1
@@ -523,11 +528,11 @@ _run_preflight_checks() {
             _info printf "✅ rclone connectivity check passed\\n"
         fi
     else
-        _info printf "3. Skipping rclone connectivity check (dry run mode)\\n"
+        _info printf "4. Skipping rclone connectivity check (dry run mode)\\n"
     fi
     
-    # 4. Estimate transfer size and time
-    _info printf "4. Analyzing transfer requirements...\\n"
+    # 5. Estimate transfer size and time
+    _info printf "5. Analyzing transfer requirements...\\n"
     local file_count=$(find "${path}" -type f 2>/dev/null | wc -l)
     local dir_count=$(find "${path}" -type d 2>/dev/null | wc -l)
     local total_size_kb=$(du -sk "${path}" 2>/dev/null | cut -f1)
@@ -589,7 +594,7 @@ _create_transfer_scripts() {
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone
+module load rclone/1.71.0-r1
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then
@@ -669,7 +674,7 @@ EOF
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone
+module load rclone/1.71.0-r1
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then
@@ -703,7 +708,7 @@ EOF
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone
+module load rclone/1.71.0-r1
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then
@@ -778,7 +783,7 @@ EOF
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone
+module load rclone/1.71.0-r1
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then

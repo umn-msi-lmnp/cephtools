@@ -160,6 +160,10 @@ _execute_dd2dr_workflow() {
         _exit_1 printf "Data delivery directory does not exist: %s\\n" "$data_delivery_path"
     fi
 
+    # Check rclone version and load appropriate module
+    _info printf "Checking rclone version...\\n"
+    _check_rclone_version
+
     # Create log directory if needed
     if [[ ! -d "$log_dir" ]]; then
         _info printf "Creating log directory: %s\\n" "$log_dir"
@@ -220,7 +224,7 @@ _create_comprehensive_dd2dr_script() {
 umask 0007
 
 # Load required modules
-module load rclone
+module load rclone/1.71.0-r1
 
 # Change to working directory
 cd ${work_dir}

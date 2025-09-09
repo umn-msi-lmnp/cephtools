@@ -25,7 +25,7 @@ test_dd2ceph_double_slash_reproducer() {
     local problematic_log_dir="$MSIPROJECT/shared/ceph//shrestha-70-mcrpc-biopsy-samples-atac-seq"
     
     # Mock required commands
-    create_mock_command "rclone" "rclone v1.64.1" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
     create_mock_command "module" "" 0
     create_logging_mock_command "rclone"

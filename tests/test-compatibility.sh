@@ -276,7 +276,7 @@ test_tool_versions() {
             # Mock the tool with a reasonable version
             case "$tool" in
                 "rclone")
-                    create_mock_command "rclone" "rclone v1.64.1" 0
+                    create_mock_command "rclone" "rclone v1.71.0" 0
                     pass_test "rclone mocked with compatible version"
                     ;;
 

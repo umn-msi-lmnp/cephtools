@@ -242,3 +242,29 @@ _setup_rclone_credentials() {
     _warn printf "s3info command not available for rclone credential setup\\n"
   fi
 }
+
+# _check_rclone_version()
+#
+# Description:
+#   Check rclone version and load appropriate module if needed
+#   Requires rclone >= 1.67.0, falls back to rclone/1.71.0-r1 module
+_check_rclone_version() {
+    if command -v rclone &>/dev/null; then
+        local rclone_minor_ver="$(rclone --version | head -n 1 | sed 's/rclone v..//' | sed 's/\..*$//')"
+        if [ "$rclone_minor_ver" -ge "67" ]; then
+            _verb printf "Using rclone found in PATH:\\n"
+            _verb printf "%s\\n" "$(command -v rclone)"
+            _verb printf "%s\\n" "$(rclone --version)"
+        else
+            _warn printf "rclone in your PATH was a version less than 1.67.0, so using the module: %s\\n" "rclone/1.71.0-r1"
+            module load rclone/1.71.0-r1
+            _verb printf "%s\\n" "$(command -v rclone)"
+            _verb printf "%s\\n" "$(rclone --version)" 
+        fi
+    else
+        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "rclone/1.71.0-r1"
+        module load rclone/1.71.0-r1
+        _verb printf "%s\\n" "$(command -v rclone)"
+        _verb printf "%s\\n" "$(rclone --version)" 
+    fi
+}

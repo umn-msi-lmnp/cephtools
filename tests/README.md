@@ -22,7 +22,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 #### 2. Dependency Validation (`test-dependencies.sh`)
 - ✅ **System Commands**: bash, date, mkdir, chmod, find, grep, awk, sed, etc.
 - ✅ **MSI Commands**: s3info, getent availability
-- ✅ **rclone**: Version checking (≥1.57), remote validation, bucket access
+- ✅ **rclone**: Version checking (≥1.67.0), remote validation, bucket access
 - ✅ **s3cmd**: Availability, bucket operations, policy management
 
 - ✅ **Module System**: Module loading and availability
