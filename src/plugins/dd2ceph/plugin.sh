@@ -36,14 +36,19 @@ Options:
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
                             are saved. [Default = "$MSIPROJECT/shared/cephtools/dd2ceph"]
     
-    -d|--dry_run            Dry run option will be enabled in the rclone commands (so nothing 
-                            will be transfered or deleted when scripts run). Also, the slurm 
-                            scripts will be written, but not automatically launched, so you can
-                            review them.
-    
-    -v|--verbose            Verbose mode (print additional info).
-                            
-    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
+     -d|--dry_run            Dry run option will be enabled in the rclone commands (so nothing 
+                             will be transfered or deleted when scripts run). Also, the slurm 
+                             scripts will be written, but not automatically launched, so you can
+                             review them.
+     
+     -e|--delete_empty_dirs  Do NOT transfer empty dirs from source to ceph. [Default is to 
+                             transfer empty dirs using rclone's native directory handling 
+                             with --create-empty-src-dirs --s3-directory-markers flags.
+                             Setting this flag will omit these flags.]
+     
+     -v|--verbose            Verbose mode (print additional info).
+                             
+     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
 
 Description:
@@ -74,9 +79,10 @@ plugin_main() {
     local _bucket="$(id -ng)-data-archive"
     local _path="$MSIPROJECT/data_delivery"
     local _log_dir="$MSIPROJECT/shared/cephtools/dd2ceph"
-    local _dry_run=
-    local _verbose=0
-    local _threads="16"
+     local _dry_run=
+     local _verbose=0
+     local _delete_empty_dirs=0
+     local _threads="16"
 
     # __get_option_value()
     #
@@ -140,10 +146,13 @@ plugin_main() {
         -d|--dry_run)
             _dry_run="--dry-run"
             ;;
-        -v|--verbose)
-            _verbose=1
-            ;;
-        -r|--remote)
+         -v|--verbose)
+             _verbose=1
+             ;;
+         -e|--delete_empty_dirs)
+             _delete_empty_dirs=1
+             ;;
+         -r|--remote)
              _remote="$(__get_option_value "${__arg}" "${__val:-}")"
              shift
              ;;
@@ -209,9 +218,10 @@ plugin_main() {
     _verb printf "bucket: %s\\n" "$_bucket"
     _verb printf "path: %s\\n" "$_path"
     _verb printf "log_dir: %s\\n" "$_log_dir"
-    _verb printf "dry_run: %s\\n" "$_dry_run"
-    _verb printf "verbose: %s\\n" "$_verbose"
-    _verb printf "threads: %s\\n" "$_threads"
+     _verb printf "dry_run: %s\\n" "$_dry_run"
+     _verb printf "verbose: %s\\n" "$_verbose"
+     _verb printf "delete_empty_dirs: %s\\n" "$([[ ${_delete_empty_dirs} -eq 1 ]] && echo "enabled" || echo "disabled")"
+     _verb printf "threads: %s\\n" "$_threads"
 
     # If required options are empty or null, exit.
     _root_path_dir=$(readlink -m "${_path}")
@@ -235,8 +245,8 @@ plugin_main() {
     # Check s3cmd availability
     _check_s3cmd_access "$_bucket"
 
-    # Execute the main workflow
-    _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads"
+     # Execute the main workflow
+     _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads" "$_delete_empty_dirs"
 }
 
 ###############################################################################
@@ -279,13 +289,14 @@ _check_s3cmd_access() {
     fi
 }
 
-_execute_dd2ceph_workflow() {
-    local remote="$1"
-    local bucket="$2"
-    local root_path_dir="$3"
-    local log_dir="$4"
-    local dry_run="$5"
-    local threads="$6"
+ _execute_dd2ceph_workflow() {
+     local remote="$1"
+     local bucket="$2"
+     local root_path_dir="$3"
+     local log_dir="$4"
+     local dry_run="$5"
+     local threads="$6"
+     local delete_empty_dirs="$7"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -310,8 +321,8 @@ _execute_dd2ceph_workflow() {
     # Check for filenames or pathnames that are too long
     _check_pathname_lengths "${myprefix}"
 
-    # Create the transfer scripts
-    _create_dd2ceph_scripts "${remote}" "${bucket}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}"
+     # Create the transfer scripts
+     _create_dd2ceph_scripts "${remote}" "${bucket}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
 
     # Show completion message
     _info printf "dd2ceph workflow completed\\n"
@@ -333,14 +344,15 @@ _check_pathname_lengths() {
     fi
 }
 
-_create_dd2ceph_scripts() {
-    local remote="$1"
-    local bucket="$2"
-    local root_path_dir="$3" 
-    local myprefix_dir="$4"
-    local myprefix="$5"
-    local dry_run="$6"
-    local threads="$7"
+ _create_dd2ceph_scripts() {
+     local remote="$1"
+     local bucket="$2"
+     local root_path_dir="$3" 
+     local myprefix_dir="$4"
+     local myprefix="$5"
+     local dry_run="$6"
+     local threads="$7"
+     local delete_empty_dirs="$8"
 
     # Create the main transfer script
     cat > "${myprefix}.slurm" <<EOF
@@ -378,13 +390,27 @@ echo "Starting dd2ceph transfer at \$(date)"
 echo "Source: ${root_path_dir}"
 echo "Destination: ${remote}:${bucket}"
 
-rclone copy "${root_path_dir}" "${remote}:${bucket}" \\
-    --transfers ${threads} \\
-    --progress \\
-    --stats 30s \\
-    ${dry_run} \\
-    --log-file "${myprefix}.rclone.log" \\
-    --log-level INFO
+$(if [[ ${delete_empty_dirs} -eq 0 ]]; then
+    echo "echo \"Using rclone native empty directory handling...\""
+    echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --create-empty-src-dirs \\"
+    echo "    --s3-directory-markers \\"
+    echo "    --log-file \"${myprefix}.rclone.log\" \\"
+    echo "    --log-level INFO"
+else
+    echo "echo \"Skipping empty directories...\""
+    echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --log-file \"${myprefix}.rclone.log\" \\"
+    echo "    --log-level INFO"
+fi)
 
 echo "Transfer completed at \$(date)"
 

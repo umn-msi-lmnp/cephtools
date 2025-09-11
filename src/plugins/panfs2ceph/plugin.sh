@@ -39,11 +39,10 @@ Options:
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
     
-    -e|--delete_empty_dirs  Do NOT transfer empty dirs on panfs to ceph. [Default is to 
-                            create a hidden file (".empty_dir") inside all empty dirs so 
-                            they get transfered to ceph. Setting this flag will not create
-                            the ".empty_dir" files, thus empty dirs will not get copied to
-                            ceph.
+     -e|--delete_empty_dirs  Do NOT transfer empty dirs from panfs to ceph. [Default is to 
+                             transfer empty dirs using rclone's native directory handling 
+                             with --create-empty-src-dirs --s3-directory-markers flags.
+                             Setting this flag will omit these flags.]
                             
     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
@@ -623,30 +622,32 @@ if [[ \$unreadable_count -gt 0 ]]; then
     echo "These files may not be transferred successfully"
 fi
 
-# Create empty directory markers if requested
-$(if [[ ${delete_empty_dirs} -eq 0 ]]; then
-    echo "echo \"Creating empty directory markers...\""
-    echo "# Check if we can create marker files"
-    echo "readonly_dirs=\$(find \"${path}\" -type d -empty ! -writable 2>/dev/null | wc -l)"
-    echo "if [[ \$readonly_dirs -gt 0 ]]; then"
-    echo "    echo \"WARNING: Found \$readonly_dirs empty directories that are not writable\""
-    echo "    echo \"Cannot create .empty_dir markers in these directories\""
-    echo "fi"
-    echo "find \"${path}\" -type d -empty -writable -exec touch {}/.empty_dir \\; 2>/dev/null || true"
-fi)
-
 # Perform the transfer
 echo "Starting transfer at \$(date)"
 echo "Source: ${path}"
 echo "Destination: ${remote}:${bucket}/${path_basename}"
 
-rclone copy "${path}" "${remote}:${bucket}/${path_basename}" \\
-    --transfers ${threads} \\
-    --progress \\
-    --stats 30s \\
-    ${dry_run} \\
-    --log-file "${script_prefix}.1_copy.rclone.log" \\
-    --log-level INFO
+$(if [[ ${delete_empty_dirs} -eq 0 ]]; then
+    echo "echo \"Using rclone native empty directory handling...\""
+    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path_basename}\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --create-empty-src-dirs \\"
+    echo "    --s3-directory-markers \\"
+    echo "    --log-file \"${script_prefix}.1_copy.rclone.log\" \\"
+    echo "    --log-level INFO"
+else
+    echo "echo \"Skipping empty directories...\""
+    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path_basename}\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --log-file \"${script_prefix}.1_copy.rclone.log\" \\"
+    echo "    --log-level INFO"
+fi)
 
 echo "Transfer completed at \$(date)"
 

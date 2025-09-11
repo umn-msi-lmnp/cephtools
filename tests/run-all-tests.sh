@@ -105,6 +105,13 @@ run_real_s3_tests() {
         "Integration tests with actual MSI S3 service"
 }
 
+run_empty_dirs_tests() {
+    run_test_suite \
+        "Empty Directory Flag Tests" \
+        "$SCRIPT_DIR/test-empty-dirs-flag.sh" \
+        "Tests --delete_empty_dirs flag functionality for both plugins"
+}
+
 ###############################################################################
 # Test Summary and Reporting
 ###############################################################################
@@ -176,6 +183,7 @@ show_usage() {
     echo "  errors            Error scenario tests"
     echo "  compatibility     System compatibility tests"
     echo "  real-s3           Real S3 integration tests (creates actual buckets)"
+    echo "  empty-dirs        Empty directory flag tests (--delete_empty_dirs)"
     echo
     echo "Examples:"
     echo "  $0                          # Run all test suites"
@@ -213,7 +221,7 @@ main() {
                 skip_build=true
                 shift
                 ;;
-            basic|dependencies|integration|errors|compatibility|real-s3)
+            basic|dependencies|integration|errors|compatibility|real-s3|empty-dirs)
                 specific_tests+=("$1")
                 shift
                 ;;
@@ -263,7 +271,7 @@ main() {
     
     # Run specified tests or all tests
     if [[ ${#specific_tests[@]} -eq 0 ]]; then
-        specific_tests=(basic dependencies integration errors compatibility real-s3)
+        specific_tests=(basic dependencies integration errors compatibility empty-dirs real-s3)
     fi
     
     for test_name in "${specific_tests[@]}"; do
@@ -282,6 +290,9 @@ main() {
                 ;;
             compatibility)
                 run_compatibility_tests || overall_success=false
+                ;;
+            empty-dirs)
+                run_empty_dirs_tests || overall_success=false
                 ;;
             real-s3)
                 run_real_s3_tests || overall_success=false

@@ -26,7 +26,7 @@ CORE_FILES := src/core/common.sh \
 
 # Top-level Targets
 .PHONY: all clean plugins core test validate-plugins list-plugins show-config comprehensive-test
-.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick
+.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs
 
 all: core plugins validate-plugins
 
@@ -159,6 +159,11 @@ test-real-s3: all
 	@chmod +x tests/test-real-s3-integration.sh
 	@tests/test-real-s3-integration.sh
 
+test-empty-dirs: all
+	@echo "Running empty directory flag tests..."
+	@chmod +x tests/test-empty-dirs-flag.sh
+	@tests/test-empty-dirs-flag.sh
+
 # Help target for testing
 test-help:
 	@echo "Available test targets:"
@@ -169,6 +174,7 @@ test-help:
 	@echo "  test-errors       - Run error scenario tests"
 	@echo "  test-compatibility- Run system compatibility tests"
 	@echo "  test-real-s3      - Run real S3 integration tests (creates actual buckets)"
+	@echo "  test-empty-dirs   - Run empty directory flag tests (--delete_empty_dirs)"
 	@echo "  test              - Legacy basic tests"
 	@echo "  comprehensive-test- Legacy comprehensive tests"
 	@echo ""

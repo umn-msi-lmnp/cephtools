@@ -60,6 +60,14 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Resource Limits**: File descriptors, process limits
 - ✅ **Path Handling**: Cross-platform path resolution
 
+#### 6. Empty Directory Flag Tests (`test-empty-dirs-flag.sh`)
+- ✅ **Mock Tests**: SLURM script generation with correct rclone flags
+- ✅ **Real Ceph Tests**: End-to-end validation of empty directory handling
+- ✅ **panfs2ceph Plugin**: Default behavior and --delete_empty_dirs flag
+- ✅ **dd2ceph Plugin**: Default behavior and --delete_empty_dirs flag
+- ✅ **Flag Validation**: Presence/absence of --create-empty-src-dirs --s3-directory-markers
+- ✅ **Bucket Validation**: Verification of empty directories in actual Ceph buckets
+
 ## Running Tests
 
 ### Quick Commands
@@ -73,6 +81,7 @@ make test-deps          # Dependency validation
 make test-integration   # Integration tests  
 make test-errors        # Error scenarios
 make test-compatibility # System compatibility
+make test-empty-dirs    # Empty directory flag tests
 ```
 
 ### Advanced Usage
@@ -81,7 +90,7 @@ make test-compatibility # System compatibility
 ./tests/run-all-tests.sh --quiet
 
 # Run specific combinations
-./tests/run-all-tests.sh basic integration errors
+./tests/run-all-tests.sh basic integration errors empty-dirs
 
 # Run with verbose output
 ./tests/run-all-tests.sh --verbose
@@ -152,8 +161,8 @@ make test-compatibility # System compatibility
 
 ## Test Statistics
 
-- **Total Test Scripts**: 6 (including framework and master runner)
-- **Test Categories**: 5 major areas of coverage
+- **Total Test Scripts**: 7 (including framework and master runner)
+- **Test Categories**: 6 major areas of coverage
 - **Mock Commands**: Full simulation of external dependencies  
 - **Assertion Types**: 10+ different validation methods
 - **Plugin Coverage**: 100% of all plugins tested
