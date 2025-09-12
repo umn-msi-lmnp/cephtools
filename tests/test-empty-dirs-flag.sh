@@ -269,7 +269,7 @@ test_panfs2ceph_empty_dirs_default_generates_flags() {
         
         # Find the generated SLURM script
         local script_file
-        script_file=$(find "$output_dir" -name "*.1_copy.slurm" | head -1)
+        script_file=$(find "$output_dir" -name "*.1_copy_and_verify.slurm" | head -1)
         
         if [[ -n "$script_file" ]]; then
             validate_rclone_flags_in_script "$script_file" "true" "panfs2ceph"
@@ -311,7 +311,7 @@ test_panfs2ceph_empty_dirs_flag_omits_flags() {
         
         # Find the generated SLURM script
         local script_file
-        script_file=$(find "$output_dir" -name "*.1_copy.slurm" | head -1)
+        script_file=$(find "$output_dir" -name "*.1_copy_and_verify.slurm" | head -1)
         
         if [[ -n "$script_file" ]]; then
             validate_rclone_flags_in_script "$script_file" "false" "panfs2ceph"

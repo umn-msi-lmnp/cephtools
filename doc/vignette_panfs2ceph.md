@@ -65,7 +65,7 @@ By default, the working directory is created at the same path as the original in
 
 Inside the working directory:
 
-- A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to a ceph bucket.
+- A `PREFIX.1_copy_and_verify.slurm` job file can be launched to copy and verify all the data to a ceph bucket.
 - A `PREFIX.2_delete.slurm` job file can be launched to delete all the data from panfs.
 - A `PREFIX.3_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
 - Finally, a `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
@@ -74,15 +74,16 @@ Inside the working directory:
 
 - Change into the working directory created above.
 - Review the slurm scripts (change any parameters you wish)
-- Launch the "copy" data transfer job
+- Launch the combined "copy and verify" job
 
 ```
-sbatch PREFIX.1_copy.slurm
+sbatch PREFIX.1_copy_and_verify.slurm
 ```
 
-- Review progress in the job error log file (`tail PREFIX.1_copy.slurm.e*`)
-- Make sure the transfer was successful (review files on ceph, review output logs, etc.)
-- Delete the original data from panfs (tier1)
+- Review progress in the job error log file (`tail PREFIX.1_copy_and_verify.slurm.e*`)
+- The combined script will copy data to ceph and immediately verify the transfer
+- Review the verification log (`PREFIX.1_verify.rclone.log`) to ensure all files were transferred successfully
+- After verification is complete and successful, delete the original data from panfs (tier1)
 
 ```
 sbatch PREFIX.2_delete.slurm

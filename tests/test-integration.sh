@@ -349,24 +349,33 @@ test_panfs2ceph_workflow() {
     
     cd "$original_dir"
     
-    # Should create SLURM scripts (copy and verify)
-    local copy_script=$(find "$output_dir" -name "*copy*.slurm" | head -1)
-    local verify_script=$(find "$output_dir" -name "*verify*.slurm" | head -1)
+    # Should create SLURM scripts (combined copy and verify, delete, restore)
+    local copy_and_verify_script=$(find "$output_dir" -name "*copy_and_verify*.slurm" | head -1)
+    local delete_script=$(find "$output_dir" -name "*delete*.slurm" | head -1)
+    local restore_script=$(find "$output_dir" -name "*restore*.slurm" | head -1)
     
-    if [[ -n "$copy_script" ]]; then
-        pass_test "panfs2ceph copy script created"
-        verify_slurm_script_basics "$copy_script" "copy"
-        assert_contains "$(cat "$copy_script")" "rclone copy" "Contains rclone copy command"
+    if [[ -n "$copy_and_verify_script" ]]; then
+        pass_test "panfs2ceph copy and verify script created"
+        verify_slurm_script_basics "$copy_and_verify_script" "copy_and_verify"
+        assert_contains "$(cat "$copy_and_verify_script")" "rclone copy" "Contains rclone copy command"
+        assert_contains "$(cat "$copy_and_verify_script")" "rclone check" "Contains rclone check command"
     else
-        fail_test "No panfs2ceph copy script created"
+        fail_test "No panfs2ceph copy and verify script created"
     fi
     
-    if [[ -n "$verify_script" ]]; then
-        pass_test "panfs2ceph verify script created"
-        verify_slurm_script_basics "$verify_script" "verify"
-        assert_contains "$(cat "$verify_script")" "rclone check" "Contains rclone check command"
+    if [[ -n "$delete_script" ]]; then
+        pass_test "panfs2ceph delete script created"
+        verify_slurm_script_basics "$delete_script" "delete"
+        assert_contains "$(cat "$delete_script")" "rclone purge" "Contains rclone purge command"
     else
-        fail_test "No panfs2ceph verify script created"
+        fail_test "No panfs2ceph delete script created"
+    fi
+    
+    if [[ -n "$restore_script" ]]; then
+        pass_test "panfs2ceph restore script created"
+        verify_slurm_script_basics "$restore_script" "restore"
+    else
+        fail_test "No panfs2ceph restore script created"
     fi
 }
 

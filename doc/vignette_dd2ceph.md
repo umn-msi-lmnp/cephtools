@@ -107,12 +107,19 @@ After the PI's bucket has a group READ/WRITE bucket policy set, _the following m
    cd $MYGROUP-data-archive___*
    ```
 
-   Review the slurm script (change any parameters you wish) and launch the data transfer job.
+    Review the slurm script (change any parameters you wish) and launch the combined copy and verify job.
 
-   ```
-   sbatch dd2ceph_*.1_copy.slurm
-   ```
+    ```
+    sbatch dd2ceph_*.1_copy_and_verify.slurm
+    ```
 
 5. Monitor your SLURM job and review output files.
 
-   Look for (BEGIN, END, FAIL) emails from the slurm scheduler. Follow the progress in the slurm `stderr` and `stdout` files (located within the working directory.
+   Look for (BEGIN, END, FAIL) emails from the slurm scheduler. Follow the progress in the slurm `stderr` and `stdout` files (located within the working directory). The combined script will:
+   
+   - Copy all data to ceph (tier2) storage
+   - Verify the transfer using rclone check
+   - Generate file lists for comparison
+   - Log all operations for review
+   
+   Review the verification log (`dd2ceph_*.1_verify.rclone.log`) to ensure all files were transferred successfully without errors.

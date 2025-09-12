@@ -104,35 +104,7 @@ plugin_main() {
       fi
     }
 
-    # __validate_bucket_name()
-    #
-    # Usage:
-    #   __validate_bucket_name <bucket_name>
-    #
-    # Description:
-    #   Validates bucket name format and removes common problematic patterns
-    __validate_bucket_name() {
-      local bucket_name="${1:-}"
-      
-      if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be empty\\n"
-      fi
-      
-      # Remove trailing slash if present
-      bucket_name="${bucket_name%/}"
-      
-      # Check if bucket name is now empty after removing slash
-      if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be just a slash. Please provide a valid bucket name.\\n"
-      fi
-      
-      # Warn about other potential issues
-      if [[ "$bucket_name" == *"/"* ]]; then
-        _warn printf "Bucket name contains slashes which may cause issues: '%s'\\n" "$bucket_name"
-      fi
-      
-      printf "%s\\n" "$bucket_name"
-    }
+    # Note: __validate_bucket_name() is now defined in common.sh
 
     # For flags (i.e. no corresponding value), do not shift inside the case testing
     # statement. For options with required value, shift inside case testing statement, 
@@ -223,14 +195,11 @@ plugin_main() {
      _verb printf "delete_empty_dirs: %s\\n" "$([[ ${_delete_empty_dirs} -eq 1 ]] && echo "enabled" || echo "disabled")"
      _verb printf "threads: %s\\n" "$_threads"
 
-    # If required options are empty or null, exit.
+    # Validate and normalize path
     _root_path_dir=$(readlink -m "${_path}")
     if [ ! -d "${_root_path_dir}" ]; then
         _exit_1 printf "The '--path' option specified is not a valid directory. \\nReadlink does not convert to a valid directory: 'readlink -m %s'\\n" "${_path}"
     fi
-
-    # Check rclone version
-    _check_rclone_version
 
     # Create log directory if needed
     if [ ! -d "${_log_dir}" ]; then
@@ -239,8 +208,19 @@ plugin_main() {
         chmod g+rwx ${_log_dir}
     fi
 
-    # Validate remote and bucket access
-    _validate_remote_and_bucket "$_remote" "$_bucket"
+    _info printf "Starting dd2ceph transfer preparation\\n"
+    _info printf "Source: %s\\n" "${_root_path_dir}"
+    _info printf "Destination: %s:%s\\n" "${_remote}" "${_bucket}"
+    
+    # Run comprehensive pre-flight checks (skip permission checks for read-only data_delivery)
+    if ! _run_preflight_checks "${_root_path_dir}" "${_remote}" "${_bucket}" "${_log_dir}" "${_dry_run}" "false"; then
+        if [[ -z "${_dry_run}" ]]; then
+            _exit_1 printf "Pre-flight checks failed. Use --dry_run to proceed anyway, or fix issues first.\\n"
+            return 1
+        else
+            _warn printf "Pre-flight checks had issues, but continuing with dry run.\\n"
+        fi
+    fi
 
     # Check s3cmd availability
     _check_s3cmd_access "$_bucket"
@@ -322,12 +302,15 @@ _check_s3cmd_access() {
     _check_pathname_lengths "${myprefix}"
 
      # Create the transfer scripts
-     _create_dd2ceph_scripts "${remote}" "${bucket}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
+     _create_dd2ceph_copy_and_verify_script "${remote}" "${bucket}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
 
     # Show completion message
     _info printf "dd2ceph workflow completed\\n"
     _info printf "Working directory: %s\\n" "${myprefix_dir}"
-    _info printf "Review the generated scripts and submit them to SLURM as needed.\\n"
+    _info printf "Archive script created:\\n"
+    _info printf "  Copy and Verify: %s\\n" "${myprefix}.1_copy_and_verify.slurm"
+    _info printf "\\nNote: Source data in data_delivery will remain unchanged.\\n"
+    _info printf "Review and submit the script to complete the archival process.\\n"
 }
 
 _check_pathname_lengths() {
@@ -344,7 +327,7 @@ _check_pathname_lengths() {
     fi
 }
 
- _create_dd2ceph_scripts() {
+ _create_dd2ceph_copy_and_verify_script() {
      local remote="$1"
      local bucket="$2"
      local root_path_dir="$3" 
@@ -354,8 +337,8 @@ _check_pathname_lengths() {
      local threads="$7"
      local delete_empty_dirs="$8"
 
-    # Create the main transfer script
-    cat > "${myprefix}.slurm" <<EOF
+    # Create the combined copy and verify script
+    cat > "${myprefix}.1_copy_and_verify.slurm" <<EOF
 #!/bin/bash
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
@@ -364,8 +347,8 @@ _check_pathname_lengths() {
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=\${USER}@umn.edu
 #SBATCH --job-name=dd2ceph_\${USER}_${myprefix}
-#SBATCH -o ${myprefix}.stdout
-#SBATCH -e ${myprefix}.stderr
+#SBATCH -o ${myprefix}.1_copy_and_verify.stdout
+#SBATCH -e ${myprefix}.1_copy_and_verify.stderr
 
 # Load required modules
 module load rclone/1.71.0-r1
@@ -374,16 +357,30 @@ module load rclone/1.71.0-r1
 umask 0007
 
 # Set up credentials for myremote
-export RCLONE_CONFIG_MYREMOTE_TYPE=s3
-export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
-export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=\$(s3info --keys | awk '{print \$1}')
-export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=\$(s3info --keys | awk '{print \$2}')
-export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
-export RCLONE_CONFIG_MYREMOTE_ACL=private
-export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+$(if command -v s3info >/dev/null 2>&1; then
+    echo "export RCLONE_CONFIG_MYREMOTE_TYPE=s3"
+    echo "export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE"
+    echo "export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=\$(s3info --keys | awk '{print \$1}')"
+    echo "export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=\$(s3info --keys | awk '{print \$2}')"
+    echo "export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu"
+    echo "export RCLONE_CONFIG_MYREMOTE_ACL=private"
+    echo "export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph"
+fi)
 
 # Change to working directory
 cd ${myprefix_dir}
+
+# Pre-transfer validation
+echo "Performing pre-transfer validation..."
+
+# Quick permission check
+echo "Checking source directory accessibility..."
+if [[ ! -r "${root_path_dir}" ]]; then
+    echo "ERROR: Cannot read source directory: ${root_path_dir}"
+    exit 1
+fi
+
+echo "✓ Source directory is accessible"
 
 # Perform the transfer
 echo "Starting dd2ceph transfer at \$(date)"
@@ -399,7 +396,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "    ${dry_run} \\"
     echo "    --create-empty-src-dirs \\"
     echo "    --s3-directory-markers \\"
-    echo "    --log-file \"${myprefix}.rclone.log\" \\"
+    echo "    --log-file \"${myprefix}.1_copy.rclone.log\" \\"
     echo "    --log-level INFO"
 else
     echo "echo \"Skipping empty directories...\""
@@ -408,20 +405,37 @@ else
     echo "    --progress \\"
     echo "    --stats 30s \\"
     echo "    ${dry_run} \\"
-    echo "    --log-file \"${myprefix}.rclone.log\" \\"
+    echo "    --log-file \"${myprefix}.1_copy.rclone.log\" \\"
     echo "    --log-level INFO"
 fi)
 
 echo "Transfer completed at \$(date)"
 
-# Generate file comparison
-echo "Generating file comparison..."
-rclone lsf -R "${remote}:${bucket}" > ${myprefix}.destination_files.txt
+# Verify the transfer immediately
+echo "Starting verification at \$(date)"  
+rclone check "${root_path_dir}" "${remote}:${bucket}" \\
+    --log-file "${myprefix}.1_verify.rclone.log" \\
+    --log-level INFO
 
+echo "Verification completed at \$(date)"
+
+# Generate file lists for comparison
+echo "Generating file lists..."
+find "${root_path_dir}" -type f > "${myprefix}.source_files.txt"
+rclone lsf -R "${remote}:${bucket}" > "${myprefix}.destination_files.txt"
+
+echo "Copy and verification completed at \$(date)"
+echo "Files created:"
+echo "  Copy log: ${myprefix}.1_copy.rclone.log"
+echo "  Verify log: ${myprefix}.1_verify.rclone.log"
+echo "  Source file list: ${myprefix}.source_files.txt"
+echo "  Destination file list: ${myprefix}.destination_files.txt"
+echo ""
 echo "Transfer summary available in: ${myprefix_dir}"
+echo "Review verification log for any issues before considering the transfer complete."
 EOF
 
-    chmod +x "${myprefix}.slurm"
+    chmod +x "${myprefix}.1_copy_and_verify.slurm"
     
-    _info printf "Created SLURM script: %s\\n" "${myprefix}.slurm"
+    _info printf "Created SLURM script: %s\\n" "${myprefix}.1_copy_and_verify.slurm"
 }
