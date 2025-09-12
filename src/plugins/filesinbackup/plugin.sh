@@ -355,9 +355,19 @@ if [[ -d "${disaster_recovery_dir}" ]]; then
     find "${disaster_recovery_dir}" -type f -exec realpath {} \\; 2>/dev/null | sort > ${prefix}.disaster_recovery_files.txt
     echo "Found \$(wc -l < ${prefix}.disaster_recovery_files.txt) files in disaster recovery"
     echo "File list saved as: ${prefix}.disaster_recovery_files.txt"
+    
+    # Generate MD5 checksums for disaster recovery files
+    echo "Generating MD5 checksums for disaster recovery files..."
+    if [[ -s ${prefix}.disaster_recovery_files.txt ]]; then
+        rclone md5sum "${disaster_recovery_dir}" 2>/dev/null > ${prefix}.disaster_recovery_files.md5
+        echo "MD5 checksums saved as: ${prefix}.disaster_recovery_files.md5"
+    else
+        touch ${prefix}.disaster_recovery_files.md5
+    fi
 else
     echo "Disaster recovery directory not found: ${disaster_recovery_dir}"
     touch ${prefix}.disaster_recovery_files.txt
+    touch ${prefix}.disaster_recovery_files.md5
 fi
 
 echo "Generating ceph bucket file list..."
@@ -365,9 +375,19 @@ if rclone lsf ${remote}:${bucket} &>/dev/null; then
     rclone lsf -R ${remote}:${bucket} 2>/dev/null | sed "s|^|s3://${bucket}/|" | sort > ${prefix}.${bucket}_tier2_files.txt
     echo "Found \$(wc -l < ${prefix}.${bucket}_tier2_files.txt) files in ceph bucket"
     echo "File list saved as: ${prefix}.${bucket}_tier2_files.txt"
+    
+    # Generate MD5 checksums for ceph bucket files
+    echo "Generating MD5 checksums for ceph bucket files..."
+    if [[ -s ${prefix}.${bucket}_tier2_files.txt ]]; then
+        rclone md5sum ${remote}:${bucket} 2>/dev/null > ${prefix}.${bucket}_tier2_files.md5
+        echo "MD5 checksums saved as: ${prefix}.${bucket}_tier2_files.md5"
+    else
+        touch ${prefix}.${bucket}_tier2_files.md5
+    fi
 else
     echo "Cannot access ceph bucket or bucket is empty: ${bucket}"
     touch ${prefix}.${bucket}_tier2_files.txt
+    touch ${prefix}.${bucket}_tier2_files.md5
 fi
 
 echo "File listing completed at \$(date)"

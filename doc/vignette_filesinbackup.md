@@ -18,7 +18,9 @@ cephtools filesinbackup --group <GROUP>
 After running the SLURM job, you'll get these comparison files:
 
 - **`GROUP_TIMESTAMP.disaster_recovery_files.txt`** - Complete list of files in disaster recovery
+- **`GROUP_TIMESTAMP.disaster_recovery_files.md5`** - MD5 checksums for disaster recovery files
 - **`GROUP_TIMESTAMP.BUCKET_tier2_files.txt`** - Complete list of files in ceph bucket
+- **`GROUP_TIMESTAMP.BUCKET_tier2_files.md5`** - MD5 checksums for ceph bucket files
 
 ## Command Options
 
