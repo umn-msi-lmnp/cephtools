@@ -68,3 +68,18 @@ The purpose of this subcommand is to generate a list of files that are stored in
   - You can run `s3info` to learn how much data is being used. See `s3info --help` for options. Ceph storage is calculated for each MSI user (not by MSI group).
 - How can I ensure robust data transfer?
   - `cephtools` creates slurm job scripts that use `rclone` for data transfer. You can review and modify those default scripts. By default, `rclone` uses md5sum checks on every file transfer. So each file transfer is robust. However, when `rclone` checks to see if a file needs to be transfered, it compares the current file against the remote file using file size and timestamp. `cephtools` uses this default action in `dd2ceph`. However, you can have `rclone` make this check using md5sums by adding the `-c` option to `rclone`.
+- How can I see the bucket policy for a ceph/tier2 bucket?
+    - Try this first: `s3cmd info s3://BUCKET`
+    - If that does not work, you may need to use a different command line tool, `aws`, that is not installed on MSI by default. But if you can get access to it, try:
+    ```
+    export AWS_ACCESS_KEY_ID="$(s3info --keys | awk '{print $1}')"
+    export AWS_SECRET_ACCESS_KEY="$(s3info --keys | awk '{print $2}')"
+    export AWS_REGION="us-east-1"
+    export AWS_DEFAULT_REGION="us-east-1"
+    export AWS_OUTPUT="json"
+    export AWS_ENDPOINT_URL="https://s3.msi.umn.edu"
+    # Get access to aws cli tool
+    module load /projects/standard/lmnp/knut0297/software/modulesfiles/aws/2.13.11
+    aws s3api get-bucket-policy --bucket BUCKET | jq -r '.Policy'
+    ```
+    - There is a discussion here, https://github.umn.edu/lmnp/cephtools/issues/17, for more details.
