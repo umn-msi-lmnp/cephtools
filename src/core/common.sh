@@ -250,22 +250,34 @@ _setup_rclone_credentials() {
 #   Requires rclone >= 1.67.0, falls back to rclone/1.71.0-r1 module
 _check_rclone_version() {
     if command -v rclone &>/dev/null; then
-        local rclone_minor_ver="$(rclone --version | head -n 1 | sed 's/rclone v..//' | sed 's/\..*$//')"
-        if [ "$rclone_minor_ver" -ge "67" ]; then
-            _verb printf "Using rclone found in PATH:\\n"
-            _verb printf "%s\\n" "$(command -v rclone)"
-            _verb printf "%s\\n" "$(rclone --version)"
+        # Extract version string like "v1.68.1" -> "1.68.1"
+        local rclone_version_full="$(rclone --version | head -n 1 | sed 's/rclone v//')"
+        # Extract just the minor version number (e.g., "1.68.1" -> "68")
+        local rclone_minor_ver="$(echo "$rclone_version_full" | cut -d. -f2)"
+        
+        # Ensure we got a numeric value
+        if [[ "$rclone_minor_ver" =~ ^[0-9]+$ ]]; then
+            if [[ "$rclone_minor_ver" -ge 67 ]]; then
+                _verb printf "Using rclone found in PATH (v%s):\\n" "$rclone_version_full"
+                _verb printf "%s\\n" "$(command -v rclone)"
+                _verb printf "%s\\n" "$(rclone --version | head -n 1)"
+            else
+                _warn printf "rclone in your PATH was version %s (less than 1.67.0), so using the module: %s\\n" "$rclone_version_full" "rclone/1.71.0-r1"
+                module load rclone/1.71.0-r1
+                _verb printf "%s\\n" "$(command -v rclone)"
+                _verb printf "%s\\n" "$(rclone --version | head -n 1)" 
+            fi
         else
-            _warn printf "rclone in your PATH was a version less than 1.67.0, so using the module: %s\\n" "rclone/1.71.0-r1"
+            _warn printf "Could not parse rclone version '%s', using module: %s\\n" "$rclone_version_full" "rclone/1.71.0-r1"
             module load rclone/1.71.0-r1
             _verb printf "%s\\n" "$(command -v rclone)"
-            _verb printf "%s\\n" "$(rclone --version)" 
+            _verb printf "%s\\n" "$(rclone --version | head -n 1)" 
         fi
     else
         _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "rclone/1.71.0-r1"
         module load rclone/1.71.0-r1
         _verb printf "%s\\n" "$(command -v rclone)"
-        _verb printf "%s\\n" "$(rclone --version)" 
+        _verb printf "%s\\n" "$(rclone --version | head -n 1)" 
     fi
 }
 
