@@ -254,7 +254,7 @@ plugin_main() {
     # Run comprehensive pre-flight checks
     if ! _run_preflight_checks "${_path}" "${_remote}" "${_bucket}" "${_log_dir}" "${_dry_run}"; then
         if [[ -z "${_dry_run}" ]]; then
-            _error printf "Pre-flight checks failed. Use --dry_run to proceed anyway, or fix issues first.\\n"
+            _exit_1 printf "Pre-flight checks failed. Use --dry_run to proceed anyway, or fix issues first.\\n"
             return 1
         else
             _warn printf "Pre-flight checks had issues, but continuing with dry run.\\n"
@@ -289,7 +289,7 @@ _check_path_permissions() {
     local total_count=0
     
     if [[ -z "$path" ]]; then
-        _error printf "Path cannot be empty for permission check\\n"
+        _exit_1 printf "Path cannot be empty for permission check\\n"
         return 1
     fi
     
@@ -297,19 +297,19 @@ _check_path_permissions() {
     
     # Check if path exists and is accessible
     if [[ ! -e "$path" ]]; then
-        _error printf "Path does not exist: %s\\n" "$path"
+        _exit_1 printf "Path does not exist: %s\\n" "$path"
         return 1
     fi
     
     if [[ ! -r "$path" ]]; then
-        _error printf "Cannot read path: %s\\n" "$path"
+        _exit_1 printf "Cannot read path: %s\\n" "$path"
         return 1
     fi
     
     # Check if we can list directory contents
     if [[ -d "$path" ]]; then
         if ! ls "$path" >/dev/null 2>&1; then
-            _error printf "Cannot list directory contents: %s\\n" "$path"
+            _exit_1 printf "Cannot list directory contents: %s\\n" "$path"
             return 1
         fi
         _verb printf "✓ Directory is readable: %s\\n" "$path"
@@ -385,8 +385,7 @@ _check_path_permissions() {
             fi
         fi
         
-        _error printf "Permission issues detected. These files will not be transferred.\\n"
-        _error printf "Consider running as a user with appropriate permissions or fixing file permissions.\\n"
+        _exit_1 printf "Permission issues detected. These files will not be transferred.\\n"
     else
         _info printf "✓ All files and directories are readable\\n"
     fi
@@ -453,15 +452,14 @@ _validate_rclone_connectivity() {
     
     # Check if rclone is available
     if ! command -v rclone >/dev/null 2>&1; then
-        _error printf "rclone command not found. Please ensure rclone is installed and in PATH.\\n"
+        _exit_1 printf "rclone command not found. Please ensure rclone is installed and in PATH.\\n"
         return 1
     fi
     
     # Test remote connectivity
     _verb printf "Testing remote: %s\\n" "$remote"
     if ! rclone lsd "$remote:" >/dev/null 2>&1; then
-        _error printf "Cannot connect to remote '%s'. Check your rclone configuration.\\n" "$remote"
-        _error printf "Run 'rclone listremotes' to see available remotes.\\n"
+        _exit_1 printf "Cannot connect to remote '%s'. Check your rclone configuration.\\n" "$remote"
         return 1
     fi
     
@@ -498,7 +496,7 @@ _run_preflight_checks() {
     _info printf "1. Checking file permissions...\\n"
     if ! _check_path_permissions "${path}"; then
         if [[ -z "${dry_run}" ]]; then
-            _error printf "❌ Permission check failed\\n"
+            _exit_1 printf "❌ Permission check failed\\n"
             checks_passed=1
         else
             _warn printf "⚠️  Permission issues detected, but continuing with dry run\\n"
@@ -521,7 +519,7 @@ _run_preflight_checks() {
     if [[ -z "${dry_run}" ]]; then
         _info printf "4. Testing rclone connectivity...\\n"
         if ! _validate_rclone_connectivity "${remote}" "${bucket}"; then
-            _error printf "❌ rclone connectivity check failed\\n"
+            _exit_1 printf "❌ rclone connectivity check failed\\n"
             checks_passed=1
         else
             _info printf "✅ rclone connectivity check passed\\n"
@@ -563,7 +561,7 @@ _run_preflight_checks() {
     if [[ $checks_passed -eq 0 ]]; then
         _info printf "✅ All pre-flight checks passed - ready to proceed\\n"
     else
-        _error printf "❌ Some pre-flight checks failed - review issues above\\n"
+        _exit_1 printf "❌ Some pre-flight checks failed - review issues above\\n"
     fi
     
     return $checks_passed
