@@ -68,6 +68,15 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Flag Validation**: Presence/absence of --create-empty-src-dirs --s3-directory-markers
 - ✅ **Bucket Validation**: Verification of empty directories in actual Ceph buckets
 
+#### 7. Permission Handling Tests (`test-permission-handling.sh`)
+- ✅ **Permission Detection**: Validates _check_path_permissions function
+- ✅ **Failure Scenarios**: Tests with unreadable files and directories
+- ✅ **Plugin Integration**: Full panfs2ceph plugin behavior with permission issues
+- ✅ **Dry Run Mode**: Ensures --dry_run continues despite permission problems
+- ✅ **Error Messages**: Validates informative error reporting
+- ✅ **Edge Cases**: Empty directories, single files, completely inaccessible paths
+- ✅ **File Counting**: Verifies accurate reporting of readable/unreadable items
+
 ## Running Tests
 
 ### Quick Commands
@@ -82,6 +91,7 @@ make test-integration   # Integration tests
 make test-errors        # Error scenarios
 make test-compatibility # System compatibility
 make test-empty-dirs    # Empty directory flag tests
+make test-permissions   # File permission handling tests
 ```
 
 ### Advanced Usage
@@ -90,7 +100,7 @@ make test-empty-dirs    # Empty directory flag tests
 ./tests/run-all-tests.sh --quiet
 
 # Run specific combinations
-./tests/run-all-tests.sh basic integration errors empty-dirs
+./tests/run-all-tests.sh basic integration errors empty-dirs permissions
 
 # Run with verbose output
 ./tests/run-all-tests.sh --verbose

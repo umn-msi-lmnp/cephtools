@@ -385,7 +385,7 @@ _check_path_permissions() {
             fi
         fi
         
-        _exit_1 printf "Permission issues detected. These files will not be transferred.\\n"
+        _warn printf "Permission issues detected. These files will not be transferred.\\n"
     else
         _info printf "✓ All files and directories are readable\\n"
     fi

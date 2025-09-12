@@ -164,6 +164,11 @@ test-empty-dirs: all
 	@chmod +x tests/test-empty-dirs-flag.sh
 	@tests/test-empty-dirs-flag.sh
 
+test-permissions: all
+	@echo "Running permission handling tests..."
+	@chmod +x tests/test-permission-handling.sh
+	@tests/test-permission-handling.sh
+
 # Help target for testing
 test-help:
 	@echo "Available test targets:"
@@ -175,6 +180,7 @@ test-help:
 	@echo "  test-compatibility- Run system compatibility tests"
 	@echo "  test-real-s3      - Run real S3 integration tests (creates actual buckets)"
 	@echo "  test-empty-dirs   - Run empty directory flag tests (--delete_empty_dirs)"
+	@echo "  test-permissions  - Run file permission handling tests"
 	@echo "  test              - Legacy basic tests"
 	@echo "  comprehensive-test- Legacy comprehensive tests"
 	@echo ""
