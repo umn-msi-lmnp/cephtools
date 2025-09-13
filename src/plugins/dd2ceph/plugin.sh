@@ -223,7 +223,7 @@ plugin_main() {
     fi
 
     # Check s3cmd availability
-    _check_s3cmd_access "$_bucket"
+    _check_s3cmd_access "$_bucket" "$_dry_run"
 
      # Execute the main workflow
      _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads" "$_delete_empty_dirs"
@@ -252,6 +252,7 @@ _validate_remote_and_bucket() {
 
 _check_s3cmd_access() {
     local bucket="$1"
+    local dry_run="${2:-}"
     
     # Only need to check that we can access s3cmd commands
     if command -v s3cmd &> /dev/null; then
@@ -259,6 +260,12 @@ _check_s3cmd_access() {
         _verb printf "%s\\n" "$(s3cmd --version)" 
     else
         _exit_1 printf "s3cmd could not be found in PATH\\n"
+    fi
+
+    # Skip actual bucket access check in dry run mode to avoid credential issues
+    if [[ -n "${dry_run}" ]]; then
+        _info printf "Skipping bucket access check (dry run mode)\\n"
+        return 0
     fi
 
     # check that bucket exists
@@ -282,7 +289,7 @@ _check_s3cmd_access() {
     umask 0007
 
     # Create archive working dir
-    local archive_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    local archive_date_time="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     local myprefix="dd2ceph_${archive_date_time}"
     local myprefix_dir="${log_dir}/${bucket}___${myprefix}"
 
@@ -345,13 +352,18 @@ _check_pathname_lengths() {
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=32gb
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=\${USER}@umn.edu
-#SBATCH --job-name=dd2ceph_\${USER}_${myprefix}
-#SBATCH -o ${myprefix}.1_copy_and_verify.stdout
-#SBATCH -e ${myprefix}.1_copy_and_verify.stderr
+#SBATCH --error=%x.e%j
+#SBATCH --output=%x.o%j
 
-# Load required modules
-module load rclone/1.71.0-r1
+# Load required modules - try to get consistent rclone version
+# Force load consistent rclone version, overriding any sticky modules
+if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+    exit 1
+fi
+echo "Successfully loaded rclone/1.71.0-r1 module"
+echo "Using rclone: $(command -v rclone)"
+echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 
 # Set umask for group-writable files (660) and directories (770)
 umask 0007

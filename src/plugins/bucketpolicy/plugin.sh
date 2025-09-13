@@ -291,7 +291,7 @@ _execute_bucketpolicy_workflow() {
     fi
 
     # Create bucket policy vars
-    local _curr_date_time="$(date +"%Y-%m-%d-%H%M%S")"
+    local _curr_date_time="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     local _bucket_policy="${_bucket}.bucket_policy.json"
     local _bucket_policy_readme="${_bucket}.bucket_policy_readme.md"
 

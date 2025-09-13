@@ -63,11 +63,7 @@ HEREDOC
 }
 
 plugin_main() {
-    # Show help if no arguments provided
-    if [[ $# -eq 0 ]]; then
-        plugin_describe
-        return 0
-    fi
+    # Note: Don't exit early for no arguments - let validation handle required params
 
     # Parse Options ###############################################################
 
@@ -200,7 +196,7 @@ plugin_main() {
     
     # Set default log directory if not provided
     if [[ -z "${_log_dir:-}" ]]; then
-        _log_dir="${_path}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)"
+        _log_dir="${_path}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
     fi
 
     # Create log directory
@@ -271,7 +267,15 @@ _create_transfer_scripts() {
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone/1.71.0-r1
+# Force load consistent rclone version, overriding any sticky modules
+if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+    exit 1
+else
+    echo "Successfully loaded rclone/1.71.0-r1 module"
+fi
+echo "Using rclone: $(command -v rclone)"
+echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then
@@ -368,7 +372,15 @@ EOF
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone/1.71.0-r1
+# Force load consistent rclone version, overriding any sticky modules
+if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+    exit 1
+else
+    echo "Successfully loaded rclone/1.71.0-r1 module"
+fi
+echo "Using rclone: $(command -v rclone)"
+echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then
@@ -450,7 +462,15 @@ EOF
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone/1.71.0-r1
+# Force load consistent rclone version, overriding any sticky modules
+if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+    exit 1
+else
+    echo "Successfully loaded rclone/1.71.0-r1 module"
+fi
+echo "Using rclone: $(command -v rclone)"
+echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 
 # Set up credentials
 $(if command -v s3info >/dev/null 2>&1; then

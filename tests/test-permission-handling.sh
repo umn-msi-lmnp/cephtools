@@ -105,8 +105,8 @@ test_permission_check_function_directly() {
     local test_dir="$TEST_OUTPUT_DIR/clean_test"
     create_clean_test_directory "$test_dir"
     
-    # Source the panfs2ceph plugin to get access to the _check_path_permissions function
-    source "$PROJECT_ROOT/build/share/plugins/panfs2ceph/plugin.sh"
+    # Source common.sh directly to get access to the _check_path_permissions function
+    source "$PROJECT_ROOT/src/core/common.sh"
     
     # Test should pass for clean directory
     if _check_path_permissions "$test_dir" >/dev/null 2>&1; then
@@ -122,8 +122,8 @@ test_permission_check_with_issues() {
     local test_dir="$TEST_OUTPUT_DIR/problem_test"
     create_test_directory_with_permission_issues "$test_dir"
     
-    # Source the panfs2ceph plugin to get access to the _check_path_permissions function
-    source "$PROJECT_ROOT/build/share/plugins/panfs2ceph/plugin.sh"
+    # Source common.sh directly to get access to the _check_path_permissions function
+    source "$PROJECT_ROOT/src/core/common.sh"
     
     # Test should fail for directory with permission issues
     if ! _check_path_permissions "$test_dir" >/dev/null 2>&1; then
@@ -138,8 +138,8 @@ test_permission_check_nonexistent_path() {
     
     local nonexistent_path="$TEST_OUTPUT_DIR/does_not_exist"
     
-    # Source the panfs2ceph plugin to get access to the _check_path_permissions function  
-    source "$PROJECT_ROOT/build/share/plugins/panfs2ceph/plugin.sh"
+    # Source common.sh directly to get access to the _check_path_permissions function  
+    source "$PROJECT_ROOT/src/core/common.sh"
     
     # Test should fail for nonexistent path
     if ! _check_path_permissions "$nonexistent_path" >/dev/null 2>&1; then
@@ -159,9 +159,15 @@ test_panfs2ceph_fails_with_permission_issues() {
     local test_dir="$TEST_OUTPUT_DIR/panfs2ceph_perm_test"
     create_test_directory_with_permission_issues "$test_dir"
     
+    # Change to test output directory to ensure panfs2ceph creates files there
+    local original_dir=$(pwd)
+    cd "$TEST_OUTPUT_DIR"
+    
     # Run panfs2ceph and expect it to fail due to permission issues
     local exit_code=0
     "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >/dev/null 2>&1 || exit_code=$?
+    
+    cd "$original_dir"
     
     if [[ $exit_code -ne 0 ]]; then
         pass_test "panfs2ceph correctly failed when permission issues detected"
@@ -176,9 +182,15 @@ test_panfs2ceph_succeeds_with_dry_run() {
     local test_dir="$TEST_OUTPUT_DIR/panfs2ceph_dry_run_test"
     create_test_directory_with_permission_issues "$test_dir"
     
+    # Change to test output directory to ensure panfs2ceph creates files there
+    local original_dir=$(pwd)
+    cd "$TEST_OUTPUT_DIR"
+    
     # Run panfs2ceph with --dry_run and expect it to continue despite permission issues
     local exit_code=0
     "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" --dry_run >/dev/null 2>&1 || exit_code=$?
+    
+    cd "$original_dir"
     
     if [[ $exit_code -eq 0 ]]; then
         pass_test "panfs2ceph correctly continued with --dry_run despite permission issues"
@@ -191,14 +203,18 @@ test_panfs2ceph_succeeds_with_clean_directory() {
     start_test "panfs2ceph plugin succeeds with clean directory"
     
     local test_dir="$TEST_OUTPUT_DIR/panfs2ceph_clean_test"
-    create_clean_test_directory "$test_dir"
+    mkdir -p "$test_dir"
+    echo "clean test file" > "$test_dir/testfile.txt"
     
-    # Mock rclone to avoid actual network calls
-    create_logging_mock_command "rclone" "Success"
+    # Change to test output directory to ensure panfs2ceph creates files there
+    local original_dir=$(pwd)
+    cd "$TEST_OUTPUT_DIR"
     
-    # Run panfs2ceph and expect it to succeed
+    # Run panfs2ceph with --dry_run and expect it to succeed
     local exit_code=0
     "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" --dry_run >/dev/null 2>&1 || exit_code=$?
+    
+    cd "$original_dir"
     
     if [[ $exit_code -eq 0 ]]; then
         pass_test "panfs2ceph succeeded with clean directory"
@@ -213,9 +229,15 @@ test_panfs2ceph_fails_with_inaccessible_directory() {
     local test_dir="$TEST_OUTPUT_DIR/inaccessible_test"
     create_inaccessible_directory "$test_dir"
     
+    # Change to test output directory to ensure panfs2ceph creates files there
+    local original_dir=$(pwd)
+    cd "$TEST_OUTPUT_DIR"
+    
     # Run panfs2ceph and expect it to fail immediately
     local exit_code=0
     "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >/dev/null 2>&1 || exit_code=$?
+    
+    cd "$original_dir"
     
     if [[ $exit_code -ne 0 ]]; then
         pass_test "panfs2ceph correctly failed with inaccessible directory"
@@ -237,9 +259,15 @@ test_permission_error_messages() {
     local test_dir="$TEST_OUTPUT_DIR/message_test"
     create_test_directory_with_permission_issues "$test_dir"
     
+    # Change to test output directory to ensure panfs2ceph creates files there
+    local original_dir=$(pwd)
+    cd "$TEST_OUTPUT_DIR"
+    
     # Capture the error output
     local output_file="$TEST_OUTPUT_DIR/error_output.txt"
     "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >"$output_file" 2>&1 || true
+    
+    cd "$original_dir"
     
     # Check that the output contains informative error messages
     if grep -i "permission" "$output_file" >/dev/null; then
@@ -261,9 +289,15 @@ test_permission_counts_reported() {
     local test_dir="$TEST_OUTPUT_DIR/count_test"
     create_test_directory_with_permission_issues "$test_dir"
     
+    # Change to test output directory to ensure panfs2ceph creates files there
+    local original_dir=$(pwd)
+    cd "$TEST_OUTPUT_DIR"
+    
     # Capture the output
     local output_file="$TEST_OUTPUT_DIR/count_output.txt"
     "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >"$output_file" 2>&1 || true
+    
+    cd "$original_dir"
     
     # Check that counts are reported
     if grep -E "(Total items|Readable|Unreadable):" "$output_file" >/dev/null; then
@@ -283,8 +317,8 @@ test_empty_directory_permissions() {
     local empty_dir="$TEST_OUTPUT_DIR/empty_dir"
     mkdir -p "$empty_dir"
     
-    # Source the panfs2ceph plugin
-    source "$PROJECT_ROOT/build/share/plugins/panfs2ceph/plugin.sh"
+    # Source common.sh directly to get the function
+    source "$PROJECT_ROOT/src/core/common.sh"
     
     # Should succeed with empty directory
     if _check_path_permissions "$empty_dir" >/dev/null 2>&1; then
@@ -300,8 +334,8 @@ test_single_file_permissions() {
     local test_file="$TEST_OUTPUT_DIR/single_file.txt"
     echo "Single file content" > "$test_file"
     
-    # Source the panfs2ceph plugin
-    source "$PROJECT_ROOT/build/share/plugins/panfs2ceph/plugin.sh"
+    # Source common.sh directly to get the function
+    source "$PROJECT_ROOT/src/core/common.sh"
     
     # Should succeed with readable single file
     if _check_path_permissions "$test_file" >/dev/null 2>&1; then

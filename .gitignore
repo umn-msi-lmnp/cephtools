@@ -17,3 +17,13 @@ slurm-*.out
 *_backup_*
 filesinbackup_*
 panfs2ceph_*
+
+# Test-generated bucket policy files
+test-bucket.bucket_policy.json
+test-bucket.bucket_policy_readme.md
+*.bucket_policy.json
+*.bucket_policy_readme.md
+
+# Test directories that might leak to project root
+test_*___panfs2ceph_archive_*
+test_*___*

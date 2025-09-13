@@ -59,11 +59,7 @@ HEREDOC
 }
 
 plugin_main() {
-    # Show help if no arguments provided
-    if [[ $# -eq 0 ]]; then
-        plugin_describe
-        return 0
-    fi
+    # Note: Don't exit early for no arguments - let validation handle required params
 
     # Parse Options ###############################################################
 
@@ -225,8 +221,8 @@ _execute_filesinbackup_workflow() {
         chmod g+rwx "$log_dir"
     fi
 
-    # Create working directory
-    local timestamp="$(date +"%Y-%m-%d-%H%M%S")"
+    # Create working directory with unique timestamp (including microseconds for concurrency)
+    local timestamp="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     local work_dir="${log_dir}/filesinbackup_${group}_${timestamp}"
     
 
@@ -318,12 +314,19 @@ _create_filesinbackup_slurm_script() {
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=8gb
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=\${USER}@umn.edu
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
 
 # Load required modules
-module load rclone/1.71.0-r1
+# Force load consistent rclone version, overriding any sticky modules
+if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+    exit 1
+else
+    echo "Successfully loaded rclone/1.71.0-r1 module"
+fi
+echo "Using rclone: $(command -v rclone)"
+echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 
 # Set umask for group-writable files (660) and directories (770)
 umask 0007

@@ -243,42 +243,95 @@ _setup_rclone_credentials() {
   fi
 }
 
+# s3cmd()
+#
+# Description:
+#   Wrapper function that sources our corrected s3cmd script instead of the buggy system one
+#   This fixes the "AWS_ACCESS_KEY: unbound variable" issue in /opt/msi/bin/s3cmd
+s3cmd() {
+    # Check if test environment has provided a mock override
+    if [[ -n "${S3CMD_MOCK_OVERRIDE:-}" && -x "${S3CMD_MOCK_OVERRIDE}" ]]; then
+        "${S3CMD_MOCK_OVERRIDE}" "$@"
+        return $?
+    fi
+    
+    # Create temporary corrected s3cmd script
+    local temp_s3cmd_script=$(mktemp)
+    cat > "$temp_s3cmd_script" << 'EOF'
+#!/bin/bash
+
+# Ensure vars always exist
+: "${AWS_ACCESS_KEY:=}"
+: "${AWS_SECRET_KEY:=}"
+: "${S3CMD_CONFIG:=}"
+
+if [ -f "$HOME/.s3cfg" ]; then
+  # User created a custom config; it should have precedence.
+  if [ "${S3CMD_CONFIG:-}" == '/etc/msi/s3cfg-generic' ]; then
+    unset S3CMD_CONFIG
+    unset AWS_ACCESS_KEY
+    unset AWS_SECRET_KEY
+  fi
+  /usr/bin/s3cmd "$@"
+else
+  if [ -z "${AWS_ACCESS_KEY:-}" ]; then
+    DATA=$(s3info --keys)
+    if [[ $? -eq 0 ]]; then
+      read -r ACCESS_KEY SECRET_KEY <<< "$DATA"
+      export AWS_ACCESS_KEY=$ACCESS_KEY
+      export AWS_SECRET_KEY=$SECRET_KEY
+    fi
+  fi
+
+  if [ -z "${S3CMD_CONFIG:-}" ]; then
+    export S3CMD_CONFIG='/etc/msi/s3cfg-generic'
+  fi
+
+  if [ -n "${AWS_ACCESS_KEY:-}" ]; then
+    /usr/bin/s3cmd "$@"
+  else
+    >&2 echo "An error occurred fetching S3 credentials."
+  fi
+fi
+EOF
+    
+    # Source the corrected script with the provided arguments
+    chmod +x "$temp_s3cmd_script"
+    "$temp_s3cmd_script" "$@"
+    local exit_code=$?
+    
+    # Clean up
+    rm -f "$temp_s3cmd_script"
+    
+    return $exit_code
+}
+
 # _check_rclone_version()
 #
 # Description:
-#   Check rclone version and load appropriate module if needed
-#   Requires rclone >= 1.67.0, falls back to rclone/1.71.0-r1 module
+#   Load the rclone/1.71.0-r1 module for consistent rclone version across all users
+#   Uses --force flag to override any sticky modules
 _check_rclone_version() {
-    if command -v rclone &>/dev/null; then
-        # Extract version string like "v1.68.1" -> "1.68.1"
-        local rclone_version_full="$(rclone --version | head -n 1 | sed 's/rclone v//')"
-        # Extract just the minor version number (e.g., "1.68.1" -> "68")
-        local rclone_minor_ver="$(echo "$rclone_version_full" | cut -d. -f2)"
-        
-        # Ensure we got a numeric value
-        if [[ "$rclone_minor_ver" =~ ^[0-9]+$ ]]; then
-            if [[ "$rclone_minor_ver" -ge 67 ]]; then
-                _verb printf "Using rclone found in PATH (v%s):\\n" "$rclone_version_full"
-                _verb printf "%s\\n" "$(command -v rclone)"
-                _verb printf "%s\\n" "$(rclone --version | head -n 1)"
-            else
-                _warn printf "rclone in your PATH was version %s (less than 1.67.0), so using the module: %s\\n" "$rclone_version_full" "rclone/1.71.0-r1"
-                module load rclone/1.71.0-r1
-                _verb printf "%s\\n" "$(command -v rclone)"
-                _verb printf "%s\\n" "$(rclone --version | head -n 1)" 
-            fi
-        else
-            _warn printf "Could not parse rclone version '%s', using module: %s\\n" "$rclone_version_full" "rclone/1.71.0-r1"
-            module load rclone/1.71.0-r1
-            _verb printf "%s\\n" "$(command -v rclone)"
-            _verb printf "%s\\n" "$(rclone --version | head -n 1)" 
-        fi
+    _info printf "Loading rclone module for consistent version...\\n"
+    
+    # Force load the preferred rclone module, overriding any conflicts
+    if module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+        _verb printf "Successfully loaded rclone/1.71.0-r1 module with --force\\n"
     else
-        _warn printf "rclone could not be found in PATH, so using the module: %s\\n" "rclone/1.71.0-r1"
-        module load rclone/1.71.0-r1
-        _verb printf "%s\\n" "$(command -v rclone)"
-        _verb printf "%s\\n" "$(rclone --version | head -n 1)" 
+        _exit_1 printf "Failed to load rclone/1.71.0-r1 module even with --force flag\\n"
+        return 1
     fi
+    
+    # Verify rclone is now available
+    if ! command -v rclone >/dev/null 2>&1; then
+        _exit_1 printf "rclone command not available after loading module\\n"
+        return 1
+    fi
+    
+    # Check and report rclone version
+    local rclone_version=$(rclone --version 2>/dev/null | head -n 1 || echo "unknown")
+    _verb printf "Using rclone: %s\\n" "$(command -v rclone)"
+    _verb printf "Version: %s\\n" "$rclone_version"
 }
 
 ###############################################################################
@@ -378,19 +431,19 @@ _check_path_permissions() {
     
     # Check if path exists and is accessible
     if [[ ! -e "$path" ]]; then
-        _exit_1 printf "Path does not exist: %s\\n" "$path"
+        _warn printf "Path does not exist: %s\\n" "$path"
         return 1
     fi
     
     if [[ ! -r "$path" ]]; then
-        _exit_1 printf "Cannot read path: %s\\n" "$path"
+        _warn printf "Cannot read path: %s\\n" "$path"
         return 1
     fi
     
     # Check if we can list directory contents
     if [[ -d "$path" ]]; then
         if ! ls "$path" >/dev/null 2>&1; then
-            _exit_1 printf "Cannot list directory contents: %s\\n" "$path"
+            _warn printf "Cannot list directory contents: %s\\n" "$path"
             return 1
         fi
         _verb printf "✓ Directory is readable: %s\\n" "$path"

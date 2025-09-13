@@ -45,11 +45,7 @@ HEREDOC
 }
 
 plugin_main() {
-    # Show help if no arguments provided
-    if [[ $# -eq 0 ]]; then
-        plugin_describe
-        return 0
-    fi
+    # Note: Don't exit early for no arguments - let validation handle required params
 
     # Parse Options ###############################################################
 
@@ -179,7 +175,7 @@ _execute_dd2dr_workflow() {
     fi
 
     # Create working directory
-    local timestamp="$(date +"%Y-%m-%d-%H%M%S")"
+    local timestamp="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     local work_dir="${log_dir}/dd2dr_${group}_${timestamp}"
     
     _info printf "Creating working directory: %s\\n" "$work_dir"
@@ -187,7 +183,7 @@ _execute_dd2dr_workflow() {
     cd "$work_dir"
 
     # Create comprehensive dd2dr SLURM script with full functionality
-    local timestamp="$(date +"%Y-%m-%d-%H%M%S")"
+    local timestamp="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     _create_comprehensive_dd2dr_script "$group" "$data_delivery_path" "$disaster_recovery_path" "$work_dir" "$dry_run" "$threads" "$timestamp"
 
     _info printf "Change into the log dir and launch the slurm job:\\n"
@@ -216,7 +212,6 @@ _create_comprehensive_dd2dr_script() {
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=32gb
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=\${USER}@umn.edu
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
 
@@ -224,7 +219,15 @@ _create_comprehensive_dd2dr_script() {
 umask 0007
 
 # Load required modules
-module load rclone/1.71.0-r1
+# Force load consistent rclone version, overriding any sticky modules
+if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+    exit 1
+else
+    echo "Successfully loaded rclone/1.71.0-r1 module"
+fi
+echo "Using rclone: $(command -v rclone)"
+echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 
 # Change to working directory
 cd ${work_dir}
@@ -236,6 +239,30 @@ DATESTAMP="${timestamp}"
 # Print some info
 echo "\$GROUP sync starting..."
 echo "\${DATESTAMP}"
+
+# Check available disk space before transfer
+echo "Checking disk space availability..."
+DEST_AVAIL=\$(df "${disaster_recovery_path}" | awk 'NR==2 {print \$4}')
+DEST_AVAIL_MB=\$((DEST_AVAIL / 1024))
+
+echo "Available space in disaster recovery directory: \${DEST_AVAIL_MB} MB"
+
+# Estimate source data size
+SOURCE_SIZE=\$(du -sk "${data_delivery_path}" 2>/dev/null | cut -f1)
+SOURCE_SIZE_MB=\$((SOURCE_SIZE / 1024))
+
+echo "Source data size: \${SOURCE_SIZE_MB} MB"
+
+# Check if there's enough space (with 10% buffer)
+REQUIRED_SPACE=\$((SOURCE_SIZE_MB * 11 / 10))
+if [ \$DEST_AVAIL_MB -lt \$REQUIRED_SPACE ]; then
+    echo "ERROR: Not enough space in disaster recovery directory"
+    echo "Required: \${REQUIRED_SPACE} MB (with 10% buffer)"
+    echo "Available: \${DEST_AVAIL_MB} MB"
+    exit 1
+fi
+
+echo "✓ Sufficient disk space available"
 
 # Transfer the files from data_delivery to disaster_recovery
 echo "Starting sync from data_delivery to disaster_recovery..."
