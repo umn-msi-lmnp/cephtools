@@ -93,6 +93,11 @@ test: all
 	@./$(BUILD)/bin/cephtools subcommands || echo "Plugin discovery test failed"
 	@echo "Basic tests completed"
 
+# Create test outputs directory
+test-setup:
+	@mkdir -p test_outputs
+	@echo "Test outputs directory created: test_outputs"
+
 # Comprehensive testing
 comprehensive-test: all
 	@echo "Running comprehensive tests..."
@@ -124,50 +129,50 @@ show-config:
 	@echo "  GIT_CURRENT_BRANCH: $(GIT_CURRENT_BRANCH)"
 
 # Enhanced Testing System
-test-all: all
+test-all: all test-setup
 	@echo "Running comprehensive test suite..."
 	@chmod +x tests/run-all-tests.sh
-	@tests/run-all-tests.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/run-all-tests.sh
 
-test-quick: all  
+test-quick: all test-setup
 	@echo "Running quick tests (basic functionality)..."
 	@chmod +x tests/run-all-tests.sh
-	@tests/run-all-tests.sh basic
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/run-all-tests.sh basic
 
-test-deps: all
+test-deps: all test-setup
 	@echo "Running dependency validation tests..."
 	@chmod +x tests/test-dependencies.sh
-	@tests/test-dependencies.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-dependencies.sh
 
-test-integration: all
+test-integration: all test-setup
 	@echo "Running integration tests..."
 	@chmod +x tests/test-integration.sh  
-	@tests/test-integration.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-integration.sh
 
-test-errors: all
+test-errors: all test-setup
 	@echo "Running error scenario tests..."
 	@chmod +x tests/test-error-scenarios.sh
-	@tests/test-error-scenarios.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-error-scenarios.sh
 
-test-compatibility: all
+test-compatibility: all test-setup
 	@echo "Running system compatibility tests..."
 	@chmod +x tests/test-compatibility.sh
-	@tests/test-compatibility.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-compatibility.sh
 
-test-real-s3: all
+test-real-s3: all test-setup
 	@echo "Running real S3 integration tests..."
 	@chmod +x tests/test-real-s3-integration.sh
-	@tests/test-real-s3-integration.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-real-s3-integration.sh
 
-test-empty-dirs: all
+test-empty-dirs: all test-setup
 	@echo "Running empty directory flag tests..."
 	@chmod +x tests/test-empty-dirs-flag.sh
-	@tests/test-empty-dirs-flag.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-empty-dirs-flag.sh
 
-test-permissions: all
+test-permissions: all test-setup
 	@echo "Running permission handling tests..."
 	@chmod +x tests/test-permission-handling.sh
-	@tests/test-permission-handling.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-permission-handling.sh
 
 # Help target for testing
 test-help:
@@ -188,7 +193,19 @@ test-help:
 	@echo "  make test-all                    # All tests"
 	@echo "  ./tests/run-all-tests.sh --quiet # Run quietly"
 	@echo "  ./tests/run-all-tests.sh basic integration # Specific suites"
+	@echo ""
+	@echo "Cleanup targets:"
+	@echo "  clean             - Remove build artifacts"
+	@echo "  clean-tests       - Remove test output directory (test_outputs/)"
+	@echo "  clean-all         - Remove all build and test artifacts"
 
 # Clean
 clean:
 	rm -rf $(BUILD)
+
+clean-tests:
+	rm -rf test_outputs
+	@echo "Test outputs directory cleaned"
+
+clean-all: clean clean-tests
+	@echo "All build and test artifacts cleaned"

@@ -52,7 +52,12 @@ plugin_main() {
     # Initialize program option variables.
     local _group=
     local _dry_run=0
-    local _log_dir="$MSIPROJECT/shared/cephtools/dd2dr"
+    # Set default log directory - use TEST_OUTPUT_DIR in test environment
+    if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+        local _log_dir="$TEST_OUTPUT_DIR/dd2dr"
+    else
+        local _log_dir="$MSIPROJECT/shared/cephtools/dd2dr"
+    fi
     local _threads=8
     local _verbose=0
 
@@ -186,8 +191,57 @@ _execute_dd2dr_workflow() {
     local timestamp="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     _create_comprehensive_dd2dr_script "$group" "$data_delivery_path" "$disaster_recovery_path" "$work_dir" "$dry_run" "$threads" "$timestamp"
 
-    _info printf "Change into the log dir and launch the slurm job:\\n"
-    _info printf "cd %s && sbatch %s.slurm\\n" "$work_dir" "${group}_${timestamp}"
+    #######################################################################
+    # Print instructions to terminal
+    #######################################################################
+
+    # Use a temp function to create multi-line string without affecting exit code
+    # https://stackoverflow.com/a/8088167/2367748
+    heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
+    
+    local instructions_message
+    heredoc2var instructions_message << HEREDOC
+
+---------------------------------------------------------------------
+cephtools dd2dr summary
+
+
+Options used:
+group=${group}
+dry_run=$([[ ${dry_run} -eq 1 ]] && echo "enabled" || echo "disabled")
+threads=${threads}
+log_dir=${log_dir}
+
+
+Source dir: 
+${data_delivery_path}
+
+
+Destination dir:
+${disaster_recovery_path}
+
+
+Transfer script created in:
+${work_dir}
+
+
+Transfer files created and ready to launch!
+Next steps:
+1. Move into log dir: cd ${work_dir}
+2. Review the generated SLURM script for details.
+3. Launch the transfer jobfile: sbatch ${group}_${timestamp}.slurm
+4. After successful transfer, review the generated file lists for verification.
+
+
+
+
+VERSION: ${VERSION_SHORT}
+QUESTIONS: lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+---------------------------------------------------------------------
+HEREDOC
+
+    echo "$instructions_message"
 }
 
 _create_comprehensive_dd2dr_script() {
@@ -214,6 +268,65 @@ _create_comprehensive_dd2dr_script() {
 #SBATCH --mail-type=ALL
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
+
+# ------------------------------------------------------------------------------
+# Bash safe mode
+# ------------------------------------------------------------------------------
+
+# --- Safe defaults ---
+set -o errexit   # Exit immediately if a command fails
+set -o nounset   # Treat unset variables as an error
+set -o pipefail  # Fail if any part of a pipeline fails
+set -o errtrace  # Inherit ERR traps in functions/subshells
+
+# Uncomment if you use DEBUG/RETURN traps (rare in production)
+# set -o functrace  
+
+# Error handler
+error_handler() {
+    local exit_code=\$?
+    local cmd="\${BASH_COMMAND}"
+    local line="\${BASH_LINENO[0]}"
+    local src="\${BASH_SOURCE[1]:-main script}"
+
+    >&2 echo "ERROR [\$(date)]"
+    >&2 echo "  File: \$src"
+    >&2 echo "  Line: \$line"
+    >&2 echo "  Command: \$cmd"
+    >&2 echo "  Exit code: \$exit_code"
+
+    exit "\$exit_code"
+}
+
+# Exit handler (always runs on exit)
+on_exit() {
+    local exit_code=\$?
+    echo "Exiting script (code \$exit_code) [\$(date)]"
+    # Add temp file cleanup or resource release here
+}
+
+# Signal handlers
+on_interrupt() {
+    echo "Interrupt signal (SIGINT) received. Exiting."
+    exit 130   # 128 + SIGINT(2)
+}
+
+on_terminate() {
+    echo "Terminate signal (SIGTERM) received. Exiting."
+    exit 143   # 128 + SIGTERM(15)
+}
+
+on_quit() {
+    echo "Quit signal (SIGQUIT) received. Exiting."
+    exit 131   # 128 + SIGQUIT(3)
+}
+
+# Trap setup
+trap error_handler ERR # calls error_handler when a command fails.
+trap on_exit EXIT # Runs no matter how the script ends.
+trap on_interrupt INT # handles Ctrl-C.
+trap on_terminate TERM # handles kill or system shutdown signals
+trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
 umask 0007

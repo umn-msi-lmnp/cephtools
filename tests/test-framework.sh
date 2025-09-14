@@ -31,8 +31,13 @@ init_tests() {
     local test_name="$1"
     echo -e "${BLUE}Initializing test suite: $test_name${NC}"
     
-    # Create temporary test directory
-    TEST_OUTPUT_DIR=$(mktemp -d)
+    # Create test output directory (use CEPHTOOLS_TEST_OUTPUT_DIR if set, otherwise temp)
+    if [[ -n "${CEPHTOOLS_TEST_OUTPUT_DIR:-}" ]]; then
+        TEST_OUTPUT_DIR="$CEPHTOOLS_TEST_OUTPUT_DIR/$(date +%Y%m%d_%H%M%S)_$$"
+        mkdir -p "$TEST_OUTPUT_DIR"
+    else
+        TEST_OUTPUT_DIR=$(mktemp -d)
+    fi
     export TEST_OUTPUT_DIR
     
     # Set up mock environment

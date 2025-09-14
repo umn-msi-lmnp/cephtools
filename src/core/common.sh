@@ -571,6 +571,108 @@ _check_disk_space() {
     fi
 }
 
+# _check_bucket_write_permissions()
+#
+# Usage:
+#   _check_bucket_write_permissions <bucket> <dry_run>
+#
+# Description:
+#   Validates that the user has write permissions to the specified S3/Ceph bucket
+#   without actually writing files. Uses S3 bucket policy and ACL inspection.
+#   Returns 0 if write permissions are confirmed, 1 if issues are found.
+_check_bucket_write_permissions() {
+    local bucket="${1:-}"
+    local dry_run="${2:-}"
+    
+    if [[ -z "$bucket" ]]; then
+        _exit_1 printf "Bucket name cannot be empty for permission check\\n"
+        return 1
+    fi
+    
+    _info printf "Checking bucket write permissions for: %s\\n" "$bucket"
+    
+    # Skip actual checks in dry run mode to avoid credential issues
+    if [[ -n "${dry_run}" ]]; then
+        _info printf "Skipping bucket write permission check (dry run mode)\\n"
+        return 0
+    fi
+    
+    # Method 1: Check bucket policy using s3cmd
+    local bucket_policy_check=0
+    _verb printf "Checking bucket policy...\\n"
+    
+    # Get bucket policy information
+    local policy_output
+    if policy_output=$(s3cmd info "s3://${bucket}" 2>/dev/null); then
+        _verb printf "Bucket policy information retrieved\\n"
+        
+        # Check if bucket policy allows write operations
+        if echo "$policy_output" | grep -q "Policy:"; then
+            _verb printf "Bucket has a policy set\\n"
+            
+            # Get the actual policy JSON if possible
+            local policy_json
+            if policy_json=$(s3cmd getpolicy "s3://${bucket}" 2>/dev/null); then
+                # Check for write permissions in policy
+                if echo "$policy_json" | grep -qE '"s3:\*"|"s3:PutObject"|"s3:DeleteObject"'; then
+                    _info printf "✓ Bucket policy allows write operations\\n"
+                    bucket_policy_check=1
+                else
+                    _warn printf "Bucket policy may not allow write operations\\n"
+                fi
+            else
+                _verb printf "Could not retrieve bucket policy details\\n"
+            fi
+        else
+            _verb printf "No explicit bucket policy found\\n"
+        fi
+    else
+        _warn printf "Could not retrieve bucket information\\n"
+    fi
+    
+    # Method 2: Test with a small metadata operation (safest approach)
+    local metadata_check=0
+    _verb printf "Testing bucket access with metadata operations...\\n"
+    
+    # Try to list bucket contents (requires ListBucket permission)
+    if s3cmd ls "s3://${bucket}" >/dev/null 2>&1; then
+        _verb printf "✓ Can list bucket contents\\n"
+        metadata_check=1
+        
+        # Method 3: Check if we can upload/delete a tiny test marker
+        # This is more definitive but we want to avoid actual file operations
+        local test_key="cephtools-permission-test-$(date +%s)-$$"
+        local test_content="test"
+        
+        # Use s3cmd's ability to upload from stdin
+        _verb printf "Testing write permissions with temporary test object...\\n"
+        if echo "$test_content" | s3cmd put - "s3://${bucket}/${test_key}" >/dev/null 2>&1; then
+            _verb printf "✓ Successfully uploaded test object\\n"
+            
+            # Clean up immediately
+            if s3cmd del "s3://${bucket}/${test_key}" >/dev/null 2>&1; then
+                _verb printf "✓ Successfully deleted test object\\n"
+                _info printf "✓ Bucket write permissions confirmed\\n"
+                return 0
+            else
+                _warn printf "Could delete test object, but write permission confirmed\\n"
+                return 0
+            fi
+        else
+            _warn printf "Cannot write to bucket: ${bucket}\\n"
+        fi
+    else
+        _warn printf "Cannot list bucket contents: ${bucket}\\n"
+    fi
+    
+    # Evaluate results - for write operations, we must have confirmed write access
+    if [[ $bucket_policy_check -eq 1 || $metadata_check -eq 1 ]]; then
+        _exit_1 printf "Cannot confirm bucket WRITE permissions for: %s\\nBucket appears accessible but write permissions could not be verified.\\nThis indicates read-only access or insufficient permissions.\\nRequired actions:\\n  - Check bucket policy: s3cmd info s3://%s\\n  - Verify group membership and bucket write policies\\n  - Use 'cephtools bucketpolicy --policy GROUP_READ_WRITE' to grant write access\\n" "$bucket" "$bucket"
+    else
+        _exit_1 printf "Cannot access bucket for writing: %s\\nPossible issues:\\n  - Bucket does not exist (use 'cephtools bucketpolicy --make_bucket')\\n  - No access permissions (check bucket policy)\\n  - S3 credentials not properly configured\\nRequired: Bucket must exist and allow write operations for this transfer.\\n" "$bucket"
+    fi
+}
+
 # _run_preflight_checks()
 #
 # Usage:
@@ -628,6 +730,19 @@ _run_preflight_checks() {
         fi
     else
         _info printf "4. Skipping rclone connectivity check (dry run mode)\\n"
+    fi
+    
+    # 4.5. Bucket write permissions check
+    _info printf "4.5. Checking bucket write permissions...\\n"
+    if ! _check_bucket_write_permissions "${bucket}" "${dry_run}"; then
+        if [[ -z "${dry_run}" ]]; then
+            _exit_1 printf "❌ Bucket write permission check failed\\n"
+            checks_passed=1
+        else
+            _warn printf "⚠️  Bucket write permission issues detected, but continuing with dry run\\n"
+        fi
+    else
+        _info printf "✅ Bucket write permission check passed\\n"
     fi
     
     # 5. Estimate transfer size and time

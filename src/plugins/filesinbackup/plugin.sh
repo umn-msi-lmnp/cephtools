@@ -67,7 +67,12 @@ plugin_main() {
     local _bucket="data-delivery-$(id -ng)"
     local _remote="myremote"
     local _disaster_recovery_dir="$MSIPROJECT/shared/disaster_recovery"
-    local _log_dir="$MSIPROJECT/shared/cephtools/filesinbackup"
+    # Set default log directory - use TEST_OUTPUT_DIR in test environment
+    if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+        local _log_dir="$TEST_OUTPUT_DIR/filesinbackup"
+    else
+        local _log_dir="$MSIPROJECT/shared/cephtools/filesinbackup"
+    fi
     local _group=
     local _verbose=0
     local _threads="8"
@@ -316,6 +321,65 @@ _create_filesinbackup_slurm_script() {
 #SBATCH --mail-type=ALL
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
+
+# ------------------------------------------------------------------------------
+# Bash safe mode
+# ------------------------------------------------------------------------------
+
+# --- Safe defaults ---
+set -o errexit   # Exit immediately if a command fails
+set -o nounset   # Treat unset variables as an error
+set -o pipefail  # Fail if any part of a pipeline fails
+set -o errtrace  # Inherit ERR traps in functions/subshells
+
+# Uncomment if you use DEBUG/RETURN traps (rare in production)
+# set -o functrace  
+
+# Error handler
+error_handler() {
+    local exit_code=\$?
+    local cmd="\${BASH_COMMAND}"
+    local line="\${BASH_LINENO[0]}"
+    local src="\${BASH_SOURCE[1]:-main script}"
+
+    >&2 echo "ERROR [\$(date)]"
+    >&2 echo "  File: \$src"
+    >&2 echo "  Line: \$line"
+    >&2 echo "  Command: \$cmd"
+    >&2 echo "  Exit code: \$exit_code"
+
+    exit "\$exit_code"
+}
+
+# Exit handler (always runs on exit)
+on_exit() {
+    local exit_code=\$?
+    echo "Exiting script (code \$exit_code) [\$(date)]"
+    # Add temp file cleanup or resource release here
+}
+
+# Signal handlers
+on_interrupt() {
+    echo "Interrupt signal (SIGINT) received. Exiting."
+    exit 130   # 128 + SIGINT(2)
+}
+
+on_terminate() {
+    echo "Terminate signal (SIGTERM) received. Exiting."
+    exit 143   # 128 + SIGTERM(15)
+}
+
+on_quit() {
+    echo "Quit signal (SIGQUIT) received. Exiting."
+    exit 131   # 128 + SIGQUIT(3)
+}
+
+# Trap setup
+trap error_handler ERR # calls error_handler when a command fails.
+trap on_exit EXIT # Runs no matter how the script ends.
+trap on_interrupt INT # handles Ctrl-C.
+trap on_terminate TERM # handles kill or system shutdown signals
+trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Load required modules
 # Force load consistent rclone version, overriding any sticky modules

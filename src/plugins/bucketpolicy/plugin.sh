@@ -53,7 +53,10 @@ Options:
                             
     -l|--list               Provide a list of user ids for the particular policy setting
     
-    -v|--verbose            Verbose mode (print additional info).
+    --log_dir <STRING>      Absolute or relative path to the directory where bucket policy files
+                            are saved. [Default = "$MSIPROJECT/shared/cephtools/bucketpolicy"]
+     
+     -v|--verbose            Verbose mode (print additional info).
 
 
 Description:
@@ -87,6 +90,7 @@ plugin_main() {
     local _do_not_setpolicy=0
     local _verbose=0
     local _list=
+    local _log_dir=
 
     # __get_option_value()
     #
@@ -184,6 +188,10 @@ plugin_main() {
             _list="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
+        --log_dir)
+            _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         --endopts)
             # Terminate option parsing.
             break
@@ -233,16 +241,27 @@ plugin_main() {
         _exit_1 printf "LIST policies require --list option with comma-separated user list\\n"
     fi
 
+    # Set default log directory if not provided
+    if [[ -z "${_log_dir:-}" ]]; then
+        # In test environment, use TEST_OUTPUT_DIR as base
+        if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+            _log_dir="$TEST_OUTPUT_DIR/bucketpolicy"
+        else
+            _log_dir="$MSIPROJECT/shared/cephtools/bucketpolicy"
+        fi
+    fi
+
     _verb printf "Program options used:\\n"
     _verb printf "bucket: %s\\n" "$_bucket"
     _verb printf "policy: %s\\n" "$_policy"
     _verb printf "group: %s\\n" "$_group"
     _verb printf "list: %s\\n" "$_list"
+    _verb printf "log_dir: %s\\n" "$_log_dir"
     _verb printf "make_bucket: %s\\n" "$([[ ${_make_bucket} -eq 1 ]] && echo "yes" || echo "no")"
     _verb printf "do_not_setpolicy: %s\\n" "$([[ ${_do_not_setpolicy} -eq 1 ]] && echo "yes" || echo "no")"
 
     # Execute the main workflow
-    _execute_bucketpolicy_workflow "$_bucket" "$_policy" "$_group" "$_list" "$_make_bucket" "$_do_not_setpolicy"
+    _execute_bucketpolicy_workflow "$_bucket" "$_policy" "$_group" "$_list" "$_make_bucket" "$_do_not_setpolicy" "$_log_dir"
 }
 
 ###############################################################################
@@ -256,6 +275,7 @@ _execute_bucketpolicy_workflow() {
     local _list="$4"
     local _make_bucket="$5"
     local _do_not_setpolicy="$6"
+    local _log_dir="$7"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -290,10 +310,17 @@ _execute_bucketpolicy_workflow() {
         fi
     fi
 
+    # Ensure log directory exists and is accessible
+    if [ ! -d "${_log_dir}" ]; then
+        _info printf "Creating bucket policy directory: '%s'\\n" "${_log_dir}"
+        mkdir -p "${_log_dir}"
+        chmod g+rwx "${_log_dir}"
+    fi
+    
     # Create bucket policy vars
     local _curr_date_time="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
-    local _bucket_policy="${_bucket}.bucket_policy.json"
-    local _bucket_policy_readme="${_bucket}.bucket_policy_readme.md"
+    local _bucket_policy="${_log_dir}/${_bucket}.bucket_policy.json"
+    local _bucket_policy_readme="${_log_dir}/${_bucket}.bucket_policy_readme.md"
 
     # Get group user ids and generate policy based on type
     local _users_with_access
@@ -395,28 +422,51 @@ _execute_bucketpolicy_workflow() {
     _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme"
 
     # Set file permissions
-    chmod ug+rw,o-rwx "${_bucket}.bucket_policy_readme.md"
-    chmod ug+rw,o-rwx "${_bucket}.bucket_policy.json"
+    chmod ug+rw,o-rwx "${_bucket_policy_readme}"
+    chmod ug+rw,o-rwx "${_bucket_policy}"
 
-    # Print final instructions
+    #######################################################################
+    # Print instructions to terminal
+    #######################################################################
+
+    # Use a temp function to create multi-line string without affecting exit code
+    # https://stackoverflow.com/a/8088167/2367748
     heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
     
-    heredoc2var instructions_message << HEREDOC > /dev/null
+    local instructions_message
+    heredoc2var instructions_message << HEREDOC
 
 ---------------------------------------------------------------------
 cephtools bucketpolicy summary
 
+
+Options used:
+bucket=${_bucket}
+policy=${_policy}
+make_bucket=${_make_bucket}
+do_not_setpolicy=${_do_not_setpolicy}
+group=${_group}
+list=${_list}
+
+
 The bucket policy was modified for ceph bucket:
 ${_bucket}
 
+
+Policy files created in:
+${_log_dir}
+
+
 Next steps:
-1. Review the readme file for details: ${_bucket}.bucket_policy_readme.md
-2. Review the JSON bucket policy for details: ${_bucket}.bucket_policy.json
-3. Repeat this process with new group members are added or removed, so the policy is updated.
+1. Review the readme file for details: ${_log_dir}/${_bucket}.bucket_policy_readme.md
+2. Review the JSON bucket policy for details: ${_log_dir}/${_bucket}.bucket_policy.json
+3. Repeat this process when new group members are added or removed, so the policy is updated.
+
+
 
 
 VERSION: ${VERSION_SHORT}
-QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+QUESTIONS: lmp-help@msi.umn.edu
 REPO: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
@@ -446,7 +496,7 @@ Options used:
 bucket=${_bucket}
 policy=${_policy}
 do_not_setpolicy=${_do_not_setpolicy}
-policy_json=${_bucket}.bucket_policy.json
+policy_json=${_bucket_policy}
 
 
 VERSION: ${VERSION_SHORT}
@@ -472,7 +522,7 @@ ${_curr_date_time}
 bucket=${_bucket}  
 policy=${_policy}  
 do_not_setpolicy=${_do_not_setpolicy}  
-policy_json=${_bucket}.bucket_policy.json  
+policy_json=${_bucket_policy}  
 \`\`\`
 
 
@@ -495,7 +545,7 @@ See the ceph documentation for details:
 [https://docs.ceph.com/en/latest/radosgw/bucketpolicy/](https://docs.ceph.com/en/latest/radosgw/bucketpolicy/)
 
 See all "Actions" listed in the policy JSON file:  
-\`${_bucket}.bucket_policy.json\`
+\`${_bucket_policy}\`
 
 
 HEREDOC

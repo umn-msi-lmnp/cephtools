@@ -196,7 +196,13 @@ plugin_main() {
     
     # Set default log directory if not provided
     if [[ -z "${_log_dir:-}" ]]; then
-        _log_dir="${_path}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
+        # In test environment, use TEST_OUTPUT_DIR as base
+        if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+            local path_basename="$(basename "${_path}")"
+            _log_dir="${TEST_OUTPUT_DIR}/${path_basename}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
+        else
+            _log_dir="${_path}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
+        fi
     fi
 
     # Create log directory
@@ -232,8 +238,55 @@ plugin_main() {
     # Create the transfer scripts
     _create_transfer_scripts "${_bucket}" "${_remote}" "${_path}" "${_log_dir}" "${_dry_run}" "${_delete_empty_dirs}" "${_threads}"
     
-    _info printf "Transfer scripts created in: %s\\n" "${_log_dir}"
-    _info printf "Review and submit the generated SLURM scripts to complete the transfer.\\n"
+    #######################################################################
+    # Print instructions to terminal
+    #######################################################################
+
+    # Use a temp function to create multi-line string without affecting exit code
+    # https://stackoverflow.com/a/8088167/2367748
+    heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
+    
+    local instructions_message
+    heredoc2var instructions_message << HEREDOC
+
+---------------------------------------------------------------------
+cephtools panfs2ceph summary
+
+
+Options used:
+dry_run=${_dry_run}
+delete_empty_dirs=${_delete_empty_dirs}
+remote=${_remote}
+bucket=${_bucket}
+threads=${_threads}
+
+
+Archive dir: 
+${_path}
+
+
+Archive dir transfer scripts:
+${_log_dir}
+
+
+Archive transfer files created -- but you're not done yet!
+Next steps:
+1. Move into transfer dir: cd ${_log_dir}
+2. Review the generated SLURM scripts for details.
+3. Launch the copy and verify jobfile: sbatch $(basename "${_path}").1_copy_and_verify.slurm
+4. After successful copy and verify, launch the delete jobfile: sbatch $(basename "${_path}").2_delete.slurm
+5. After the data has been deleted from panfs -- and you need it back in the same location, launch the restore jobfile: sbatch $(basename "${_path}").3_restore.slurm
+
+
+
+
+VERSION: ${VERSION_SHORT}
+QUESTIONS: lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+---------------------------------------------------------------------
+HEREDOC
+
+    echo "$instructions_message"
 }
 
 ###############################################################################
@@ -265,6 +318,65 @@ _create_transfer_scripts() {
 #SBATCH --mail-type=ALL
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
+
+# ------------------------------------------------------------------------------
+# Bash safe mode
+# ------------------------------------------------------------------------------
+
+# --- Safe defaults ---
+set -o errexit   # Exit immediately if a command fails
+set -o nounset   # Treat unset variables as an error
+set -o pipefail  # Fail if any part of a pipeline fails
+set -o errtrace  # Inherit ERR traps in functions/subshells
+
+# Uncomment if you use DEBUG/RETURN traps (rare in production)
+# set -o functrace  
+
+# Error handler
+error_handler() {
+    local exit_code=\$?
+    local cmd="\${BASH_COMMAND}"
+    local line="\${BASH_LINENO[0]}"
+    local src="\${BASH_SOURCE[1]:-main script}"
+
+    >&2 echo "ERROR [\$(date)]"
+    >&2 echo "  File: \$src"
+    >&2 echo "  Line: \$line"
+    >&2 echo "  Command: \$cmd"
+    >&2 echo "  Exit code: \$exit_code"
+
+    exit "\$exit_code"
+}
+
+# Exit handler (always runs on exit)
+on_exit() {
+    local exit_code=\$?
+    echo "Exiting script (code \$exit_code) [\$(date)]"
+    # Add temp file cleanup or resource release here
+}
+
+# Signal handlers
+on_interrupt() {
+    echo "Interrupt signal (SIGINT) received. Exiting."
+    exit 130   # 128 + SIGINT(2)
+}
+
+on_terminate() {
+    echo "Terminate signal (SIGTERM) received. Exiting."
+    exit 143   # 128 + SIGTERM(15)
+}
+
+on_quit() {
+    echo "Quit signal (SIGQUIT) received. Exiting."
+    exit 131   # 128 + SIGQUIT(3)
+}
+
+# Trap setup
+trap error_handler ERR # calls error_handler when a command fails.
+trap on_exit EXIT # Runs no matter how the script ends.
+trap on_interrupt INT # handles Ctrl-C.
+trap on_terminate TERM # handles kill or system shutdown signals
+trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Load required modules
 # Force load consistent rclone version, overriding any sticky modules
@@ -348,14 +460,19 @@ echo "Generating file lists..."
 find "${path}" -type f > "${script_prefix}.source_files.txt"
 rclone lsf "${remote}:${bucket}/${path_basename}" --recursive > "${script_prefix}.destination_files.txt"
 
+# Create success marker file to indicate successful completion
+echo "Creating success marker file..."
+echo "Copy and verify operations completed successfully at \$(date)" > "${script_prefix}.copy_and_verify_SUCCESS.txt"
+
 echo "Copy and verification completed at \$(date)"
 echo "Files created:"
 echo "  Copy log: ${script_prefix}.1_copy.rclone.log"
 echo "  Verify log: ${script_prefix}.1_verify.rclone.log"
 echo "  Source file list: ${script_prefix}.source_files.txt"
 echo "  Destination file list: ${script_prefix}.destination_files.txt"
+echo "  Success marker: ${script_prefix}.copy_and_verify_SUCCESS.txt"
 echo ""
-echo "Review verification log for any issues before proceeding with deletion."
+echo "Success marker file created. Ready to proceed with deletion script."
 EOF
 
     chmod +x "${script_prefix}.1_copy_and_verify.slurm"
@@ -370,6 +487,65 @@ EOF
 #SBATCH --mail-type=ALL
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
+
+# ------------------------------------------------------------------------------
+# Bash safe mode
+# ------------------------------------------------------------------------------
+
+# --- Safe defaults ---
+set -o errexit   # Exit immediately if a command fails
+set -o nounset   # Treat unset variables as an error
+set -o pipefail  # Fail if any part of a pipeline fails
+set -o errtrace  # Inherit ERR traps in functions/subshells
+
+# Uncomment if you use DEBUG/RETURN traps (rare in production)
+# set -o functrace  
+
+# Error handler
+error_handler() {
+    local exit_code=\$?
+    local cmd="\${BASH_COMMAND}"
+    local line="\${BASH_LINENO[0]}"
+    local src="\${BASH_SOURCE[1]:-main script}"
+
+    >&2 echo "ERROR [\$(date)]"
+    >&2 echo "  File: \$src"
+    >&2 echo "  Line: \$line"
+    >&2 echo "  Command: \$cmd"
+    >&2 echo "  Exit code: \$exit_code"
+
+    exit "\$exit_code"
+}
+
+# Exit handler (always runs on exit)
+on_exit() {
+    local exit_code=\$?
+    echo "Exiting script (code \$exit_code) [\$(date)]"
+    # Add temp file cleanup or resource release here
+}
+
+# Signal handlers
+on_interrupt() {
+    echo "Interrupt signal (SIGINT) received. Exiting."
+    exit 130   # 128 + SIGINT(2)
+}
+
+on_terminate() {
+    echo "Terminate signal (SIGTERM) received. Exiting."
+    exit 143   # 128 + SIGTERM(15)
+}
+
+on_quit() {
+    echo "Quit signal (SIGQUIT) received. Exiting."
+    exit 131   # 128 + SIGQUIT(3)
+}
+
+# Trap setup
+trap error_handler ERR # calls error_handler when a command fails.
+trap on_exit EXIT # Runs no matter how the script ends.
+trap on_interrupt INT # handles Ctrl-C.
+trap on_terminate TERM # handles kill or system shutdown signals
+trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Load required modules
 # Force load consistent rclone version, overriding any sticky modules
@@ -399,25 +575,11 @@ echo "Source directory to delete: ${path}"
 # Verify that copy and verify job completed successfully
 echo "Checking if copy and verify job completed successfully..."
 
-# Check if copy log exists
-if [[ ! -f "${script_prefix}.1_copy.rclone.log" ]]; then
-    echo "ERROR: Copy log not found. Please ensure copy and verify job completed successfully."
-    echo "Expected log file: ${script_prefix}.1_copy.rclone.log"
-    exit 1
-fi
-
-# Check if verification log exists 
-if [[ ! -f "${script_prefix}.1_verify.rclone.log" ]]; then
-    echo "ERROR: Verification log not found. Please ensure copy and verify job completed successfully."
-    echo "Expected log file: ${script_prefix}.1_verify.rclone.log"
-    exit 1
-fi
-
-# Check verification log for errors
-if grep -i "error\|failed\|[1-9][0-9]* differences\|differences found: [1-9]" "${script_prefix}.1_verify.rclone.log" >/dev/null 2>&1; then
-    echo "ERROR: Verification log shows errors or differences."
-    echo "Please review the verification log before proceeding with deletion:"
-    echo "  ${script_prefix}.1_verify.rclone.log"
+# Check for success marker file
+if [[ ! -f "${script_prefix}.copy_and_verify_SUCCESS.txt" ]]; then
+    echo "ERROR: Success marker file not found. Please ensure copy and verify job completed successfully."
+    echo "Expected marker file: ${script_prefix}.copy_and_verify_SUCCESS.txt"
+    echo "This file is created only when both copy and verify operations complete with exit code 0."
     exit 1
 fi
 
@@ -460,6 +622,65 @@ EOF
 #SBATCH --mail-type=ALL
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
+
+# ------------------------------------------------------------------------------
+# Bash safe mode
+# ------------------------------------------------------------------------------
+
+# --- Safe defaults ---
+set -o errexit   # Exit immediately if a command fails
+set -o nounset   # Treat unset variables as an error
+set -o pipefail  # Fail if any part of a pipeline fails
+set -o errtrace  # Inherit ERR traps in functions/subshells
+
+# Uncomment if you use DEBUG/RETURN traps (rare in production)
+# set -o functrace  
+
+# Error handler
+error_handler() {
+    local exit_code=\$?
+    local cmd="\${BASH_COMMAND}"
+    local line="\${BASH_LINENO[0]}"
+    local src="\${BASH_SOURCE[1]:-main script}"
+
+    >&2 echo "ERROR [\$(date)]"
+    >&2 echo "  File: \$src"
+    >&2 echo "  Line: \$line"
+    >&2 echo "  Command: \$cmd"
+    >&2 echo "  Exit code: \$exit_code"
+
+    exit "\$exit_code"
+}
+
+# Exit handler (always runs on exit)
+on_exit() {
+    local exit_code=\$?
+    echo "Exiting script (code \$exit_code) [\$(date)]"
+    # Add temp file cleanup or resource release here
+}
+
+# Signal handlers
+on_interrupt() {
+    echo "Interrupt signal (SIGINT) received. Exiting."
+    exit 130   # 128 + SIGINT(2)
+}
+
+on_terminate() {
+    echo "Terminate signal (SIGTERM) received. Exiting."
+    exit 143   # 128 + SIGTERM(15)
+}
+
+on_quit() {
+    echo "Quit signal (SIGQUIT) received. Exiting."
+    exit 131   # 128 + SIGQUIT(3)
+}
+
+# Trap setup
+trap error_handler ERR # calls error_handler when a command fails.
+trap on_exit EXIT # Runs no matter how the script ends.
+trap on_interrupt INT # handles Ctrl-C.
+trap on_terminate TERM # handles kill or system shutdown signals
+trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Load required modules
 # Force load consistent rclone version, overriding any sticky modules

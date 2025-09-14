@@ -243,15 +243,15 @@ test_dd2dr_quota_checking() {
         fail_test "dd2dr command failed"
     fi
     
-    # Look for dd2dr SLURM script in the MSIPROJECT directory where it's actually created
-    local slurm_script=$(find "$MSIPROJECT" -name "*.slurm" -path "*/dd2dr/*" | head -1)
+    # Look for dd2dr SLURM script in the test output directory
+    local slurm_script=$(find "$TEST_OUTPUT_DIR" -name "*.slurm" -path "*/dd2dr/*" | head -1)
     if [[ -n "$slurm_script" ]]; then
         # Check for actual dd2dr functionality instead of non-existent quota logic
         assert_contains "$(cat "$slurm_script")" "data_delivery" "Contains data_delivery references"
         assert_contains "$(cat "$slurm_script")" "disaster_recovery" "Contains disaster_recovery references"
         assert_contains "$(cat "$slurm_script")" "rclone copy" "Contains rclone copy command"
     else
-        fail_test "No dd2dr SLURM script found in $MSIPROJECT"
+        fail_test "No dd2dr SLURM script found in $TEST_OUTPUT_DIR"
     fi
 }
 
@@ -449,7 +449,7 @@ test_bucketpolicy_workflow() {
     cd "$test_dir"
     
     # Run bucketpolicy
-    if "$CEPHTOOLS_BIN" bucketpolicy --bucket test-bucket --policy GROUP_READ_WRITE --group testgroup >/dev/null 2>&1; then
+    if "$CEPHTOOLS_BIN" bucketpolicy --bucket test-bucket --policy GROUP_READ_WRITE --group testgroup --log_dir "$test_dir" >/dev/null 2>&1; then
         pass_test "bucketpolicy command executed successfully"
     else
         fail_test "bucketpolicy command failed"

@@ -78,7 +78,13 @@ cleanup_on_exit() {
         # Remove test bucket if it exists
         if timeout 15 s3cmd ls "s3://$TEST_BUCKET" &>/dev/null; then
             log_info "Removing test bucket: $TEST_BUCKET"
-            timeout 30 s3cmd rb "s3://$TEST_BUCKET" --force &>/dev/null || log_warning "Failed to remove bucket $TEST_BUCKET"
+            
+            # First, remove all objects from the bucket
+            log_info "Removing all objects from bucket: $TEST_BUCKET"
+            timeout 60 s3cmd del "s3://$TEST_BUCKET" --recursive --force &>/dev/null || log_warning "Failed to remove some objects from $TEST_BUCKET"
+            
+            # Then remove the empty bucket
+            timeout 30 s3cmd rb "s3://$TEST_BUCKET" &>/dev/null || log_warning "Failed to remove bucket $TEST_BUCKET"
         fi
         
         # Remove test directory if it exists
@@ -183,6 +189,7 @@ test_bucket_policy_group_read() {
         --bucket "$TEST_BUCKET" \
         --policy GROUP_READ \
         --group "$TEST_GROUP" \
+        --log_dir "$TEST_DIR" \
         --verbose &>/dev/null; then
         
         # Check if policy files were created
@@ -219,6 +226,7 @@ test_bucket_policy_group_read_write() {
         --bucket "$TEST_BUCKET" \
         --policy GROUP_READ_WRITE \
         --group "$TEST_GROUP" \
+        --log_dir "$TEST_DIR" \
         --verbose &>/dev/null; then
         
         # Check if policy files were updated
@@ -291,6 +299,7 @@ test_bucket_policy_list_users() {
         --bucket "$TEST_BUCKET" \
         --policy LIST_READ \
         --list "$user_list_file" \
+        --log_dir "$TEST_DIR" \
         --verbose &>/dev/null; then
         
         # Check if policy file was created with correct content
@@ -330,6 +339,7 @@ test_bucket_policy_removal() {
     output=$("$CEPHTOOLS_BIN" bucketpolicy \
         --bucket "$TEST_BUCKET" \
         --policy NONE \
+        --log_dir "$TEST_DIR" \
         --verbose 2>&1)
     local exit_code=$?
     
@@ -365,7 +375,10 @@ test_bucket_with_make_flag() {
     
     # Ensure bucket doesn't exist
     if timeout 15 s3cmd ls "s3://$new_test_bucket" &>/dev/null; then
-        timeout 30 s3cmd rb "s3://$new_test_bucket" --force &>/dev/null || true
+        # First, remove all objects from the bucket
+        timeout 60 s3cmd del "s3://$new_test_bucket" --recursive --force &>/dev/null 2>&1 || true
+        # Then remove the empty bucket
+        timeout 30 s3cmd rb "s3://$new_test_bucket" &>/dev/null 2>&1 || true
     fi
     
     cd "$TEST_DIR"
@@ -376,12 +389,14 @@ test_bucket_with_make_flag() {
         --policy GROUP_READ \
         --group "$TEST_GROUP" \
         --make_bucket \
+        --log_dir "$TEST_DIR" \
         --verbose &>/dev/null; then
         
         # Verify bucket was created
         if timeout 15 s3cmd ls "s3://$new_test_bucket" &>/dev/null; then
-            # Clean up the bucket
-            timeout 30 s3cmd rb "s3://$new_test_bucket" --force &>/dev/null || log_warning "Failed to clean up $new_test_bucket"
+            # Clean up the bucket - first remove objects, then bucket
+            timeout 60 s3cmd del "s3://$new_test_bucket" --recursive --force &>/dev/null 2>&1 || true
+            timeout 30 s3cmd rb "s3://$new_test_bucket" &>/dev/null || log_warning "Failed to clean up $new_test_bucket"
             return 0
         else
             log_error "Bucket not created with --make_bucket flag"

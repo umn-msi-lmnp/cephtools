@@ -78,7 +78,12 @@ plugin_main() {
     local _remote="myremote"
     local _bucket="$(id -ng)-data-archive"
     local _path="$MSIPROJECT/data_delivery"
-    local _log_dir="$MSIPROJECT/shared/cephtools/dd2ceph"
+    # Set default log directory - use TEST_OUTPUT_DIR in test environment
+    if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+        local _log_dir="$TEST_OUTPUT_DIR/dd2ceph"
+    else
+        local _log_dir="$MSIPROJECT/shared/cephtools/dd2ceph"
+    fi
      local _dry_run=
      local _verbose=0
      local _delete_empty_dirs=0
@@ -212,7 +217,7 @@ plugin_main() {
     _info printf "Source: %s\\n" "${_root_path_dir}"
     _info printf "Destination: %s:%s\\n" "${_remote}" "${_bucket}"
     
-    # Run comprehensive pre-flight checks (skip permission checks for read-only data_delivery)
+    # Run comprehensive pre-flight checks (skip source permission checks for read-only data_delivery)
     if ! _run_preflight_checks "${_root_path_dir}" "${_remote}" "${_bucket}" "${_log_dir}" "${_dry_run}" "false"; then
         if [[ -z "${_dry_run}" ]]; then
             _exit_1 printf "Pre-flight checks failed. Use --dry_run to proceed anyway, or fix issues first.\\n"
@@ -311,13 +316,54 @@ _check_s3cmd_access() {
      # Create the transfer scripts
      _create_dd2ceph_copy_and_verify_script "${remote}" "${bucket}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
 
-    # Show completion message
-    _info printf "dd2ceph workflow completed\\n"
-    _info printf "Working directory: %s\\n" "${myprefix_dir}"
-    _info printf "Archive script created:\\n"
-    _info printf "  Copy and Verify: %s\\n" "${myprefix}.1_copy_and_verify.slurm"
-    _info printf "\\nNote: Source data in data_delivery will remain unchanged.\\n"
-    _info printf "Review and submit the script to complete the archival process.\\n"
+    #######################################################################
+    # Print instructions to terminal
+    #######################################################################
+
+    # Use a temp function to create multi-line string without affecting exit code
+    # https://stackoverflow.com/a/8088167/2367748
+    heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
+    
+    local instructions_message
+    heredoc2var instructions_message << HEREDOC
+
+---------------------------------------------------------------------
+cephtools dd2ceph summary
+
+
+Options used:
+dry_run=${dry_run}
+delete_empty_dirs=${delete_empty_dirs}
+remote=${remote}
+bucket=${bucket}
+threads=${threads}
+
+
+Source dir: 
+${root_path_dir}
+
+
+Archive dir transfer scripts:
+${myprefix_dir}
+
+
+Archive transfer files created and file transfer script started! 
+Next steps:
+1. Move into log dir: cd ${myprefix_dir}
+2. Review the *.readme.md file for details.
+3. Review the ${myprefix}.filelist.txt file. Any files not already on ceph, will be copied to ceph.
+4. Launch the copy and verify jobfile: sbatch ${myprefix}.1_copy_and_verify.slurm
+
+
+
+
+VERSION: ${VERSION_SHORT}
+QUESTIONS: lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+---------------------------------------------------------------------
+HEREDOC
+
+    echo "$instructions_message"
 }
 
 _check_pathname_lengths() {
@@ -354,6 +400,65 @@ _check_pathname_lengths() {
 #SBATCH --mail-type=ALL
 #SBATCH --error=%x.e%j
 #SBATCH --output=%x.o%j
+
+# ------------------------------------------------------------------------------
+# Bash safe mode
+# ------------------------------------------------------------------------------
+
+# --- Safe defaults ---
+set -o errexit   # Exit immediately if a command fails
+set -o nounset   # Treat unset variables as an error
+set -o pipefail  # Fail if any part of a pipeline fails
+set -o errtrace  # Inherit ERR traps in functions/subshells
+
+# Uncomment if you use DEBUG/RETURN traps (rare in production)
+# set -o functrace  
+
+# Error handler
+error_handler() {
+    local exit_code=\$?
+    local cmd="\${BASH_COMMAND}"
+    local line="\${BASH_LINENO[0]}"
+    local src="\${BASH_SOURCE[1]:-main script}"
+
+    >&2 echo "ERROR [\$(date)]"
+    >&2 echo "  File: \$src"
+    >&2 echo "  Line: \$line"
+    >&2 echo "  Command: \$cmd"
+    >&2 echo "  Exit code: \$exit_code"
+
+    exit "\$exit_code"
+}
+
+# Exit handler (always runs on exit)
+on_exit() {
+    local exit_code=\$?
+    echo "Exiting script (code \$exit_code) [\$(date)]"
+    # Add temp file cleanup or resource release here
+}
+
+# Signal handlers
+on_interrupt() {
+    echo "Interrupt signal (SIGINT) received. Exiting."
+    exit 130   # 128 + SIGINT(2)
+}
+
+on_terminate() {
+    echo "Terminate signal (SIGTERM) received. Exiting."
+    exit 143   # 128 + SIGTERM(15)
+}
+
+on_quit() {
+    echo "Quit signal (SIGQUIT) received. Exiting."
+    exit 131   # 128 + SIGQUIT(3)
+}
+
+# Trap setup
+trap error_handler ERR # calls error_handler when a command fails.
+trap on_exit EXIT # Runs no matter how the script ends.
+trap on_interrupt INT # handles Ctrl-C.
+trap on_terminate TERM # handles kill or system shutdown signals
+trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Load required modules - try to get consistent rclone version
 # Force load consistent rclone version, overriding any sticky modules
@@ -431,10 +536,6 @@ rclone check "${root_path_dir}" "${remote}:${bucket}" \\
 
 echo "Verification completed at \$(date)"
 
-# Generate file lists for comparison
-echo "Generating file lists..."
-find "${root_path_dir}" -type f > "${myprefix}.source_files.txt"
-rclone lsf -R "${remote}:${bucket}" > "${myprefix}.destination_files.txt"
 
 echo "Copy and verification completed at \$(date)"
 echo "Files created:"

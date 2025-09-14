@@ -47,7 +47,13 @@ cleanup_on_exit() {
         # Remove test bucket if it exists
         if timeout 15 s3cmd ls "s3://$TEST_BUCKET" &>/dev/null; then
             log_info "Removing test bucket: $TEST_BUCKET"
-            timeout 30 s3cmd rb "s3://$TEST_BUCKET" --force &>/dev/null || log_warning "Failed to remove bucket $TEST_BUCKET"
+            
+            # First, remove all objects from the bucket
+            log_info "Removing all objects from bucket: $TEST_BUCKET"
+            timeout 60 s3cmd del "s3://$TEST_BUCKET" --recursive --force &>/dev/null 2>&1 || true
+            
+            # Then remove the empty bucket
+            timeout 30 s3cmd rb "s3://$TEST_BUCKET" &>/dev/null || log_warning "Failed to remove bucket $TEST_BUCKET"
         fi
         
         # Remove any other cleanup items
