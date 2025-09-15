@@ -532,8 +532,16 @@ echo "Transfer completed at \$(date)"
 echo "Starting verification at \$(date)"  
 rclone check "${root_path_dir}" "${remote}:${bucket}" \\
     --log-file "${myprefix}.1_verify.rclone.log" \\
-    --log-level INFO
-
+    --progress \\
+    --log-level DEBUG \\
+    --transfers ${threads} \\
+    --checkers ${checkers} \\
+    --retries 5 \\
+    --low-level-retries 20 \\
+    --one-way \\
+    --differ "${myprefix}.1_verify.rclone.differ.txt" \\
+    --missing-on-dst "${myprefix}.1_verify.rclone.missing-on-tier2.txt" \\
+    --error "${myprefix}.1_verify.rclone.error.txt"
 echo "Verification completed at \$(date)"
 
 
