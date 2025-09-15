@@ -42,7 +42,8 @@ Options:
      -e|--delete_empty_dirs  Do NOT transfer empty dirs from panfs to ceph. [Default is to 
                              transfer empty dirs using rclone's native directory handling 
                              with --create-empty-src-dirs --s3-directory-markers flags.
-                             Setting this flag will omit these flags.]
+                             The restore script also uses --create-empty-src-dirs to 
+                             recreate empty directories. Setting this flag will omit these flags.]
                             
     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
@@ -312,6 +313,7 @@ _create_transfer_scripts() {
     cat > "${script_prefix}.1_copy_and_verify.slurm" <<EOF
 #!/bin/bash
 #SBATCH --time=24:00:00
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=32gb
@@ -464,23 +466,9 @@ rclone check "${path}" "${remote}:${bucket}/${path_basename}" \\
 
 echo "Verification completed at \$(date)"
 
-# Generate file lists for comparison
-echo "Generating file lists..."
-find "${path}" -type f > "${script_prefix}.source_files.txt"
-rclone lsf "${remote}:${bucket}/${path_basename}" --recursive > "${script_prefix}.destination_files.txt"
-
 # Create success marker file to indicate successful completion
 echo "Creating success marker file..."
 echo "Copy and verify operations completed successfully at \$(date)" > "${script_prefix}.copy_and_verify_SUCCESS.txt"
-
-echo "Copy and verification completed at \$(date)"
-echo "Files created:"
-echo "  Copy log: ${script_prefix}.1_copy.rclone.log"
-echo "  Verify log: ${script_prefix}.1_verify.rclone.log"
-echo "  Source file list: ${script_prefix}.source_files.txt"
-echo "  Destination file list: ${script_prefix}.destination_files.txt"
-echo "  Success marker: ${script_prefix}.copy_and_verify_SUCCESS.txt"
-echo ""
 echo "Success marker file created. Ready to proceed with deletion script."
 EOF
 
@@ -490,6 +478,7 @@ EOF
     cat > "${script_prefix}.2_delete.slurm" <<EOF
 #!/bin/bash
 #SBATCH --time=8:00:00
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=16gb
@@ -625,6 +614,7 @@ EOF
     cat > "${script_prefix}.3_restore.slurm" <<EOF
 #!/bin/bash
 #SBATCH --time=24:00:00
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=32gb
@@ -752,6 +742,7 @@ rclone copy "${remote}:${bucket}/${path_basename}" "${path}" \\
     --progress \\
     --stats 30s \\
     ${dry_run} \\
+    --create-empty-src-dirs \\
     --log-file "${script_prefix}.3_restore.rclone.log" \\
     --log-level INFO
 

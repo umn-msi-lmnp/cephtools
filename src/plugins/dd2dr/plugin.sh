@@ -262,6 +262,7 @@ _create_comprehensive_dd2dr_script() {
     cat > "$script_name" <<EOF
 #!/bin/bash
 #SBATCH --time=24:00:00
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=32gb

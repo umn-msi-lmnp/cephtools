@@ -315,6 +315,7 @@ _create_filesinbackup_slurm_script() {
     cat > "$script_name" <<EOF
 #!/bin/bash
 #SBATCH --time=2:00:00
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=8gb

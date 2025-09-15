@@ -394,6 +394,7 @@ _check_pathname_lengths() {
     cat > "${myprefix}.1_copy_and_verify.slurm" <<EOF
 #!/bin/bash
 #SBATCH --time=24:00:00
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${threads}
 #SBATCH --mem=32gb
@@ -544,16 +545,11 @@ rclone check "${root_path_dir}" "${remote}:${bucket}" \\
     --error "${myprefix}.1_verify.rclone.error.txt"
 echo "Verification completed at \$(date)"
 
-
 echo "Copy and verification completed at \$(date)"
-echo "Files created:"
-echo "  Copy log: ${myprefix}.1_copy.rclone.log"
-echo "  Verify log: ${myprefix}.1_verify.rclone.log"
-echo "  Source file list: ${myprefix}.source_files.txt"
-echo "  Destination file list: ${myprefix}.destination_files.txt"
-echo ""
-echo "Transfer summary available in: ${myprefix_dir}"
-echo "Review verification log for any issues before considering the transfer complete."
+
+# Create success marker file to indicate successful completion
+echo "Creating success marker file..."
+echo "Copy and verify operations completed successfully at \$(date)" > "${myprefix}.copy_and_verify_SUCCESS.txt"
 EOF
 
     chmod +x "${myprefix}.1_copy_and_verify.slurm"

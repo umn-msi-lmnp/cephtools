@@ -57,6 +57,14 @@ NOTE: you can supply your `rclone` remote name in the command below. To learn mo
 cephtools panfs2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
 ```
 
+### Empty Directory Handling
+
+By default, `panfs2ceph` preserves empty directories during transfer operations:
+
+- **Copy to Ceph**: Uses `--create-empty-src-dirs` and `--s3-directory-markers` flags to ensure empty directories are preserved in Ceph storage
+- **Restore from Ceph**: Uses `--create-empty-src-dirs` flag to recreate empty directories in their original locations
+- **Skip Empty Directories**: Use the `--delete_empty_dirs` flag if you want to exclude empty directories from the transfer
+
 By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, input directory and working directory paths are shown below:
 
 | Input dir path name                       | Working dir path name                                               |

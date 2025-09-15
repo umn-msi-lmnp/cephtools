@@ -22,6 +22,7 @@ _create_slurm_script() {
   cat > "${script_path}" <<EOF
 #!/bin/bash
 #SBATCH --time=${time}
+#SBATCH --partition=msismall
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=${cpus}
 #SBATCH --mem=${memory}
