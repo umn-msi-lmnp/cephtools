@@ -17,7 +17,7 @@ plugin_describe() {
 cat <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} dd2ceph [options] --bucket <BUCKET> --path <DIR_PATH>
+    ${_ME} dd2ceph [options] --group <GROUP>
 
 Options:                            
     -r|--remote <STRING>    [Optional] Rclone remote name. (use "rclone listremotes" for available
@@ -27,8 +27,10 @@ Options:
                             automatically identify your MSI ceph keys and set the remote. 
                             This option was left here for backward compatibility. 
 
-    -b|--bucket <STRING>    Name of the ceph bucket that data should be used for the 
-                            transfer. [Default = "$(id -ng)-data-archive"]
+    -g|--group <STRING>     MSI group ID (required). Used to set default bucket name.
+
+    -b|--bucket <STRING>    [Optional] Name of the ceph bucket that data should be used for the 
+                            transfer. [Default = "data-delivery-<GROUP>"]
     
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered. [Default = "$MSIPROJECT/data_delivery"]
@@ -76,7 +78,8 @@ plugin_main() {
 
     # Initialize program option variables.
     local _remote="myremote"
-    local _bucket="$(id -ng)-data-archive"
+    local _group=
+    local _bucket=
     local _path="$MSIPROJECT/data_delivery"
     # Set default log directory - use TEST_OUTPUT_DIR in test environment
     if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
@@ -137,6 +140,10 @@ plugin_main() {
             _bucket="$(__validate_bucket_name "$(__get_option_value "${__arg}" "${__val:-}")")"
             shift
             ;;
+        -g|--group)
+            _group="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         -p|--path)
             _path="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
@@ -164,15 +171,18 @@ plugin_main() {
 
         shift
     done
+    shift $((OPTIND-1))
 
-    # Set verbose mode if requested
-    if [[ ${_verbose} -eq 1 ]]; then
-        _USE_VERBOSE=1
+    # Validate required parameters
+    if [[ -z "${_group:-}" ]]; then
+        plugin_describe
+        _exit_1 printf "Option '--group' is required.\\n"
     fi
 
-    # ---------------------------------------------------------------------
-    # Check and print input options
-    # ---------------------------------------------------------------------
+    # Set default bucket if not provided
+    if [[ -z "${_bucket:-}" ]]; then
+        _bucket="data-delivery-${_group}"
+    fi
 
     # Setup rclone credentials if using default remote
     if [[ "$_remote" == "myremote" ]]; then
@@ -191,6 +201,7 @@ plugin_main() {
     fi
 
     _verb printf "Program options used:\\n"
+    _verb printf "group: %s\\n" "$_group"
     _verb printf "remote: %s\\n" "$_remote"
     _verb printf "bucket: %s\\n" "$_bucket"
     _verb printf "path: %s\\n" "$_path"

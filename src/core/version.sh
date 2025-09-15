@@ -9,7 +9,7 @@
 # MAJOR version when you make incompatible API changes,
 # MINOR version when you add functionality in a backwards compatible manner, and
 # PATCH version when you make backwards compatible bug fixes.
-SEMANTIC_VERSION="3.5.0"
+SEMANTIC_VERSION="3.6.0"
 
 # The following empty variables get set when running the "makefile"
 GIT_CURRENT_BRANCH=

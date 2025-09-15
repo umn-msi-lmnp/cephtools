@@ -8,7 +8,7 @@ Data from various UMN core facilities (e.g. UMGC) export data to a special direc
 
 Create a bucket that all MSI group members can access.
 
-_The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `GROUP-data-archive` (replacing GROUP with your MSI group name). Later, a bucket policy can be applied to the bucket, controlling access to the bucket for only certain MSI users. This process will ensure the raw data in the bucket are owned by the group's PI username. This bucket only needs to be created once.
+_The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `data-delivery-GROUP` (replacing GROUP with your MSI group name). Later, a bucket policy can be applied to the bucket, controlling access to the bucket for only certain MSI users. This process will ensure the raw data in the bucket are owned by the group's PI username. This bucket only needs to be created once.
 
 > NOTE: Before completing these steps, you can check to see whether the bucket you plan to create already exists. Running `s3cmd ls s3://BUCKETNAME` will return an ERROR if it does not exist or if you cannot access it. If it exists and you can access it, no error is given. [Skip to **Step 2** below](#step-2-transfer-data-to-ceph-completed-my-any-group-member-repeatedly).
 
@@ -37,7 +37,7 @@ _The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `GRO
 2. Create the ceph (tier2) bucket.
 
    ```
-   s3cmd mb s3://$MYGROUP-data-archive
+   s3cmd mb s3://data-delivery-$MYGROUP
    ```
 
 3. Create working directory.
@@ -54,12 +54,12 @@ _The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `GRO
    Use `cephtools` to set a bucket policy that will allow all MSI group members read and write access. Re-run the bucket policy command above after MSI members are added or removed from group.
 
    ```
-   cephtools bucketpolicy -v -b $MYGROUP-data-archive -p GROUP_READ_WRITE -g $MYGROUP
+   cephtools bucketpolicy -v -b data-delivery-$MYGROUP -p GROUP_READ_WRITE -g $MYGROUP
    ```
 
 ## Step 2: Transfer data to ceph _(completed my any group member, repeatedly)_
 
-After the PI's bucket has a group READ/WRITE bucket policy set, _the following methods can be done by any group members_. In fact, the data transfer steps below should be done repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: you will need to supply your `rclone` remote name in the command below. [To learn more about rclone remotes and how to set one up, see this tips page](https://github.umn.edu/lmnp/tips/tree/main/rclone#umn-tier2-ceph).
+After the PI's bucket has a group READ/WRITE bucket policy set, _the following methods can be done by any group members_. In fact, the data transfer steps below should be done repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: the --remote option is optional as cephtools will automatically detect your MSI ceph credentials.
 
 1. Set up environment.
 
@@ -95,8 +95,8 @@ After the PI's bucket has a group READ/WRITE bucket policy set, _the following m
    ```
 
    ```
-   # Run the command
-   cephtools dd2ceph -v --bucket $MYGROUP-data-archive --remote ceph --path /projects/standard/$MYGROUP/data_delivery
+   # Run the command (bucket is automatically set to data-delivery-$MYGROUP)
+   cephtools dd2ceph -v --group $MYGROUP
    ```
 
 4. Review the output and launch the SLURM job.
@@ -104,7 +104,7 @@ After the PI's bucket has a group READ/WRITE bucket policy set, _the following m
    Change into the working directory for this run.
 
    ```
-   cd $MYGROUP-data-archive___*
+   cd data-delivery-$MYGROUP___*
    ```
 
     Review the slurm script (change any parameters you wish) and launch the combined copy and verify job.
