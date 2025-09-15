@@ -454,7 +454,7 @@ rclone check "${path}" "${remote}:${bucket}/${path_basename}" \\
     --progress \\
     --log-level DEBUG \\
     --transfers ${threads} \\
-    --checkers ${checkers} \\
+    --checkers ${threads} \\
     --retries 5 \\
     --low-level-retries 20 \\
     --one-way \\
