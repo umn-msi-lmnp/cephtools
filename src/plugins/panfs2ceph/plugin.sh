@@ -423,11 +423,11 @@ echo "✓ Source directory accessibility verified"
 # Perform the transfer
 echo "Starting transfer at \$(date)"
 echo "Source: ${path}"
-echo "Destination: ${remote}:${bucket}/${path_basename}"
+echo "Destination: ${remote}:${bucket}${path}"
 
 $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "echo \"Using rclone native empty directory handling...\""
-    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path_basename}\" \\"
+    echo "rclone copy \"${path}\" \"${remote}:${bucket}${path}\" \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -438,7 +438,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "    --log-level INFO"
 else
     echo "echo \"Skipping empty directories...\""
-    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path_basename}\" \\"
+    echo "rclone copy \"${path}\" \"${remote}:${bucket}${path}\" \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -451,7 +451,7 @@ echo "Transfer completed at \$(date)"
 
 # Verify the transfer immediately
 echo "Starting verification at \$(date)"  
-rclone check "${path}" "${remote}:${bucket}/${path_basename}" \\
+rclone check "${path}" "${remote}:${bucket}${path}" \\
     --log-file "${script_prefix}.1_verify.rclone.log" \\
     --progress \\
     --log-level DEBUG \\
@@ -598,7 +598,7 @@ rclone purge "${path}" \\
 if [[ \$? -eq 0 ]]; then
     echo "Deletion completed successfully at \$(date)"
     echo "Original data has been removed from: ${path}"
-    echo "Data remains safely stored in: ${remote}:${bucket}/${path_basename}"
+    echo "Data remains safely stored in: ${remote}:${bucket}${path}"
 else
     echo "ERROR: Deletion failed. Please check the log file:"
     echo "  ${script_prefix}.2_delete.rclone.log"
@@ -703,7 +703,7 @@ fi)
 
 # Restore process
 echo "Starting restore process at \$(date)"
-echo "Source: ${remote}:${bucket}/${path_basename}"
+echo "Source: ${remote}:${bucket}${path}"
 echo "Destination: ${path}"
 
 # Safety checks
@@ -716,9 +716,9 @@ fi
 
 # Verify source exists in tier 2 storage
 echo "Verifying source data exists in tier 2 storage..."
-if ! rclone lsd "${remote}:${bucket}/${path_basename}" >/dev/null 2>&1; then
+if ! rclone lsd "${remote}:${bucket}${path}" >/dev/null 2>&1; then
     echo "ERROR: Source data not found in tier 2 storage"
-    echo "Expected location: ${remote}:${bucket}/${path_basename}"
+    echo "Expected location: ${remote}:${bucket}${path}"
     echo "Please verify the bucket and path are correct"
     exit 1
 fi
@@ -737,7 +737,7 @@ fi
 
 # Perform the restore
 echo "Starting restore from tier 2 back to tier 1..."
-rclone copy "${remote}:${bucket}/${path_basename}" "${path}" \\
+rclone copy "${remote}:${bucket}${path}" "${path}" \\
     --transfers ${threads} \\
     --progress \\
     --stats 30s \\
