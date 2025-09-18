@@ -27,3 +27,4 @@ test-bucket.bucket_policy_readme.md
 # Test directories that might leak to project root
 test_*___panfs2ceph_archive_*
 test_*___*
+tests/outputs/
