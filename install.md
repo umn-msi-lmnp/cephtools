@@ -10,6 +10,8 @@ There are two ways to access cephtools. Cephtools is not installed in a common l
 
 ```
 git clone git@github.umn.edu:lmnp/cephtools.git
+# OR, if you do not have ssh key set up, try the https approach (entering your UMN username/password when prompted):
+# git clone https://github.umn.edu/lmnp/cephtools.git
 cd cephtools
 make
 export PATH="${PWD}/build/bin:${PATH}"
@@ -21,9 +23,12 @@ cephtools --help
 - The cephtools repo is a public repo on the UMN GitHub site, allowing anyone with access to [github.umn.edu](github.umn.edu) to view or clone the files. 
 - To clone any repo from the UMN GitHub site, you need to initialize your UMN GitHub account by visiting [github.umn.edu](github.umn.edu) and logging-in using your UMN Internet ID and password.
 - If you're reading this, you've likely already done that step! However, if you are helping someone else try to clone the repo from the command line (i.e. a PI), make sure they have initialized their GitHub account first (otherwise you'll see unclear permissions errors).
+- Cloning from GitHub can be done in two ways, using ssh keys or via https. The https method requires you to enter your UMN Internet ID/password on the command line to download. 
 
 ```
 git clone git@github.umn.edu:lmnp/cephtools.git
+# OR, if you do not have ssh key set up, try the https approach:
+# git clone https://github.umn.edu/lmnp/cephtools.git
 cd cephtools
 ```
 
