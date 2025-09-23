@@ -119,6 +119,27 @@ run_permission_tests() {
         "Tests file permission detection and error handling"
 }
 
+run_panfs2ceph_path_fix_tests() {
+    run_test_suite \
+        "panfs2ceph Path Construction Fix Tests" \
+        "$SCRIPT_DIR/test-panfs2ceph-path-fix.sh" \
+        "Tests the fix for BucketAlreadyExists path construction bug"
+}
+
+run_panfs2ceph_e2e_real_tests() {
+    run_test_suite \
+        "panfs2ceph End-to-End Real Bucket Tests" \
+        "$SCRIPT_DIR/test-panfs2ceph-e2e-real.sh" \
+        "End-to-end tests with real S3 buckets to catch runtime issues"
+}
+
+run_vignette_panfs2ceph_e2e_tests() {
+    run_test_suite \
+        "Vignette panfs2ceph Complete End-to-End Tests" \
+        "$SCRIPT_DIR/test-vignette-panfs2ceph-e2e.sh" \
+        "Complete vignette workflow: bucket creation, policies, and all 3 scripts"
+}
+
 ###############################################################################
 # Test Summary and Reporting
 ###############################################################################
@@ -192,6 +213,9 @@ show_usage() {
     echo "  real-s3           Real S3 integration tests (creates actual buckets)"
     echo "  empty-dirs        Empty directory flag tests (--delete_empty_dirs)"
     echo "  permissions       File permission detection and error handling tests"
+    echo "  path-fix          panfs2ceph path construction fix tests (mock)"
+    echo "  e2e-real          panfs2ceph end-to-end tests with real buckets"
+    echo "  vignette-e2e      Complete vignette workflow test (bucket + policy + all 3 scripts)"
     echo
     echo "Examples:"
     echo "  $0                          # Run all test suites"
@@ -229,7 +253,7 @@ main() {
                 skip_build=true
                 shift
                 ;;
-            basic|dependencies|integration|errors|compatibility|real-s3|empty-dirs|permissions)
+            basic|dependencies|integration|errors|compatibility|real-s3|empty-dirs|permissions|path-fix|e2e-real|vignette-e2e)
                 specific_tests+=("$1")
                 shift
                 ;;
@@ -279,7 +303,7 @@ main() {
     
     # Run specified tests or all tests
     if [[ ${#specific_tests[@]} -eq 0 ]]; then
-        specific_tests=(basic dependencies integration errors compatibility empty-dirs permissions real-s3)
+        specific_tests=(basic dependencies integration errors compatibility empty-dirs permissions path-fix real-s3)
     fi
     
     for test_name in "${specific_tests[@]}"; do
@@ -304,6 +328,15 @@ main() {
                 ;;
             permissions)
                 run_permission_tests || overall_success=false
+                ;;
+            path-fix)
+                run_panfs2ceph_path_fix_tests || overall_success=false
+                ;;
+            e2e-real)
+                run_panfs2ceph_e2e_real_tests || overall_success=false
+                ;;
+            vignette-e2e)
+                run_vignette_panfs2ceph_e2e_tests || overall_success=false
                 ;;
             real-s3)
                 run_real_s3_tests || overall_success=false

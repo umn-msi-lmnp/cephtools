@@ -77,6 +77,16 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Edge Cases**: Empty directories, single files, completely inaccessible paths
 - ✅ **File Counting**: Verifies accurate reporting of readable/unreadable items
 
+#### 8. Complete Vignette Workflow Tests (`test-vignette-panfs2ceph-e2e.sh`)
+- ✅ **Full Workflow**: Complete vignette_panfs2ceph.md workflow validation
+- ✅ **Bucket Creation**: Real MSI Ceph bucket creation and cleanup
+- ✅ **Bucket Policy**: GROUP_READ policy setup and permission verification
+- ✅ **Script Generation**: All three panfs2ceph scripts (copy, delete, restore)
+- ✅ **Flag Verification**: Correct rclone flags in each script type
+- ✅ **Script Execution**: Real execution of copy/verify and restore scripts
+- ✅ **Directory Markers**: Empty directory handling with --create-empty-src-dirs and --s3-directory-markers
+- ✅ **End-to-End Validation**: Complete data transfer, policy enforcement, and restore functionality
+
 ## Running Tests
 
 ### Quick Commands
@@ -92,6 +102,7 @@ make test-errors        # Error scenarios
 make test-compatibility # System compatibility
 make test-empty-dirs    # Empty directory flag tests
 make test-permissions   # File permission handling tests
+make test-vignette-e2e  # Complete vignette workflow (requires S3 access)
 ```
 
 ### Advanced Usage

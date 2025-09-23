@@ -26,7 +26,7 @@ CORE_FILES := src/core/common.sh \
 
 # Top-level Targets
 .PHONY: all clean plugins core test validate-plugins list-plugins show-config comprehensive-test
-.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs
+.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e
 
 all: core plugins validate-plugins
 
@@ -170,9 +170,14 @@ test-empty-dirs: all test-setup
 	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-empty-dirs-flag.sh
 
 test-permissions: all test-setup
-	@echo "Running permission handling tests..."
+	@echo "Running file permission handling tests..."
 	@chmod +x tests/test-permission-handling.sh
 	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-permission-handling.sh
+
+test-vignette-e2e: all test-setup
+	@echo "Running complete vignette workflow end-to-end test..."
+	@chmod +x tests/test-vignette-panfs2ceph-e2e.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-vignette-panfs2ceph-e2e.sh
 
 # Help target for testing
 test-help:
@@ -186,6 +191,7 @@ test-help:
 	@echo "  test-real-s3      - Run real S3 integration tests (creates actual buckets)"
 	@echo "  test-empty-dirs   - Run empty directory flag tests (--delete_empty_dirs)"
 	@echo "  test-permissions  - Run file permission handling tests"
+	@echo "  test-vignette-e2e - Run complete vignette workflow test (bucket + policy + all 3 scripts)"
 	@echo "  test              - Legacy basic tests"
 	@echo "  comprehensive-test- Legacy comprehensive tests"
 	@echo ""

@@ -237,6 +237,13 @@ main() {
     echo "Starting panfs2ceph path construction fix integration test"
     echo "Test outputs will be isolated in tests/outputs directory"
     
+    # Check for real execution request
+    if [[ "${1:-}" == "--real" ]] || [[ "${1:-}" == "--e2e" ]]; then
+        echo
+        echo "🔄 Real execution requested - delegating to E2E test..."
+        exec "${SCRIPT_DIR}/test-panfs2ceph-e2e-real.sh"
+    fi
+    
     # Set up test environment
     setup_test_environment
     
@@ -264,6 +271,11 @@ main() {
         echo "📋 Summary: The fix properly separates bucket names from object paths"
         echo "🎯 Result: rclone destinations are now 'remote:bucket/object/path' instead of 'remote:bucket+object+path'"
         echo "📁 All test artifacts are contained in: ${TEST_OUTPUTS_DIR}"
+        echo
+        echo "💡 To run end-to-end tests with real buckets:"
+        echo "   ${SCRIPT_DIR}/test-panfs2ceph-e2e-real.sh"
+        echo "   OR"
+        echo "   $0 --real"
     fi
     
     # Handle test output cleanup
@@ -271,6 +283,33 @@ main() {
     
     return $exit_code
 }
+
+# Show usage if help requested
+if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+    echo "Usage: $0 [options]"
+    echo
+    echo "panfs2ceph path construction fix integration test"
+    echo "Tests the fix for BucketAlreadyExists error caused by incorrect path concatenation"
+    echo
+    echo "Options:"
+    echo "  --real, --e2e     Run end-to-end tests with real S3 buckets"
+    echo "  -h, --help        Show this help"
+    echo
+    echo "Test modes:"
+    echo "  Mock tests        Fast validation using mocked dependencies (default)"
+    echo "  Real tests        End-to-end validation using actual S3 buckets"
+    echo
+    echo "Prerequisites for real tests:"
+    echo "  - s3cmd configured for MSI S3 service"
+    echo "  - rclone available and working"
+    echo "  - s3info for credential access"
+    echo "  - Network access to s3.msi.umn.edu"
+    echo
+    echo "Examples:"
+    echo "  $0                # Run mock tests (safe, fast)"
+    echo "  $0 --real         # Run real S3 tests (requires setup)"
+    exit 0
+fi
 
 # Run the test if executed directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

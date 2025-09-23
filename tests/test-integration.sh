@@ -135,7 +135,7 @@ test_dd2ceph_workflow() {
     
     # This should create SLURM script without executing it
     local cmd_output
-    if cmd_output=$("$CEPHTOOLS_BIN" dd2ceph --bucket test-bucket --path "$MSIPROJECT/data_delivery" --log_dir "$output_dir" --dry_run 2>&1); then
+    if cmd_output=$("$CEPHTOOLS_BIN" dd2ceph --group testgroup --bucket test-bucket --path "$MSIPROJECT/data_delivery" --log_dir "$output_dir" --dry_run 2>&1); then
         pass_test "dd2ceph command executed successfully"
     else
         fail_test "dd2ceph command failed: $cmd_output"
@@ -174,7 +174,7 @@ test_dd2ceph_credential_setup() {
     cd "$output_dir"
     
     # Run with default remote (should set up credentials)
-    "$CEPHTOOLS_BIN" dd2ceph --bucket test-bucket --path "$MSIPROJECT/data_delivery" --log_dir "$output_dir" --dry_run >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" dd2ceph --group testgroup --bucket test-bucket --path "$MSIPROJECT/data_delivery" --log_dir "$output_dir" --dry_run >/dev/null 2>&1
     
     cd "$original_dir"
     
@@ -359,7 +359,7 @@ test_umask_settings() {
     cd "$dd2ceph_dir"
     
     # This may fail due to bucket validation, but should still create the script structure
-    "$CEPHTOOLS_BIN" dd2ceph --bucket test --path /tmp --log_dir "$dd2ceph_dir" --dry_run >/dev/null 2>&1 || true
+    "$CEPHTOOLS_BIN" dd2ceph --group testgroup --bucket test --path /tmp --log_dir "$dd2ceph_dir" --dry_run >/dev/null 2>&1 || true
     
     # Look for any .slurm files that might have been created
     local dd2ceph_script=$(find "$dd2ceph_dir" -name "*.slurm" | head -1)
