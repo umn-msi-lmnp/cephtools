@@ -340,6 +340,11 @@ _execute_bucketpolicy_workflow() {
         local _username_ceph_msi=()
         for i in "${!_username_msi[@]}"
         do
+            # Skip empty usernames
+            if [[ -z "${_username_msi[$i]}" ]] || [[ "${_username_msi[$i]}" == "." ]]; then
+                continue
+            fi
+            
             if s3info info --user "${_username_msi[$i]}" &>/dev/null
             then
                 local _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
@@ -374,6 +379,11 @@ _execute_bucketpolicy_workflow() {
         local _username_ceph_msi=()
         for i in "${!_username_msi[@]}"
         do
+            # Skip empty usernames
+            if [[ -z "${_username_msi[$i]}" ]] || [[ "${_username_msi[$i]}" == "." ]]; then
+                continue
+            fi
+            
             if s3info info --user "${_username_msi[$i]}" &>/dev/null
             then
                 local _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
@@ -419,7 +429,13 @@ _execute_bucketpolicy_workflow() {
     fi
 
     # Create summary readme
-    _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme"
+    if [[ "${_policy}" == "NONE" ]] || [[ "${_policy}" =~ ^.*OTHERS.*$ ]]; then
+        # For NONE and OTHERS policies, _users_with_access is a string, not an array
+        _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme"
+    else
+        # For GROUP and LIST policies, pass all users in the array
+        _generate_readme_with_users "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_bucket_policy_readme" "${_users_with_access[@]}"
+    fi
 
     # Set file permissions
     chmod ug+rw,o-rwx "${_bucket_policy_readme}"
@@ -534,7 +550,7 @@ REPO: https://github.umn.edu/lmnp/cephtools
 ## MSI users included in the access policy
 
 \`\`\`
-$(printf "%s\n" "${_users_with_access[@]}")
+${_users_with_access}
 \`\`\`
 
 
@@ -550,6 +566,67 @@ See all "Actions" listed in the policy JSON file:
 
 HEREDOC
     fi
+}
+
+_generate_readme_with_users() {
+    local _policy="$1"
+    local _bucket="$2"
+    local _curr_date_time="$3"
+    local _do_not_setpolicy="$4"
+    local _bucket_policy_readme="$5"
+    shift 5  # Remove first 5 arguments, remaining are user list
+    local _user_list=("$@")  # All remaining arguments are users
+
+    # Build the user list string with one user per line
+    local _users_string=""
+    for user in "${_user_list[@]}"; do
+        if [[ -n "$user" ]]; then  # Skip empty usernames
+            _users_string+="${user}"$'\n'
+        fi
+    done
+    # Remove trailing newline
+    _users_string="${_users_string%$'\n'}"
+
+    tee "${_bucket_policy_readme}" << HEREDOC > /dev/null 
+# cephtools bucketpolicy summary
+
+## Options used
+
+Bucket policy initated (Y-m-d-HMS):  
+${_curr_date_time}  
+
+
+\`\`\`
+bucket=${_bucket}  
+policy=${_policy}  
+do_not_setpolicy=${_do_not_setpolicy}  
+policy_json=${_bucket_policy}  
+\`\`\`
+
+
+VERSION: ${VERSION_SHORT}  
+QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
+REPO: https://github.umn.edu/lmnp/cephtools
+
+
+## MSI users included in the access policy
+
+\`\`\`
+${_users_string}
+\`\`\`
+
+
+## Ceph Actions enabled
+
+See the ceph documentation for details:
+
+[https://docs.ceph.com/en/latest/radosgw/bucketpolicy/](https://docs.ceph.com/en/latest/radosgw/bucketpolicy/)
+
+See all "Actions" listed in the policy JSON file:  
+\`${_bucket_policy}\`
+
+
+HEREDOC
 }
 
 _generate_policy_json_original() {

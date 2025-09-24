@@ -154,9 +154,9 @@ EOF
 # Validation Functions
 ###############################################################################
 
-validate_rclone_flags_in_script() {
+validate_custom_empty_dir_handling() {
     local script_file="$1"
-    local should_have_flags="$2"  # true/false
+    local should_use_custom_handling="$2"  # true/false
     local plugin_name="$3"
     
     if [[ ! -f "$script_file" ]]; then
@@ -167,74 +167,78 @@ validate_rclone_flags_in_script() {
     local script_content
     script_content=$(cat "$script_file")
     
-    if [[ "$should_have_flags" == "true" ]]; then
-        if echo "$script_content" | grep -q "\-\-create-empty-src-dirs"; then
-            pass_test "$plugin_name script contains --create-empty-src-dirs flag"
+    if [[ "$should_use_custom_handling" == "true" ]]; then
+        # Verify custom empty directory handling is present
+        if echo "$script_content" | grep -q "Using custom empty directory handling"; then
+            pass_test "$plugin_name script uses custom empty directory handling"
         else
-            fail_test "$plugin_name script missing --create-empty-src-dirs flag"
+            fail_test "$plugin_name script missing custom empty directory handling"
             return 1
         fi
         
-        if echo "$script_content" | grep -q "\-\-s3-directory-markers"; then
-            pass_test "$plugin_name script contains --s3-directory-markers flag"
+        # Verify marker file creation logic is present
+        if echo "$script_content" | grep -q ".cephtools_empty_dir_marker"; then
+            pass_test "$plugin_name script contains marker file logic"
         else
-            fail_test "$plugin_name script missing --s3-directory-markers flag"
+            fail_test "$plugin_name script missing marker file logic"
             return 1
         fi
+        
+        # Verify no problematic S3 flags are used
+        if echo "$script_content" | grep -q "\-\-s3-directory-markers"; then
+            fail_test "$plugin_name script still contains problematic --s3-directory-markers flag"
+            return 1
+        fi
+        
+        # Verify find command for empty directories
+        if echo "$script_content" | grep -q "find.*-type d -empty"; then
+            pass_test "$plugin_name script contains empty directory detection logic"
+        else
+            fail_test "$plugin_name script missing empty directory detection"
+            return 1
+        fi
+        
     else
-        if echo "$script_content" | grep -q "\-\-create-empty-src-dirs"; then
-            fail_test "$plugin_name script should not contain --create-empty-src-dirs flag"
+        # When empty directory handling is disabled, should skip the custom logic
+        if echo "$script_content" | grep -q "Skipping empty directories.*--delete_empty_dirs flag set"; then
+            pass_test "$plugin_name script correctly skips empty directory handling"
+        else
+            fail_test "$plugin_name script should skip empty directory handling when flag is set"
             return 1
         fi
         
-        if echo "$script_content" | grep -q "\-\-s3-directory-markers"; then
-            fail_test "$plugin_name script should not contain --s3-directory-markers flag"
+        # Should not contain marker file logic when disabled
+        if echo "$script_content" | grep -q ".cephtools_empty_dir_marker"; then
+            fail_test "$plugin_name script should not contain marker file logic when disabled"
             return 1
         fi
-        
-        pass_test "$plugin_name script correctly omits empty directory flags"
     fi
 }
 
-validate_empty_dirs_in_bucket() {
+validate_empty_dirs_with_markers() {
     local bucket="$1"
     local should_have_empty_dirs="$2"  # true/false
     local plugin_name="$3"
     
-    # List all objects and directories in bucket
-    local bucket_listing
-    if ! bucket_listing=$(timeout 30 rclone lsf "$bucket:" -R --dirs-only 2>/dev/null); then
-        fail_test "Failed to list bucket contents for $plugin_name"
-        return 1
+    # Look for marker files which indicate empty directories are preserved
+    local marker_count=0
+    local marker_files
+    if marker_files=$(timeout 30 rclone lsf "$bucket:" -R --include "*.cephtools_empty_dir_marker" 2>/dev/null); then
+        marker_count=$(echo "$marker_files" | grep -c "\.cephtools_empty_dir_marker" || true)
     fi
     
-    # Count directory entries that look like empty directories
-    local empty_dir_count=0
-    while IFS= read -r line; do
-        if [[ -n "$line" && "$line" == */ ]]; then
-            # Check if this directory appears to be empty by checking if it has any files
-            local dir_name="${line%/}"
-            local file_count
-            if file_count=$(timeout 15 rclone lsf "$bucket:$dir_name" 2>/dev/null | wc -l); then
-                if [[ $file_count -eq 0 ]]; then
-                    empty_dir_count=$((empty_dir_count + 1))
-                fi
-            fi
-        fi
-    done <<< "$bucket_listing"
-    
     if [[ "$should_have_empty_dirs" == "true" ]]; then
-        if [[ $empty_dir_count -gt 0 ]]; then
-            pass_test "$plugin_name: Found $empty_dir_count empty directories in bucket as expected"
+        if [[ $marker_count -gt 0 ]]; then
+            pass_test "$plugin_name: Found $marker_count marker files indicating preserved empty directories"
         else
-            fail_test "$plugin_name: No empty directories found in bucket, but expected some"
+            fail_test "$plugin_name: No marker files found, empty directories may not be preserved"
             return 1
         fi
     else
-        if [[ $empty_dir_count -eq 0 ]]; then
-            pass_test "$plugin_name: No empty directories in bucket as expected"
+        if [[ $marker_count -eq 0 ]]; then
+            pass_test "$plugin_name: No marker files found as expected (empty dirs not preserved)"
         else
-            fail_test "$plugin_name: Found $empty_dir_count empty directories, but none expected"
+            fail_test "$plugin_name: Found $marker_count marker files, but none expected"
             return 1
         fi
     fi
@@ -278,7 +282,7 @@ test_panfs2ceph_empty_dirs_default_generates_flags() {
         script_file=$(find "$output_dir" -name "*.1_copy_and_verify.slurm" | head -1)
         
         if [[ -n "$script_file" ]]; then
-            validate_rclone_flags_in_script "$script_file" "true" "panfs2ceph"
+            validate_custom_empty_dir_handling "$script_file" "true" "panfs2ceph"
         else
             fail_test "panfs2ceph did not generate expected SLURM script"
             cd "$original_dir"
@@ -320,7 +324,7 @@ test_panfs2ceph_empty_dirs_flag_omits_flags() {
         script_file=$(find "$output_dir" -name "*.1_copy_and_verify.slurm" | head -1)
         
         if [[ -n "$script_file" ]]; then
-            validate_rclone_flags_in_script "$script_file" "false" "panfs2ceph"
+            validate_custom_empty_dir_handling "$script_file" "false" "panfs2ceph"
         else
             fail_test "panfs2ceph did not generate expected SLURM script with --delete_empty_dirs"
             cd "$original_dir"
@@ -475,14 +479,30 @@ test_panfs2ceph_empty_dirs_real_transfer_with_flags() {
     create_test_data_with_empty_dirs "$test_data_dir"
     CLEANUP_ITEMS+=("$test_data_dir")
     
-    # Run actual transfer with default settings (empty dirs should be included)
-    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" \
-        --create-empty-src-dirs \
-        --s3-directory-markers \
-        --transfers 4 &>/dev/null; then
+    # Test the new custom empty directory handling approach
+    # Find empty directories
+    local empty_dirs_file="$test_data_dir.empty_dirs.txt"
+    find "$test_data_dir" -type d -empty > "$empty_dirs_file" 2>/dev/null || true
+    
+    # Create marker files
+    local marker_name=".cephtools_empty_dir_marker"
+    while IFS= read -r empty_dir; do
+        if [[ -n "$empty_dir" && -d "$empty_dir" ]]; then
+            echo "This file marks an empty directory for cephtools transfer" > "$empty_dir/$marker_name" 2>/dev/null || true
+        fi
+    done < "$empty_dirs_file"
+    
+    # Run actual transfer with custom approach
+    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" --transfers 4 &>/dev/null; then
+        # Validate that empty directories are preserved via marker files
+        validate_empty_dirs_with_markers "$TEST_BUCKET" "true" "panfs2ceph"
         
-        # Validate that empty directories exist in bucket
-        validate_empty_dirs_in_bucket "$TEST_BUCKET" "true" "panfs2ceph"
+        # Clean up marker files
+        while IFS= read -r empty_dir; do
+            if [[ -n "$empty_dir" && -d "$empty_dir" ]]; then
+                rm -f "$empty_dir/$marker_name" 2>/dev/null || true
+            fi
+        done < "$empty_dirs_file"
     else
         fail_test "panfs2ceph real transfer with empty dir flags failed"
         return 1
@@ -498,12 +518,11 @@ test_panfs2ceph_empty_dirs_real_transfer_without_flags() {
     create_test_data_with_empty_dirs "$test_data_dir"
     CLEANUP_ITEMS+=("$test_data_dir")
     
-    # Run actual transfer without empty dir flags (empty dirs should be omitted)
-    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" \
-        --transfers 4 &>/dev/null; then
+    # Run actual transfer without marker files (empty dirs should be omitted)
+    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" --transfers 4 &>/dev/null; then
         
-        # Validate that empty directories do NOT exist in bucket
-        validate_empty_dirs_in_bucket "$TEST_BUCKET" "false" "panfs2ceph"
+        # Validate that empty directories do NOT exist in bucket (no marker files)
+        validate_empty_dirs_with_markers "$TEST_BUCKET" "false" "panfs2ceph"
     else
         fail_test "panfs2ceph real transfer without empty dir flags failed"
         return 1
@@ -519,14 +538,30 @@ test_dd2ceph_empty_dirs_real_transfer_with_flags() {
     create_test_data_with_empty_dirs "$test_data_dir"
     CLEANUP_ITEMS+=("$test_data_dir")
     
-    # Run actual transfer with empty dir flags (empty dirs should be included)
-    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" \
-        --create-empty-src-dirs \
-        --s3-directory-markers \
-        --transfers 4 &>/dev/null; then
+    # Test the new custom empty directory handling approach for dd2ceph
+    # Find empty directories
+    local empty_dirs_file="$test_data_dir.empty_dirs.txt"
+    find "$test_data_dir" -type d -empty > "$empty_dirs_file" 2>/dev/null || true
+    
+    # Create marker files
+    local marker_name=".cephtools_empty_dir_marker"
+    while IFS= read -r empty_dir; do
+        if [[ -n "$empty_dir" && -d "$empty_dir" ]]; then
+            echo "This file marks an empty directory for cephtools transfer" > "$empty_dir/$marker_name" 2>/dev/null || true
+        fi
+    done < "$empty_dirs_file"
+    
+    # Run actual transfer with marker files
+    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" --transfers 4 &>/dev/null; then
+        # Validate that empty directories are preserved via marker files
+        validate_empty_dirs_with_markers "$TEST_BUCKET" "true" "dd2ceph"
         
-        # Validate that empty directories exist in bucket
-        validate_empty_dirs_in_bucket "$TEST_BUCKET" "true" "dd2ceph"
+        # Clean up marker files
+        while IFS= read -r empty_dir; do
+            if [[ -n "$empty_dir" && -d "$empty_dir" ]]; then
+                rm -f "$empty_dir/$marker_name" 2>/dev/null || true
+            fi
+        done < "$empty_dirs_file"
     else
         fail_test "dd2ceph real transfer with empty dir flags failed"
         return 1
@@ -542,12 +577,11 @@ test_dd2ceph_empty_dirs_real_transfer_without_flags() {
     create_test_data_with_empty_dirs "$test_data_dir"
     CLEANUP_ITEMS+=("$test_data_dir")
     
-    # Run actual transfer without empty dir flags (empty dirs should be omitted)
-    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" \
-        --transfers 4 &>/dev/null; then
+    # Run actual transfer without marker files (empty dirs should be omitted)
+    if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" --transfers 4 &>/dev/null; then
         
-        # Validate that empty directories do NOT exist in bucket
-        validate_empty_dirs_in_bucket "$TEST_BUCKET" "false" "dd2ceph"
+        # Validate that empty directories do NOT exist in bucket (no marker files)
+        validate_empty_dirs_with_markers "$TEST_BUCKET" "false" "dd2ceph"
     else
         fail_test "dd2ceph real transfer without empty dir flags failed"
         return 1

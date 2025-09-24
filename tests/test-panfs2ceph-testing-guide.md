@@ -1,10 +1,10 @@
 # panfs2ceph Testing Guide
 
-This guide explains the comprehensive testing strategy for the panfs2ceph path construction fix and S3 compatibility issues.
+This guide explains the comprehensive testing strategy for the panfs2ceph path construction fix and custom empty directory handling implementation.
 
 ## Background
 
-The original panfs2ceph tool had a path construction bug that caused `BucketAlreadyExists` errors. Additionally, the default `--s3-directory-markers` flag causes S3 compatibility issues on some Ceph installations.
+The original panfs2ceph tool had a path construction bug that caused `BucketAlreadyExists` errors. Additionally, rclone's native `--s3-directory-markers` flag caused S3 compatibility issues on some Ceph installations. This has been resolved by implementing custom empty directory handling using marker files instead of problematic S3-specific flags.
 
 ## Test Coverage
 
@@ -43,11 +43,11 @@ The original panfs2ceph tool had a path construction bug that caused `BucketAlre
 
 **What it tests:**
 - ✅ Real rclone command execution with generated scripts
-- ✅ S3 compatibility issue detection (`--s3-directory-markers` problems)
-- ✅ `--delete_empty_dirs` flag resolves S3 compatibility issues
+- ✅ Custom empty directory handling with marker files
+- ✅ `--delete_empty_dirs` flag correctly skips empty directory handling
 - ✅ Actual file transfers and bucket verification
 - ✅ Path construction works in real S3 environment
-- ✅ Both successful and problematic scenarios
+- ✅ No S3 compatibility issues with new approach
 
 **Prerequisites:**
 - s3cmd configured for MSI S3 service
@@ -67,19 +67,19 @@ The original panfs2ceph tool had a path construction bug that caused `BucketAlre
 
 ## Test Scenarios
 
-### Scenario 1: Default Behavior (Expected to Reveal Issues)
+### Scenario 1: Default Behavior (Custom Empty Directory Handling)
 
 Tests panfs2ceph with default settings:
-- Uses `--s3-directory-markers` flag
-- **Expected result:** May fail with `BucketAlreadyExists` errors
-- **Purpose:** Demonstrates the S3 compatibility issue
+- Uses custom marker files for empty directory preservation
+- **Expected result:** Should work without S3 compatibility issues
+- **Purpose:** Validates the custom empty directory handling approach
 
-### Scenario 2: With --delete_empty_dirs (Should Work)
+### Scenario 2: With --delete_empty_dirs (Skip Empty Directories)
 
 Tests panfs2ceph with `--delete_empty_dirs` flag:
-- Omits `--s3-directory-markers` flag
-- **Expected result:** Should work without errors
-- **Purpose:** Validates the workaround solution
+- Skips empty directory handling entirely
+- **Expected result:** Should work without errors, no marker files created
+- **Purpose:** Validates that empty directory handling can be disabled when not needed
 
 ### Scenario 3: Path Construction Validation
 
@@ -123,7 +123,7 @@ make test-all path-fix
 - ✅ Verifies script generation works properly
 
 ### Real Tests (If S3 Available)
-- ⚠️ Default behavior test may fail (demonstrates the issue)
+- ✅ Default behavior test should pass (uses custom empty directory handling)
 - ✅ `--delete_empty_dirs` tests should pass
 - ✅ Path construction tests should pass
 - ✅ Files should actually transfer to S3
@@ -131,13 +131,13 @@ make test-all path-fix
 ## Interpreting Results
 
 ### If Mock Tests Pass But Real Tests Fail:
-This indicates a runtime S3 compatibility issue that wouldn't be caught by syntax-only testing. This is exactly what happened with the `--s3-directory-markers` problem.
+This indicates a runtime issue that wouldn't be caught by syntax-only testing. With the custom empty directory handling, S3 compatibility issues should be eliminated.
 
-### If Real Tests Show BucketAlreadyExists Errors:
-This confirms the S3 compatibility issue. The solution is to use the `--delete_empty_dirs` flag.
+### If Tests Show Custom Marker Files:
+Look for `.cephtools_empty_dir_marker` files in the bucket when empty directory preservation is enabled. These should be cleaned up from source after transfer.
 
 ### If Both Test Types Pass:
-The fix is working correctly for both script generation and actual execution.
+The custom empty directory handling is working correctly for both script generation and actual execution.
 
 ## Test Artifacts
 
@@ -152,9 +152,10 @@ The fix is working correctly for both script generation and actual execution.
 - **Purpose:** Debugging real execution issues
 
 ### Important Log Files
-- `rclone_default_execution.log` - Shows default behavior results
+- `rclone_default_execution.log` - Shows default custom empty directory handling results
 - `rclone_no_empty_execution.log` - Shows --delete_empty_dirs results
 - `*.1_copy_and_verify.slurm` - Generated scripts for manual review
+- `*.empty_dirs.txt` - List of empty directories found (when using custom handling)
 
 ## Troubleshooting
 
@@ -164,8 +165,8 @@ Ensure s3cmd, rclone, and s3info are available and configured.
 ### "Failed to create test bucket"  
 Check S3 credentials and network connectivity.
 
-### "BucketAlreadyExists errors"
-This is expected for default behavior tests - it demonstrates the issue.
+### "Custom marker file issues"
+Check that marker files (`.cephtools_empty_dir_marker`) are properly created and cleaned up.
 
 ### Tests pass but real usage fails
 Run the E2E tests to catch runtime issues not visible in mock tests.

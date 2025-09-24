@@ -40,10 +40,10 @@ Options:
                             transfered or deleted when scripts run.
     
      -e|--delete_empty_dirs  Do NOT transfer empty dirs from panfs to ceph. [Default is to 
-                             transfer empty dirs using rclone's native directory handling 
-                             with --create-empty-src-dirs --s3-directory-markers flags.
-                             The restore script also uses --create-empty-src-dirs to 
-                             recreate empty directories. Setting this flag will omit these flags.]
+                             preserve empty dirs using custom marker files instead of 
+                             rclone's problematic --s3-directory-markers flag which can 
+                             cause compatibility issues. Setting this flag will skip 
+                             empty directory preservation entirely.]
                             
     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
@@ -297,6 +297,109 @@ HEREDOC
 # Note: _check_path_permissions(), _check_disk_space(), _validate_rclone_connectivity(), 
 # and _run_preflight_checks() are now defined in common.sh
 
+###############################################################################
+# Custom Empty Directory Handling Functions
+###############################################################################
+
+_find_empty_directories() {
+    local source_path="$1"
+    local empty_dirs_file="$2"
+    
+    # Find empty directories and save to file
+    find "${source_path}" -type d -empty > "${empty_dirs_file}" 2>/dev/null || true
+    
+    local count=$(wc -l < "${empty_dirs_file}" 2>/dev/null || echo "0")
+    _info printf "Found %d empty directories in source\\n" "${count}"
+    
+    return 0
+}
+
+_create_empty_dir_markers() {
+    local empty_dirs_file="$1"
+    local marker_name=".cephtools_empty_dir_marker"
+    local marker_count=0
+    
+    if [[ ! -f "${empty_dirs_file}" ]]; then
+        _info printf "No empty directories file found, skipping marker creation\\n"
+        return 0
+    fi
+    
+    # Read empty directories and create marker files
+    while IFS= read -r empty_dir; do
+        if [[ -n "${empty_dir}" && -d "${empty_dir}" ]]; then
+            local marker_file="${empty_dir}/${marker_name}"
+            if echo "This file marks an empty directory for cephtools transfer" > "${marker_file}" 2>/dev/null; then
+                marker_count=$((marker_count + 1))
+            else
+                _warn printf "Failed to create marker in: %s\\n" "${empty_dir}"
+            fi
+        fi
+    done < "${empty_dirs_file}"
+    
+    _info printf "Created %d empty directory marker files\\n" "${marker_count}"
+    return 0
+}
+
+_copy_empty_dir_markers() {
+    local source_path="$1"
+    local remote="$2"
+    local bucket="$3"
+    local dest_prefix="$4"
+    local threads="$5"
+    local dry_run="$6"
+    local log_prefix="$7"
+    local marker_name=".cephtools_empty_dir_marker"
+    
+    # Use second rclone copy command specifically for marker files
+    _info printf "Transferring empty directory markers...\\n"
+    
+    rclone copy "${source_path}" "${remote}:${bucket}/${dest_prefix}" \
+        --include "${marker_name}" \
+        --transfers "${threads}" \
+        --progress \
+        --stats 30s \
+        ${dry_run} \
+        --log-file "${log_prefix}_markers.rclone.log" \
+        --log-level INFO
+    
+    local exit_code=$?
+    if [[ ${exit_code} -eq 0 ]]; then
+        _info printf "Empty directory markers transferred successfully\\n"
+    else
+        _warn printf "Failed to transfer empty directory markers (exit code: %d)\\n" "${exit_code}"
+    fi
+    
+    return ${exit_code}
+}
+
+_cleanup_empty_dir_markers() {
+    local empty_dirs_file="$1"
+    local marker_name=".cephtools_empty_dir_marker"
+    local cleanup_count=0
+    
+    if [[ ! -f "${empty_dirs_file}" ]]; then
+        _info printf "No empty directories file found, skipping marker cleanup\\n"
+        return 0
+    fi
+    
+    # Read empty directories and remove marker files
+    while IFS= read -r empty_dir; do
+        if [[ -n "${empty_dir}" && -d "${empty_dir}" ]]; then
+            local marker_file="${empty_dir}/${marker_name}"
+            if [[ -f "${marker_file}" ]]; then
+                if rm -f "${marker_file}" 2>/dev/null; then
+                    cleanup_count=$((cleanup_count + 1))
+                else
+                    _warn printf "Failed to remove marker from: %s\\n" "${empty_dir}"
+                fi
+            fi
+        fi
+    done < "${empty_dirs_file}"
+    
+    _info printf "Cleaned up %d empty directory marker files\\n" "${cleanup_count}"
+    return 0
+}
+
 _create_transfer_scripts() {
     local bucket="${1}"
     local remote="${2}"
@@ -426,18 +529,60 @@ echo "Source: ${path}"
 echo "Destination: ${remote}:${bucket}/${path#/}"
 
 $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
-    echo "echo \"Using rclone native empty directory handling...\""
+    echo "echo \"Using custom empty directory handling...\""
+    echo ""
+    echo "# Find empty directories"
+    echo "empty_dirs_file=\"${script_prefix}.empty_dirs.txt\""
+    echo "find \"${path}\" -type d -empty > \"\$empty_dirs_file\" 2>/dev/null || true"
+    echo "empty_count=\$(wc -l < \"\$empty_dirs_file\" 2>/dev/null || echo \"0\")"
+    echo "echo \"Found \$empty_count empty directories\""
+    echo ""
+    echo "# Create marker files in empty directories"
+    echo "marker_count=0"
+    echo "marker_name=\".cephtools_empty_dir_marker\""
+    echo "while IFS= read -r empty_dir; do"
+    echo "    if [[ -n \"\$empty_dir\" && -d \"\$empty_dir\" ]]; then"
+    echo "        marker_file=\"\$empty_dir/\$marker_name\""
+    echo "        if echo \"This file marks an empty directory for cephtools transfer\" > \"\$marker_file\" 2>/dev/null; then"
+    echo "            marker_count=\$((marker_count + 1))"
+    echo "        fi"
+    echo "    fi"
+    echo "done < \"\$empty_dirs_file\""
+    echo "echo \"Created \$marker_count empty directory marker files\""
+    echo ""
+    echo "# Main file transfer (excluding marker files initially)"
     echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
+    echo "    --exclude \"\$marker_name\" \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
     echo "    ${dry_run} \\"
-    echo "    --create-empty-src-dirs \\"
-    echo "    --s3-directory-markers \\"
     echo "    --log-file \"${script_prefix}.1_copy.rclone.log\" \\"
     echo "    --log-level INFO"
+    echo ""
+    echo "# Transfer marker files to preserve empty directories"
+    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
+    echo "    --include \"\$marker_name\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --log-file \"${script_prefix}.1_copy_markers.rclone.log\" \\"
+    echo "    --log-level INFO"
+    echo ""
+    echo "# Clean up marker files from source"
+    echo "cleanup_count=0"
+    echo "while IFS= read -r empty_dir; do"
+    echo "    if [[ -n \"\$empty_dir\" && -d \"\$empty_dir\" ]]; then"
+    echo "        marker_file=\"\$empty_dir/\$marker_name\""
+    echo "        if [[ -f \"\$marker_file\" ]]; then"
+    echo "            rm -f \"\$marker_file\" 2>/dev/null && cleanup_count=\$((cleanup_count + 1))"
+    echo "        fi"
+    echo "    fi"
+    echo "done < \"\$empty_dirs_file\""
+    echo "echo \"Cleaned up \$cleanup_count marker files from source\""
 else
-    echo "echo \"Skipping empty directories...\""
+    echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
     echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
@@ -737,14 +882,33 @@ fi
 
 # Perform the restore
 echo "Starting restore from tier 2 back to tier 1..."
-rclone copy "${remote}:${bucket}/${path#/}" "${path}" \\
-    --transfers ${threads} \\
-    --progress \\
-    --stats 30s \\
-    ${dry_run} \\
-    --create-empty-src-dirs \\
-    --log-file "${script_prefix}.3_restore.rclone.log" \\
-    --log-level INFO
+
+$(if [[ ${delete_empty_dirs} -eq 0 ]]; then
+    echo "echo \"Restoring with custom empty directory handling...\""
+    echo ""
+    echo "# Main file restore"
+    echo "rclone copy \"${remote}:${bucket}/${path#/}\" \"${path}\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --log-file \"${script_prefix}.3_restore.rclone.log\" \\"
+    echo "    --log-level INFO"
+    echo ""
+    echo "# Remove marker files from restored directories"
+    echo "marker_name=\".cephtools_empty_dir_marker\""
+    echo "find \"${path}\" -name \"\$marker_name\" -type f -delete 2>/dev/null || true"
+    echo "echo \"Cleaned up empty directory marker files from restored data\""
+else
+    echo "echo \"Restoring without empty directory preservation...\""
+    echo "rclone copy \"${remote}:${bucket}/${path#/}\" \"${path}\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --log-file \"${script_prefix}.3_restore.rclone.log\" \\"
+    echo "    --log-level INFO"
+fi)
 
 if [[ \$? -eq 0 ]]; then
     echo "Restore completed successfully at \$(date)"

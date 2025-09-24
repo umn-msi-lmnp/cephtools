@@ -43,10 +43,11 @@ Options:
                              scripts will be written, but not automatically launched, so you can
                              review them.
      
-     -e|--delete_empty_dirs  Do NOT transfer empty dirs from source to ceph. [Default is to 
-                             transfer empty dirs using rclone's native directory handling 
-                             with --create-empty-src-dirs --s3-directory-markers flags.
-                             Setting this flag will omit these flags.]
+      -e|--delete_empty_dirs  Do NOT transfer empty dirs from source to ceph. [Default is to 
+                              preserve empty dirs using custom marker files instead of 
+                              rclone's problematic --s3-directory-markers flag which can 
+                              cause compatibility issues. Setting this flag will skip 
+                              empty directory preservation entirely.]
      
      -v|--verbose            Verbose mode (print additional info).
                              
@@ -517,18 +518,60 @@ echo "Source: ${root_path_dir}"
 echo "Destination: ${remote}:${bucket}"
 
 $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
-    echo "echo \"Using rclone native empty directory handling...\""
+    echo "echo \"Using custom empty directory handling...\""
+    echo ""
+    echo "# Find empty directories"
+    echo "empty_dirs_file=\"${myprefix}.empty_dirs.txt\""
+    echo "find \"${root_path_dir}\" -type d -empty > \"\$empty_dirs_file\" 2>/dev/null || true"
+    echo "empty_count=\$(wc -l < \"\$empty_dirs_file\" 2>/dev/null || echo \"0\")"
+    echo "echo \"Found \$empty_count empty directories\""
+    echo ""
+    echo "# Create marker files in empty directories"
+    echo "marker_count=0"
+    echo "marker_name=\".cephtools_empty_dir_marker\""
+    echo "while IFS= read -r empty_dir; do"
+    echo "    if [[ -n \"\$empty_dir\" && -d \"\$empty_dir\" ]]; then"
+    echo "        marker_file=\"\$empty_dir/\$marker_name\""
+    echo "        if echo \"This file marks an empty directory for cephtools transfer\" > \"\$marker_file\" 2>/dev/null; then"
+    echo "            marker_count=\$((marker_count + 1))"
+    echo "        fi"
+    echo "    fi"
+    echo "done < \"\$empty_dirs_file\""
+    echo "echo \"Created \$marker_count empty directory marker files\""
+    echo ""
+    echo "# Main file transfer (excluding marker files initially)"
     echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "    --exclude \"\$marker_name\" \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
     echo "    ${dry_run} \\"
-    echo "    --create-empty-src-dirs \\"
-    echo "    --s3-directory-markers \\"
     echo "    --log-file \"${myprefix}.1_copy.rclone.log\" \\"
     echo "    --log-level INFO"
+    echo ""
+    echo "# Transfer marker files to preserve empty directories"
+    echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "    --include \"\$marker_name\" \\"
+    echo "    --transfers ${threads} \\"
+    echo "    --progress \\"
+    echo "    --stats 30s \\"
+    echo "    ${dry_run} \\"
+    echo "    --log-file \"${myprefix}.1_copy_markers.rclone.log\" \\"
+    echo "    --log-level INFO"
+    echo ""
+    echo "# Clean up marker files from source"
+    echo "cleanup_count=0"
+    echo "while IFS= read -r empty_dir; do"
+    echo "    if [[ -n \"\$empty_dir\" && -d \"\$empty_dir\" ]]; then"
+    echo "        marker_file=\"\$empty_dir/\$marker_name\""
+    echo "        if [[ -f \"\$marker_file\" ]]; then"
+    echo "            rm -f \"\$marker_file\" 2>/dev/null && cleanup_count=\$((cleanup_count + 1))"
+    echo "        fi"
+    echo "    fi"
+    echo "done < \"\$empty_dirs_file\""
+    echo "echo \"Cleaned up \$cleanup_count marker files from source\""
 else
-    echo "echo \"Skipping empty directories...\""
+    echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
     echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"

@@ -59,11 +59,13 @@ cephtools panfs2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
 
 ### Empty Directory Handling
 
-By default, `panfs2ceph` preserves empty directories during transfer operations:
+By default, `panfs2ceph` preserves empty directories during transfer operations using a custom approach that avoids S3 compatibility issues:
 
-- **Copy to Ceph**: Uses `--create-empty-src-dirs` and `--s3-directory-markers` flags to ensure empty directories are preserved in Ceph storage
-- **Restore from Ceph**: Uses `--create-empty-src-dirs` flag to recreate empty directories in their original locations
-- **Skip Empty Directories**: Use the `--delete_empty_dirs` flag if you want to exclude empty directories from the transfer
+- **Copy to Ceph**: Uses custom marker files (`.cephtools_empty_dir_marker`) to preserve empty directories without relying on problematic S3-specific flags
+- **Restore from Ceph**: Recreates empty directories and removes marker files during restore operations
+- **Skip Empty Directories**: Use the `--delete_empty_dirs` flag if you want to exclude empty directories from the transfer entirely
+
+This custom approach eliminates the `BucketAlreadyExists` errors that can occur with rclone's native `--s3-directory-markers` flag on some Ceph installations.
 
 By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, input directory and working directory paths are shown below:
 

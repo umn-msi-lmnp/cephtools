@@ -61,12 +61,12 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Path Handling**: Cross-platform path resolution
 
 #### 6. Empty Directory Flag Tests (`test-empty-dirs-flag.sh`)
-- ✅ **Mock Tests**: SLURM script generation with correct rclone flags
-- ✅ **Real Ceph Tests**: End-to-end validation of empty directory handling
-- ✅ **panfs2ceph Plugin**: Default behavior and --delete_empty_dirs flag
-- ✅ **dd2ceph Plugin**: Default behavior and --delete_empty_dirs flag
-- ✅ **Flag Validation**: Presence/absence of --create-empty-src-dirs --s3-directory-markers
-- ✅ **Bucket Validation**: Verification of empty directories in actual Ceph buckets
+- ✅ **Mock Tests**: SLURM script generation with custom empty directory handling
+- ✅ **Real Ceph Tests**: End-to-end validation of marker file-based empty directory preservation
+- ✅ **panfs2ceph Plugin**: Default custom handling and --delete_empty_dirs flag
+- ✅ **dd2ceph Plugin**: Default custom handling and --delete_empty_dirs flag
+- ✅ **Marker File Validation**: Verification of .cephtools_empty_dir_marker files
+- ✅ **S3 Compatibility**: Ensures no problematic --s3-directory-markers flags are used
 
 #### 7. Permission Handling Tests (`test-permission-handling.sh`)
 - ✅ **Permission Detection**: Validates _check_path_permissions function
@@ -82,9 +82,9 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Bucket Creation**: Real MSI Ceph bucket creation and cleanup
 - ✅ **Bucket Policy**: GROUP_READ policy setup and permission verification
 - ✅ **Script Generation**: All three panfs2ceph scripts (copy, delete, restore)
-- ✅ **Flag Verification**: Correct rclone flags in each script type
+- ✅ **Flag Verification**: Correct rclone flags in each script type (no S3-problematic flags)
 - ✅ **Script Execution**: Real execution of copy/verify and restore scripts
-- ✅ **Directory Markers**: Empty directory handling with --create-empty-src-dirs and --s3-directory-markers
+- ✅ **Custom Empty Directory Handling**: Marker file-based empty directory preservation
 - ✅ **End-to-End Validation**: Complete data transfer, policy enforcement, and restore functionality
 
 ## Running Tests
