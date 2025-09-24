@@ -5,7 +5,46 @@ PREFIX     := ./build
 DESTDIR    :=
 BUILD      := $(DESTDIR)$(PREFIX)
 
-# Git Metadata
+# ---------------------------------------------------------------------
+# Version
+# ---------------------------------------------------------------------
+
+# Default target
+.DEFAULT_GOAL := all
+
+.PHONY: version .FORCE
+
+# Read semantic version from version.txt file in src/
+SEMANTIC_VERSION := $(shell source src/version.txt && echo $$SEMANTIC_VERSION)
+
+# Generate essential version info (enhanced from current)
+GIT_COMMIT_SHORT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+GIT_LATEST_COMMIT_SHORT := $(GIT_COMMIT_SHORT)
+GIT_LATEST_COMMIT_DATETIME := $(shell git log -1 --format="%cd" --date=iso 2>/dev/null || echo "unknown")
+GIT_CURRENT_BRANCH := $(shell git branch --show-current 2>/dev/null || echo "unknown")
+GIT_WEB_URL := $(shell git remote get-url origin 2>/dev/null | sed 's/git@github\.umn\.edu:/https:\/\/github.umn.edu\//' | sed 's/\.git$$//' || echo "unknown")
+GIT_DIRTY := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
+BUILD_DATE := $(shell date -Iseconds)
+VERSION_SHORT := $(SEMANTIC_VERSION)_$(GIT_COMMIT_SHORT)$(GIT_DIRTY)
+
+# Write out version info
+VERSION_FILE := $(PREFIX)/version.txt
+
+$(VERSION_FILE): .FORCE
+	@mkdir -p $(dir $@)
+	@echo "SEMANTIC_VERSION=$(SEMANTIC_VERSION)" > $@
+	@echo "VERSION_SHORT=$(VERSION_SHORT)" >> $@
+	@echo "BUILD_DATE=$(BUILD_DATE)" >> $@
+	@echo "GIT_CURRENT_BRANCH=$(GIT_CURRENT_BRANCH)" >> $@
+	@echo "GIT_LATEST_COMMIT_DATETIME=$(GIT_LATEST_COMMIT_DATETIME)" >> $@
+	@echo "GIT_WEB_URL=$(GIT_WEB_URL)" >> $@
+
+version: $(VERSION_FILE) ## Generate version info and write to $(PREFIX)/version.txt
+	@cat $(VERSION_FILE)
+
+.FORCE:
+
+# Legacy Git Metadata (for backward compatibility)
 GIT_CURRENT_BRANCH        := $(shell git symbolic-ref --short HEAD)
 GIT_LATEST_COMMIT         := $(shell git rev-parse HEAD)
 GIT_LATEST_COMMIT_SHORT   := $(shell echo $(GIT_LATEST_COMMIT) | cut -c1-7)
@@ -28,25 +67,29 @@ CORE_FILES := src/core/common.sh \
 .PHONY: all clean plugins core test validate-plugins list-plugins show-config comprehensive-test
 .PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e
 
-all: core plugins validate-plugins
+# Default target - build everything
+all: version core plugins validate-plugins
 
 # Core framework with proper separation
 core: $(BUILD)/bin/cephtools
 
-$(BUILD)/bin/cephtools: $(CORE_FILES)
+$(BUILD)/bin/cephtools: $(CORE_FILES) $(VERSION_FILE)
 	mkdir -p $(dir $@)
 	# Combine core files with proper separation
 	echo '#!/usr/bin/env bash' > $@
 	echo '' >> $@
 	cat src/core/common.sh >> $@
 	echo '' >> $@
-	# Process version.sh with git variable substitution
-	sed -e 's|^GIT_CURRENT_BRANCH=.*|GIT_CURRENT_BRANCH="$(GIT_CURRENT_BRANCH)"|' \
+	# Process version.sh with comprehensive version substitution
+	sed -e 's|^SEMANTIC_VERSION=.*|SEMANTIC_VERSION="$(SEMANTIC_VERSION)"|' \
+	    -e 's|^BUILD_DATE=.*|BUILD_DATE="$(BUILD_DATE)"|' \
+	    -e 's|^GIT_CURRENT_BRANCH=.*|GIT_CURRENT_BRANCH="$(GIT_CURRENT_BRANCH)"|' \
 	    -e 's|^GIT_LATEST_COMMIT=.*|GIT_LATEST_COMMIT="$(GIT_LATEST_COMMIT)"|' \
 	    -e 's|^GIT_LATEST_COMMIT_SHORT=.*|GIT_LATEST_COMMIT_SHORT="$(GIT_LATEST_COMMIT_SHORT)"|' \
-	    -e 's|^GIT_LATEST_COMMIT_DIRTY=.*|GIT_LATEST_COMMIT_DIRTY="$(GIT_LATEST_COMMIT_DIRTY)"|' \
+	    -e 's|^GIT_LATEST_COMMIT_DIRTY=.*|GIT_LATEST_COMMIT_DIRTY="$(GIT_DIRTY)"|' \
 	    -e 's|^GIT_LATEST_COMMIT_DATETIME=.*|GIT_LATEST_COMMIT_DATETIME="$(GIT_LATEST_COMMIT_DATETIME)"|' \
 	    -e 's|^GIT_REMOTE=.*|GIT_REMOTE="$(GIT_REMOTE)"|' \
+	    -e 's|^VERSION_SHORT=.*|VERSION_SHORT="$(VERSION_SHORT)"|' \
 	    src/core/version.sh >> $@
 	echo '' >> $@
 	cat src/core/plugin-loader.sh >> $@
@@ -57,9 +100,17 @@ $(BUILD)/bin/cephtools: $(CORE_FILES)
 # Plugin system
 plugins: $(PLUGIN_TARGETS)
 
-$(BUILD)/share/plugins/%/plugin.sh: src/plugins/%/plugin.sh
+$(BUILD)/share/plugins/%/plugin.sh: src/plugins/%/plugin.sh $(VERSION_FILE)
 	mkdir -p $(dir $@)
-	cp $< $@
+	sed -e 's|@VERSION_SHORT@|$(VERSION_SHORT)|g' \
+	    -e 's|@SEMANTIC_VERSION@|$(SEMANTIC_VERSION)|g' \
+	    -e 's|@BUILD_DATE@|$(BUILD_DATE)|g' \
+	    -e 's|@GIT_CURRENT_BRANCH@|$(GIT_CURRENT_BRANCH)|g' \
+	    -e 's|@GIT_LATEST_COMMIT_SHORT@|$(GIT_LATEST_COMMIT_SHORT)|g' \
+	    -e 's|@GIT_LATEST_COMMIT_DIRTY@|$(GIT_DIRTY)|g' \
+	    -e 's|@GIT_LATEST_COMMIT_DATETIME@|$(GIT_LATEST_COMMIT_DATETIME)|g' \
+	    -e 's|@GIT_WEB_URL@|$(GIT_WEB_URL)|g' \
+	    $< > $@
 	chmod +x $@
 
 # Plugin validation
@@ -213,5 +264,9 @@ clean-tests:
 	rm -rf test_outputs
 	@echo "Test outputs directory cleaned"
 
-clean-all: clean clean-tests
+clean-legacy-tests:
+	rm -rf tests_outputs tests/outputs
+	@echo "Legacy test directories cleaned"
+
+clean-all: clean clean-tests clean-legacy-tests
 	@echo "All build and test artifacts cleaned"

@@ -68,7 +68,7 @@ Help (print this screen):
 Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
 Repo: https://github.umn.edu/lmnp/cephtools  
 
-Version: $VERSION_SHORT
+Version: @VERSION_SHORT@
 ---------------------------------------------------------------------
 HEREDOC
 }
@@ -481,7 +481,7 @@ Next steps:
 
 
 
-VERSION: ${VERSION_SHORT}
+VERSION: @VERSION_SHORT@
 QUESTIONS: lmp-help@msi.umn.edu
 REPO: https://github.umn.edu/lmnp/cephtools
 ---------------------------------------------------------------------
@@ -515,7 +515,7 @@ do_not_setpolicy=${_do_not_setpolicy}
 policy_json=${_bucket_policy}
 
 
-VERSION: ${VERSION_SHORT}
+VERSION: @VERSION_SHORT@
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
 REPO: https://github.umn.edu/lmnp/cephtools
 
@@ -542,7 +542,7 @@ policy_json=${_bucket_policy}
 \`\`\`
 
 
-VERSION: ${VERSION_SHORT}  
+VERSION: @VERSION_SHORT@  
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
 REPO: https://github.umn.edu/lmnp/cephtools
 
@@ -604,7 +604,7 @@ policy_json=${_bucket_policy}
 \`\`\`
 
 
-VERSION: ${VERSION_SHORT}  
+VERSION: @VERSION_SHORT@  
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
 REPO: https://github.umn.edu/lmnp/cephtools
 

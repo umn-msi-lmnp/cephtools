@@ -16,24 +16,18 @@ export CEPHTOOLS_BIN="${CEPHTOOLS_ROOT}/build/bin/cephtools"
 TEST_NAME="panfs2ceph-path-fix"
 TEST_BUCKET="cephtools-test-panfs2ceph-paths"
 
-# Create dedicated test outputs directory
-TEST_OUTPUTS_DIR="${SCRIPT_DIR}/outputs/panfs2ceph-path-fix-$(date +%Y%m%d_%H%M%S)"
+# Use standard test framework for output directory management
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/test-framework.sh"
 
-setup_test_environment() {
-    # Create test outputs directory
-    mkdir -p "${TEST_OUTPUTS_DIR}"
-    
-    # Override TEST_OUTPUT_DIR to use our specific location
-    export TEST_OUTPUT_DIR="${TEST_OUTPUTS_DIR}"
-    
-    echo "Test outputs will be stored in: ${TEST_OUTPUTS_DIR}"
-}
+# Initialize test framework (this sets up TEST_OUTPUT_DIR automatically)
+init_tests "panfs2ceph-path-fix"
 
 test_path_construction_fix() {
     start_test "panfs2ceph path construction generates correct rclone destinations"
     
-    # Create test directory structure with absolute path in tests/outputs
-    local test_source_dir="${TEST_OUTPUTS_DIR}/test_data/home/user/project/data"
+    # Create test directory structure with absolute path in test outputs
+    local test_source_dir="${TEST_OUTPUT_DIR}/test_data/home/user/project/data"
     mkdir -p "${test_source_dir}/subdir"
     echo "Test file content" > "${test_source_dir}/test.txt"
     echo "Subdir file content" > "${test_source_dir}/subdir/sub.txt"
@@ -45,14 +39,14 @@ test_path_construction_fix() {
     create_mock_command "s3info" "test_access_key test_secret_key" 0
     
     # Set MSIPROJECT to our test output directory to control where logs go
-    export MSIPROJECT="${TEST_OUTPUTS_DIR}"
+    export MSIPROJECT="${TEST_OUTPUT_DIR}"
     
     # Run panfs2ceph with absolute path and dry run, specifying log directory
     local output
     if output=$(timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_source_dir}" \
-        --log_dir "${TEST_OUTPUTS_DIR}/logs" \
+        --log_dir "${TEST_OUTPUT_DIR}/logs" \
         --dry_run 2>&1); then
         
         # Extract script directory from output
@@ -121,7 +115,7 @@ test_multiple_path_formats() {
     
     for test_path in "${test_paths[@]}"; do
         # Create test directory in our test outputs area
-        local full_test_path="${TEST_OUTPUTS_DIR}/multi_test${test_path}"
+        local full_test_path="${TEST_OUTPUT_DIR}/multi_test${test_path}"
         mkdir -p "$full_test_path"
         echo "test content for $test_path" > "${full_test_path}/test.txt"
         
@@ -130,7 +124,7 @@ test_multiple_path_formats() {
         if output=$(timeout 20 "${CEPHTOOLS_BIN}" panfs2ceph \
             --bucket "${TEST_BUCKET}" \
             --path "$full_test_path" \
-            --log_dir "${TEST_OUTPUTS_DIR}/logs_$(basename "$test_path")" \
+            --log_dir "${TEST_OUTPUT_DIR}/logs_$(basename "$test_path")" \
             --dry_run 2>&1); then
             
             # Extract and check script
@@ -169,7 +163,7 @@ test_restore_script_fix() {
     start_test "panfs2ceph restore script also has correct path construction"
     
     # Create test directory in our test outputs area
-    local test_source_dir="${TEST_OUTPUTS_DIR}/restore_test/test/path"
+    local test_source_dir="${TEST_OUTPUT_DIR}/restore_test/test/path"
     mkdir -p "${test_source_dir}"
     echo "restore test content" > "${test_source_dir}/restore.txt"
     
@@ -178,7 +172,7 @@ test_restore_script_fix() {
     if output=$(timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_source_dir}" \
-        --log_dir "${TEST_OUTPUTS_DIR}/logs_restore" \
+        --log_dir "${TEST_OUTPUT_DIR}/logs_restore" \
         --dry_run 2>&1); then
         
         local script_dir
@@ -212,30 +206,14 @@ test_restore_script_fix() {
 }
 
 cleanup_test_outputs() {
-    # Ask if user wants to keep test outputs for inspection
-    if [[ -t 0 ]] && [[ -z "${KEEP_TEST_OUTPUTS:-}" ]]; then
-        echo
-        echo "Test outputs are in: ${TEST_OUTPUTS_DIR}"
-        read -p "Keep test outputs for inspection? (y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            rm -rf "${TEST_OUTPUTS_DIR}"
-            echo "Test outputs cleaned up."
-        else
-            echo "Test outputs kept in: ${TEST_OUTPUTS_DIR}"
-        fi
-    elif [[ "${KEEP_TEST_OUTPUTS:-}" == "true" ]]; then
-        echo "Test outputs kept in: ${TEST_OUTPUTS_DIR}"
-    else
-        rm -rf "${TEST_OUTPUTS_DIR}"
-        echo "Test outputs cleaned up."
-    fi
+    # Use standard test framework cleanup
+    cleanup_test_environment
 }
 
 # Main test execution
 main() {
     echo "Starting panfs2ceph path construction fix integration test"
-    echo "Test outputs will be isolated in tests/outputs directory"
+    echo "Test outputs will be isolated in test framework directory"
     
     # Check for real execution request
     if [[ "${1:-}" == "--real" ]] || [[ "${1:-}" == "--e2e" ]]; then
@@ -270,7 +248,7 @@ main() {
         echo "✅ All panfs2ceph path construction tests passed!"
         echo "📋 Summary: The fix properly separates bucket names from object paths"
         echo "🎯 Result: rclone destinations are now 'remote:bucket/object/path' instead of 'remote:bucket+object+path'"
-        echo "📁 All test artifacts are contained in: ${TEST_OUTPUTS_DIR}"
+        echo "📁 All test artifacts are contained in: ${TEST_OUTPUT_DIR}"
         echo
         echo "💡 To run end-to-end tests with real buckets:"
         echo "   ${SCRIPT_DIR}/test-panfs2ceph-e2e-real.sh"

@@ -176,11 +176,19 @@ validate_custom_empty_dir_handling() {
             return 1
         fi
         
-        # Verify marker file creation logic is present
-        if echo "$script_content" | grep -q ".cephtools_empty_dir_marker"; then
-            pass_test "$plugin_name script contains marker file logic"
+        # Verify temporary marker file creation logic is present
+        if echo "$script_content" | grep -q "temp_marker.*empty_dir_marker"; then
+            pass_test "$plugin_name script contains temporary marker file logic"
         else
-            fail_test "$plugin_name script missing marker file logic"
+            fail_test "$plugin_name script missing temporary marker file logic"
+            return 1
+        fi
+        
+        # Verify rclone copyto logic is present
+        if echo "$script_content" | grep -q "rclone copyto.*temp_marker"; then
+            pass_test "$plugin_name script contains rclone copyto logic"
+        else
+            fail_test "$plugin_name script missing rclone copyto logic"
             return 1
         fi
         
@@ -198,6 +206,14 @@ validate_custom_empty_dir_handling() {
             return 1
         fi
         
+        # Verify temporary marker file cleanup
+        if echo "$script_content" | grep -q "rm -f.*temp_marker"; then
+            pass_test "$plugin_name script contains temporary marker cleanup logic"
+        else
+            fail_test "$plugin_name script missing temporary marker cleanup"
+            return 1
+        fi
+        
     else
         # When empty directory handling is disabled, should skip the custom logic
         if echo "$script_content" | grep -q "Skipping empty directories.*--delete_empty_dirs flag set"; then
@@ -208,8 +224,14 @@ validate_custom_empty_dir_handling() {
         fi
         
         # Should not contain marker file logic when disabled
-        if echo "$script_content" | grep -q ".cephtools_empty_dir_marker"; then
+        if echo "$script_content" | grep -q "temp_marker.*empty_dir_marker"; then
             fail_test "$plugin_name script should not contain marker file logic when disabled"
+            return 1
+        fi
+        
+        # Should not contain rclone copyto logic when disabled
+        if echo "$script_content" | grep -q "rclone copyto"; then
+            fail_test "$plugin_name script should not contain rclone copyto when disabled"
             return 1
         fi
     fi

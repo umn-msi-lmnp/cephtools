@@ -1,27 +1,24 @@
 # ---------------------------------------------------------------------
-# Version
+# Version - Template for Build-Time Substitution
 # ---------------------------------------------------------------------
 
-# Change this version manually, by a human
-# Manually set this to current version of the program. Adhere to the
-# semantic versioning specification: http://semver.org
-#
-# MAJOR version when you make incompatible API changes,
-# MINOR version when you add functionality in a backwards compatible manner, and
-# PATCH version when you make backwards compatible bug fixes.
-SEMANTIC_VERSION="3.6.2"
+# Semantic version (manually maintained in src/version.txt)
+SEMANTIC_VERSION=""
 
-# The following empty variables get set when running the "makefile"
-GIT_CURRENT_BRANCH=
-GIT_LATEST_COMMIT=
-GIT_LATEST_COMMIT_SHORT=
-GIT_LATEST_COMMIT_DIRTY=
-GIT_LATEST_COMMIT_DATETIME=
-GIT_REMOTE=
+# Build-time information (populated by makefile)
+BUILD_DATE=""
+GIT_CURRENT_BRANCH=""
+GIT_LATEST_COMMIT=""
+GIT_LATEST_COMMIT_SHORT=""
+GIT_LATEST_COMMIT_DIRTY=""
+GIT_LATEST_COMMIT_DATETIME=""
+GIT_REMOTE=""
+VERSION_SHORT=""
+
+# Computed values
 if [[ $GIT_REMOTE == git@github* ]]; then
   GIT_WEB_URL="https://github.umn.edu/$(echo $GIT_REMOTE | sed 's|git@github.umn.edu:||;s|.git||')"
 else
   GIT_WEB_URL=$GIT_REMOTE
 fi
 GIT_LATEST_COMMIT_LINK="${GIT_WEB_URL}/commit/${GIT_LATEST_COMMIT}"
-VERSION_SHORT="${SEMANTIC_VERSION}_${GIT_CURRENT_BRANCH}_${GIT_LATEST_COMMIT_SHORT}${GIT_LATEST_COMMIT_DIRTY}"
