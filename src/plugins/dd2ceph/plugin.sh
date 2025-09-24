@@ -541,6 +541,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo ""
     echo "# Main file transfer"
     echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "    --copy-links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -578,6 +579,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
 else
     echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
     echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "    --copy-links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -591,6 +593,7 @@ echo "Transfer completed at \$(date)"
 # Verify the transfer immediately
 echo "Starting verification at \$(date)"  
 rclone check "${root_path_dir}" "${remote}:${bucket}" \\
+    --copy-links \\
     --log-file "${myprefix}.1_verify.rclone.log" \\
     --progress \\
     --log-level DEBUG \\

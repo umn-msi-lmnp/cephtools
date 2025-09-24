@@ -466,6 +466,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo ""
     echo "# Main file transfer"
     echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
+    echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -494,7 +495,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "# Copy all marker files to bucket in one operation"
     echo "if [[ \$marker_count -gt 0 ]]; then"
     echo "    echo \"Copying \$marker_count empty directory markers to bucket...\""
-    echo "    if rclone copy \"\$marker_temp_dir\" \"${remote}:${bucket}/${path#/}\" ${dry_run} --log-level INFO; then"
+        echo "    if rclone copy \"\$marker_temp_dir\" \"${remote}:${bucket}/${path#/}\" --links ${dry_run} --log-level INFO; then"
     echo "        echo \"Successfully placed markers in \$marker_count empty directories\""
     echo "    else"
     echo "        echo \"Warning: Failed to copy some empty directory markers\""
@@ -508,6 +509,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
 else
     echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
     echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
+    echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -521,6 +523,7 @@ echo "Transfer completed at \$(date)"
 # Verify the transfer immediately
 echo "Starting verification at \$(date)"  
 rclone check "${path}" "${remote}:${bucket}/${path#/}" \\
+    --links \\
     --log-file "${script_prefix}.1_verify.rclone.log" \\
     --progress \\
     --log-level DEBUG \\
@@ -663,6 +666,7 @@ echo "Deleting original data from tier 1 storage..."
 echo "Using ${threads} threads for optimal performance"
 
 rclone purge "${path}" \\
+    --links \\
     --progress \\
     --multi-thread-streams=${threads} \\
     ${dry_run} \\
@@ -824,6 +828,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo ""
     echo "# Main file restore (includes marker files)"
     echo "rclone copy \"${remote}:${bucket}/${path#/}\" \"${path}\" \\"
+    echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
@@ -838,6 +843,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
 else
     echo "echo \"Restoring without empty directory preservation...\""
     echo "rclone copy \"${remote}:${bucket}/${path#/}\" \"${path}\" \\"
+    echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
     echo "    --stats 30s \\"
