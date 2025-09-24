@@ -396,6 +396,7 @@ echo "Starting sync from data_delivery to disaster_recovery..."
 
 # Use rclone to copy files
 rclone copy ${data_delivery_path} ${disaster_recovery_path}/ \\
+    --copy-links \\
     --transfers ${threads} \\
     --checkers ${threads} \\
     --progress \\

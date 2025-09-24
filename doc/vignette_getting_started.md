@@ -54,7 +54,7 @@ The purpose of this subcommand is to generate a list of files that are stored in
 ## FAQs
 
 - How do these tools handle symbolic links?
-  - `panfs2ceph` does NOT follow symbolic links and does not transfer the actual file. It transfers the symbolic link itself. See the `rclone` flag [`--links`](https://rclone.org/local/#links-l) for details. `dd2ceph` DOES follow symbolic links and copies the actual file (i.e. it copies the dereferenced file).
+  - `panfs2ceph` does NOT follow symbolic links and does not transfer the actual file. It transfers the symbolic link itself. See the `rclone` flag [`--links`](https://rclone.org/local/#links-l) for details. `dd2ceph` and `dd2dr` commands DO follow symbolic links and copy the actual file (i.e. it copies the dereferenced file). The rationale is that any symlinks in the data_delivery dir will want to be copied (backed up) as real files. However, symlinks in a regular project dir should remain as symlinks in the backup. 
 - How fast is the transfer?
   - The empirical data transfer rate from panfs to ceph is approximately 1 TB per 30 min (or around 30 GB/min). By default, `panfs2ceph` requests a 24 hr job time and `dd2ceph` requests a 72 hr job time. These times can be adjusted directly in the slurm script before launching. Reviewing the end of a slurm error log file will show a summary from `rclone`, indicating how much data was transfered and how long it took.
 - Do I have to create a bucket first?
