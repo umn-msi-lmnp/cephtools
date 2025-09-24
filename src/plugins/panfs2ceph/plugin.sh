@@ -505,9 +505,6 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo ""
     echo "# Clean up temporary marker directory"
     echo "rm -rf \"\$marker_temp_dir\""
-    echo ""
-    echo "# Clean up temporary marker file"
-    echo "rm -f \"\$temp_marker\""
 else
     echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
     echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
