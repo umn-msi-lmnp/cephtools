@@ -414,13 +414,8 @@ fi
 
 echo "dd2dr sync completed at \$(date)"
 
-# Generate file lists for comparison
-echo "Generating file lists..."
-if [ -d "${data_delivery_path}" ]; then
-    find "${data_delivery_path}" -type f > ${group}_${timestamp}.data_delivery_files.txt
-    echo "Source file list: ${group}_${timestamp}.data_delivery_files.txt"
-fi
-
+# Generate file list for disaster recovery
+echo "Generating file list..."
 if [ -d "${disaster_recovery_path}/data_delivery" ]; then
     find "${disaster_recovery_path}/data_delivery" -type f > ${group}_${timestamp}.disaster_recovery_files.txt
     echo "Destination file list: ${group}_${timestamp}.disaster_recovery_files.txt"
