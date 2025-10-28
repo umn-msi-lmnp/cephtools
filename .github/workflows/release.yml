@@ -16,15 +16,15 @@ jobs:
       
       - name: Package artifacts
         run: |
-          mkdir -p release-package/cephtools
-          cp -r build/bin release-package/cephtools/
-          cp -r build/share release-package/cephtools/
-          cp build/version.txt release-package/cephtools/
-          cp license.txt release-package/cephtools/
-          cp readme.md release-package/cephtools/
+          mkdir -p release-package/cephtools-${{ github.ref_name }}
+          cp -r build/bin release-package/cephtools-${{ github.ref_name }}/
+          cp -r build/share release-package/cephtools-${{ github.ref_name }}/
+          cp build/version.txt release-package/cephtools-${{ github.ref_name }}/
+          cp license.txt release-package/cephtools-${{ github.ref_name }}/
+          cp readme.md release-package/cephtools-${{ github.ref_name }}/
           cd release-package
-          tar -czf ../cephtools-${{ github.ref_name }}.tar.gz cephtools/
-          zip -r ../cephtools-${{ github.ref_name }}.zip cephtools/
+          tar -czf ../cephtools-${{ github.ref_name }}.tar.gz cephtools-${{ github.ref_name }}/
+          zip -r ../cephtools-${{ github.ref_name }}.zip cephtools-${{ github.ref_name }}/
       
       - name: Create Release
         env:
