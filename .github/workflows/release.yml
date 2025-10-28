@@ -34,4 +34,4 @@ jobs:
             cephtools-${{ github.ref_name }}.tar.gz \
             cephtools-${{ github.ref_name }}.zip \
             --title "${{ github.ref_name }}" \
-            --generate-release-notes
+            --notes "Release ${{ github.ref_name }}"
