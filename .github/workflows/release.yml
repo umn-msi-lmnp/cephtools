@@ -24,8 +24,7 @@ jobs:
           cp readme.md release-package/cephtools/
           cd release-package
           tar -czf ../cephtools-${{ github.ref_name }}.tar.gz cephtools/
-          cd ..
-          zip -r cephtools-${{ github.ref_name }}.zip cephtools/
+          zip -r ../cephtools-${{ github.ref_name }}.zip cephtools/
       
       - name: Create Release
         env:
