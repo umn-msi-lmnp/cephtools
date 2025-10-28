@@ -22,7 +22,6 @@ jobs:
           cp build/version.txt release-package/cephtools/
           cp license.txt release-package/cephtools/
           cp readme.md release-package/cephtools/
-          cp -r docs release-package/cephtools/
           cd release-package
           tar -czf ../cephtools-${{ github.ref_name }}.tar.gz cephtools/
           cd ..
