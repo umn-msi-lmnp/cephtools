@@ -6,4 +6,4 @@
 # MINOR version when you add functionality in a backwards compatible manner, and
 # PATCH version when you make backwards compatible bug fixes.
 
-SEMANTIC_VERSION=3.8.0
+SEMANTIC_VERSION=3.9.0

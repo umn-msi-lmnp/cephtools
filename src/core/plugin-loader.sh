@@ -5,11 +5,19 @@
 
 # Get the directory where this script is located
 _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_CEPHTOOLS_ROOT="$(dirname "$(dirname "${_SCRIPT_DIR}")")"
 
-# Plugin directories
-_PLUGIN_DIR="${_CEPHTOOLS_ROOT}/plugins"
-_BUILD_PLUGIN_DIR="${_CEPHTOOLS_ROOT}/build/share/plugins"
+# Determine installation root based on executable location
+# In deployed build: bin/cephtools -> root is parent of bin/
+# In source tree: src/core/cephtools.sh -> root is two levels up
+if [[ "${_SCRIPT_DIR}" == */bin ]]; then
+  # Deployed build structure: bin/cephtools
+  _CEPHTOOLS_ROOT="$(dirname "${_SCRIPT_DIR}")"
+  _PLUGIN_DIR="${_CEPHTOOLS_ROOT}/share/plugins"
+else
+  # Source tree structure: src/core/*.sh
+  _CEPHTOOLS_ROOT="$(dirname "$(dirname "${_SCRIPT_DIR}")")"
+  _PLUGIN_DIR="${_CEPHTOOLS_ROOT}/plugins"
+fi
 
 # Array to store loaded plugins
 declare -a _LOADED_PLUGINS=()
@@ -23,12 +31,7 @@ declare -a _LOADED_PLUGINS=()
 # Description:
 #   Discover available plugins in the plugin directory
 _discover_plugins() {
-  local plugin_dir="${_BUILD_PLUGIN_DIR}"
-  
-  # Fall back to source directory if build directory doesn't exist
-  if [[ ! -d "${plugin_dir}" ]]; then
-    plugin_dir="${_PLUGIN_DIR}"
-  fi
+  local plugin_dir="${_PLUGIN_DIR}"
   
   if [[ ! -d "${plugin_dir}" ]]; then
     _debug printf "No plugin directory found at %s\\n" "${plugin_dir}"
@@ -64,14 +67,7 @@ _load_plugin() {
     _exit_1 printf "_load_plugin(): plugin name required\\n"
   fi
   
-  local plugin_dir="${_BUILD_PLUGIN_DIR}"
-  
-  # Fall back to source directory if build directory doesn't exist
-  if [[ ! -d "${plugin_dir}" ]]; then
-    plugin_dir="${_PLUGIN_DIR}"
-  fi
-  
-  local plugin_file="${plugin_dir}/${plugin_name}/plugin.sh"
+  local plugin_file="${_PLUGIN_DIR}/${plugin_name}/plugin.sh"
   
   if [[ ! -f "${plugin_file}" ]]; then
     _exit_1 printf "Plugin '%s' not found at %s\\n" "${plugin_name}" "${plugin_file}"
