@@ -1,0 +1,38 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run make
+        run: make
+      
+      - name: Package artifacts
+        run: |
+          mkdir -p release-package/cephtools
+          cp -r build/bin release-package/cephtools/
+          cp -r build/share release-package/cephtools/
+          cp build/version.txt release-package/cephtools/
+          cp license.txt release-package/cephtools/
+          cp readme.md release-package/cephtools/
+          cp -r docs release-package/cephtools/
+          cd release-package
+          tar -czf ../cephtools-${{ github.ref_name }}.tar.gz cephtools/
+          cd ..
+          zip -r cephtools-${{ github.ref_name }}.zip cephtools/
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            cephtools-${{ github.ref_name }}.tar.gz
+            cephtools-${{ github.ref_name }}.zip
+          draft: false
+          prerelease: false
