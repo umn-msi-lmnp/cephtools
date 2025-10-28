@@ -113,7 +113,7 @@ _validate_plugin_interface() {
 # Description:
 #   List all available plugins
 _list_available_plugins() {
-  _discover_plugins
+  _discover_plugins || true
   
   if [[ ${#_LOADED_PLUGINS[@]} -eq 0 ]]; then
     printf "No plugins found\\n" >&2
@@ -140,8 +140,8 @@ _plugin_exists() {
     return 1
   fi
   
-  _discover_plugins
-  _contains "${plugin_name}" "${_LOADED_PLUGINS[@]}"
+  _discover_plugins || true
+  _contains "${plugin_name}" "${_LOADED_PLUGINS[@]+"${_LOADED_PLUGINS[@]}"}"
 }
 
 ###############################################################################

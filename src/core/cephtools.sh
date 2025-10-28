@@ -48,7 +48,7 @@ Available subcommands:
 HEREDOC
     
     # List available plugins
-    _discover_plugins
+    _discover_plugins || true
     for plugin in "${_LOADED_PLUGINS[@]}"; do
       printf "  %s\\n" "${plugin}"
     done
@@ -63,11 +63,13 @@ version() {
 # subcommands command
 subcommands() {
   if [[ "${1:-}" == "--raw" ]]; then
-    _discover_plugins
-    printf "%s\\n" "${_LOADED_PLUGINS[@]}"
+    _discover_plugins || true
+    if [[ ${#_LOADED_PLUGINS[@]} -gt 0 ]]; then
+      printf "%s\\n" "${_LOADED_PLUGINS[@]}"
+    fi
   else
     printf "Available subcommands:\\n"
-    _discover_plugins
+    _discover_plugins || true
     for plugin in "${_LOADED_PLUGINS[@]}"; do
       printf "  %s\\n" "${plugin}"
     done
