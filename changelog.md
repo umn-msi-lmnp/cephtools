@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Updated all repository URLs from github.umn.edu/lmnp to github.com/umn-msi-lmnp
 - Updated GitHub Actions release workflow to use cephtools-TAG for build directory naming
 - Added doc folder to release artifacts
+- Enhanced version.sh and makefile to support both github.com and github.umn.edu remotes for backward compatibility
 
 ## [3.9.1] - 2025-10-28
 
