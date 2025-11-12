@@ -52,12 +52,8 @@ plugin_main() {
     # Initialize program option variables.
     local _group=
     local _dry_run=0
-    # Set default log directory - use TEST_OUTPUT_DIR in test environment
-    if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
-        local _log_dir="$TEST_OUTPUT_DIR/dd2dr"
-    else
-        local _log_dir="$MSIPROJECT/shared/cephtools/dd2dr"
-    fi
+    local _log_dir=
+    local _log_dir_provided=0
     local _threads=8
     local _verbose=0
 
@@ -100,6 +96,7 @@ plugin_main() {
             ;;
         -l|--log_dir)
             _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+            _log_dir_provided=1
             shift
             ;;
         -t|--threads)
@@ -133,6 +130,16 @@ plugin_main() {
         _exit_1 printf "Option '--group' is required.\\n"
     fi
 
+    # Set default log_dir based on group if not explicitly provided
+    if [[ $_log_dir_provided -eq 0 ]]; then
+        # Use TEST_OUTPUT_DIR in test environment
+        if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+            _log_dir="$TEST_OUTPUT_DIR/dd2dr"
+        else
+            _log_dir="/projects/standard/${_group}/shared/cephtools/dd2dr"
+        fi
+    fi
+
     _verb printf "Program options used:\\n"
     _verb printf "group: %s\\n" "$_group"
     _verb printf "log_dir: %s\\n" "$_log_dir"
@@ -153,9 +160,9 @@ _execute_dd2dr_workflow() {
     local dry_run="$3"
     local threads="$4"
 
-    # Validate group directory structure
-    local data_delivery_path="$MSIPROJECT/data_delivery"
-    local disaster_recovery_path="$MSIPROJECT/shared/disaster_recovery"
+    # Validate group directory structure - derive from group parameter
+    local data_delivery_path="/projects/standard/${group}/data_delivery"
+    local disaster_recovery_path="/projects/standard/${group}/shared/disaster_recovery"
 
     if [[ ! -d "$data_delivery_path" ]]; then
         _exit_1 printf "Data delivery directory does not exist: %s\\n" "$data_delivery_path"

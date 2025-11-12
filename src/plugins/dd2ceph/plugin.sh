@@ -81,17 +81,14 @@ plugin_main() {
     local _remote="myremote"
     local _group=
     local _bucket=
-    local _path="$MSIPROJECT/data_delivery"
-    # Set default log directory - use TEST_OUTPUT_DIR in test environment
-    if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
-        local _log_dir="$TEST_OUTPUT_DIR/dd2ceph"
-    else
-        local _log_dir="$MSIPROJECT/shared/cephtools/dd2ceph"
-    fi
-     local _dry_run=
-     local _verbose=0
-     local _delete_empty_dirs=0
-     local _threads="16"
+    local _path=
+    local _path_provided=0
+    local _log_dir=
+    local _log_dir_provided=0
+    local _dry_run=
+    local _verbose=0
+    local _delete_empty_dirs=0
+    local _threads="16"
 
     # __get_option_value()
     #
@@ -147,10 +144,12 @@ plugin_main() {
             ;;
         -p|--path)
             _path="$(__get_option_value "${__arg}" "${__val:-}")"
+            _path_provided=1
             shift
             ;;
         -l|--log_dir)
             _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+            _log_dir_provided=1
             shift
             ;;
         -t|--threads)
@@ -180,9 +179,22 @@ plugin_main() {
         _exit_1 printf "Option '--group' is required.\\n"
     fi
 
-    # Set default bucket if not provided
+    # Set defaults based on group if not explicitly provided
     if [[ -z "${_bucket:-}" ]]; then
         _bucket="data-delivery-${_group}"
+    fi
+    
+    if [[ $_path_provided -eq 0 ]]; then
+        _path="/projects/standard/${_group}/data_delivery"
+    fi
+    
+    if [[ $_log_dir_provided -eq 0 ]]; then
+        # Use TEST_OUTPUT_DIR in test environment
+        if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+            _log_dir="$TEST_OUTPUT_DIR/dd2ceph"
+        else
+            _log_dir="/projects/standard/${_group}/shared/cephtools/dd2ceph"
+        fi
     fi
 
     # Setup rclone credentials if using default remote

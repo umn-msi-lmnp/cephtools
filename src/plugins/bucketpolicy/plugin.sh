@@ -91,6 +91,7 @@ plugin_main() {
     local _verbose=0
     local _list=
     local _log_dir=
+    local _log_dir_provided=0
 
     # __get_option_value()
     #
@@ -190,6 +191,7 @@ plugin_main() {
             ;;
         --log_dir)
             _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+            _log_dir_provided=1
             shift
             ;;
         --endopts)
@@ -242,11 +244,15 @@ plugin_main() {
     fi
 
     # Set default log directory if not provided
-    if [[ -z "${_log_dir:-}" ]]; then
+    if [[ $_log_dir_provided -eq 0 ]]; then
         # In test environment, use TEST_OUTPUT_DIR as base
         if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
             _log_dir="$TEST_OUTPUT_DIR/bucketpolicy"
+        elif [[ -n "${_group:-}" ]]; then
+            # If group is specified, use group's directory
+            _log_dir="/projects/standard/${_group}/shared/cephtools/bucketpolicy"
         else
+            # Otherwise use current user's MSIPROJECT
             _log_dir="$MSIPROJECT/shared/cephtools/bucketpolicy"
         fi
     fi
