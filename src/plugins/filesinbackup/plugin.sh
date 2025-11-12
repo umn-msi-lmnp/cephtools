@@ -67,15 +67,13 @@ plugin_main() {
     # Parse Options ###############################################################
 
     # Initialize program option variables.
-    local _bucket="data-delivery-$(id -ng)"
+    local _bucket=
+    local _bucket_provided=0
     local _remote="myremote"
-    local _disaster_recovery_dir="$MSIPROJECT/shared/disaster_recovery"
-    # Set default log directory - use TEST_OUTPUT_DIR in test environment
-    if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
-        local _log_dir="$TEST_OUTPUT_DIR/filesinbackup"
-    else
-        local _log_dir="$MSIPROJECT/shared/cephtools/filesinbackup"
-    fi
+    local _disaster_recovery_dir=
+    local _disaster_recovery_dir_provided=0
+    local _log_dir=
+    local _log_dir_provided=0
     local _group=
     local _verbose=0
     local _threads="8"
@@ -150,6 +148,7 @@ plugin_main() {
             ;;
         -b|--bucket)
             _bucket="$(__validate_bucket_name "$(__get_option_value "${__arg}" "${__val:-}")")"
+            _bucket_provided=1
             shift
             ;;
         -g|--group)
@@ -158,10 +157,12 @@ plugin_main() {
             ;;
         -d|--disaster_recovery_dir)
             _disaster_recovery_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+            _disaster_recovery_dir_provided=1
             shift
             ;;
         -l|--log_dir)
             _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
+            _log_dir_provided=1
             shift
             ;;
         -t|--threads)
@@ -193,6 +194,24 @@ plugin_main() {
     if [[ -z "${_group:-}" ]]; then
         plugin_describe
         _exit_1 printf "Option '--group' is required.\\n"
+    fi
+
+    # Set defaults based on group if not explicitly provided
+    if [[ $_bucket_provided -eq 0 ]]; then
+        _bucket="data-delivery-${_group}"
+    fi
+    
+    if [[ $_disaster_recovery_dir_provided -eq 0 ]]; then
+        _disaster_recovery_dir="/projects/standard/${_group}/shared/disaster_recovery"
+    fi
+    
+    if [[ $_log_dir_provided -eq 0 ]]; then
+        # Use TEST_OUTPUT_DIR in test environment
+        if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
+            _log_dir="$TEST_OUTPUT_DIR/filesinbackup"
+        else
+            _log_dir="/projects/standard/${_group}/shared/cephtools/filesinbackup"
+        fi
     fi
 
     _verb printf "Program options used:\\n"
