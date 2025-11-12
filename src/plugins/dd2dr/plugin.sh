@@ -37,7 +37,7 @@ Help (print this screen):
     ${_ME} help dd2dr
 
 Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
-GitHub: https://github.umn.edu/lmnp/cephtools
+GitHub: https://github.com/umn-msi-lmnp/cephtools
 
 Version: @VERSION_SHORT@
 ---------------------------------------------------------------------
@@ -237,7 +237,7 @@ Next steps:
 
 VERSION: @VERSION_SHORT@
 QUESTIONS: lmp-help@msi.umn.edu
-REPO: https://github.umn.edu/lmnp/cephtools
+REPO: https://github.com/umn-msi-lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
 

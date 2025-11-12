@@ -124,5 +124,5 @@ This simple workflow ensures your important `data_delivery` files are safely bac
 ## Questions or issues
 
 For help with cephtools dd2dr:
-- Submit an issue on GitHub: https://github.umn.edu/lmnp/cephtools
+- Submit an issue on GitHub: https://github.com/umn-msi-lmnp/cephtools
 - Contact: lmp-help@msi.umn.edu

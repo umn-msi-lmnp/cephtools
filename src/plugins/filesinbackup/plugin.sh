@@ -51,7 +51,7 @@ Help (print this screen):
     ${_ME} help filesinbackup
 
 Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
-GitHub: https://github.umn.edu/lmnp/cephtools
+GitHub: https://github.com/umn-msi-lmnp/cephtools
 
 Version: @VERSION_SHORT@
 ---------------------------------------------------------------------

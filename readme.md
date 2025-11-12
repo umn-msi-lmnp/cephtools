@@ -2,7 +2,7 @@
 
 ## Introduction
 
-[`cephtools`](https://github.umn.edu/lmnp/cephtools) is a bash script with various subcommand functions. Their goals are to facilitate interactions between MSI's high performance storage (called panfs, vast, or tier1) and MSI block storage (called [Ceph](https://docs.ceph.com/en/pacific/), or tier2). By default, MSI users can interact with ceph using the [`s3cmd`](https://s3tools.org/usage) command, which was developed for accessing S3-like storage (e.g. Amazon S3, ceph, etc.). Another widely available tool, called [`rclone`](https://rclone.org), can facilitate data transfer between various cloud-like storage resources (e.g. Google Drive, ceph, S3, etc.).
+[`cephtools`](https://github.com/umn-msi-lmnp/cephtools) is a bash script with various subcommand functions. Their goals are to facilitate interactions between MSI's high performance storage (called panfs, vast, or tier1) and MSI block storage (called [Ceph](https://docs.ceph.com/en/pacific/), or tier2). By default, MSI users can interact with ceph using the [`s3cmd`](https://s3tools.org/usage) command, which was developed for accessing S3-like storage (e.g. Amazon S3, ceph, etc.). Another widely available tool, called [`rclone`](https://rclone.org), can facilitate data transfer between various cloud-like storage resources (e.g. Google Drive, ceph, S3, etc.).
 
 In general, `cephtools` creates slurm job scripts that use these standard tools to transfer or modify data on MSI's ceph, but does *not* automatically launch or run those job scripts. This is a design philosophy, to give you a chance to review the job commands and understand or modify them before running.   
 

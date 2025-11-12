@@ -82,4 +82,4 @@ The purpose of this subcommand is to generate a list of files that are stored in
     module load /projects/standard/lmnp/knut0297/software/modulesfiles/aws/2.13.11
     aws s3api get-bucket-policy --bucket BUCKET | jq -r '.Policy'
     ```
-    - There is a discussion here, https://github.umn.edu/lmnp/cephtools/issues/17, for more details.
+    - There is a discussion here, https://github.com/umn-msi-lmnp/cephtools/issues/17, for more details.

@@ -66,7 +66,7 @@ Help (print this screen):
     ${_ME} help bucketpolicy
 
 Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
-Repo: https://github.umn.edu/lmnp/cephtools  
+Repo: https://github.com/umn-msi-lmnp/cephtools  
 
 Version: @VERSION_SHORT@
 ---------------------------------------------------------------------
@@ -483,7 +483,7 @@ Next steps:
 
 VERSION: @VERSION_SHORT@
 QUESTIONS: lmp-help@msi.umn.edu
-REPO: https://github.umn.edu/lmnp/cephtools
+REPO: https://github.com/umn-msi-lmnp/cephtools
 ---------------------------------------------------------------------
 HEREDOC
 
@@ -517,7 +517,7 @@ policy_json=${_bucket_policy}
 
 VERSION: @VERSION_SHORT@
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
-REPO: https://github.umn.edu/lmnp/cephtools
+REPO: https://github.com/umn-msi-lmnp/cephtools
 
 ## Policy
 
@@ -544,7 +544,7 @@ policy_json=${_bucket_policy}
 
 VERSION: @VERSION_SHORT@  
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
-REPO: https://github.umn.edu/lmnp/cephtools
+REPO: https://github.com/umn-msi-lmnp/cephtools
 
 
 ## MSI users included in the access policy
@@ -606,7 +606,7 @@ policy_json=${_bucket_policy}
 
 VERSION: @VERSION_SHORT@  
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
-REPO: https://github.umn.edu/lmnp/cephtools
+REPO: https://github.com/umn-msi-lmnp/cephtools
 
 
 ## MSI users included in the access policy

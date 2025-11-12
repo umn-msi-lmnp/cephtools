@@ -98,7 +98,7 @@ test_bucket_name_validation() {
     temp_test_script=$(mktemp)
     cat > "$temp_test_script" << 'EOF'
 #!/bin/bash
-source /projects/standard/lmnp/knut0297/software/develop/cephtools/build/bin/cephtools
+source "$(dirname "$0")/../build/bin/cephtools"
 
 # Test the bucket validation function directly
 bucket_result=$(__validate_bucket_name "test-bucket/")

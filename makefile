@@ -22,7 +22,7 @@ GIT_COMMIT_SHORT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unkn
 GIT_LATEST_COMMIT_SHORT := $(GIT_COMMIT_SHORT)
 GIT_LATEST_COMMIT_DATETIME := $(shell git log -1 --format="%cd" --date=iso 2>/dev/null || echo "unknown")
 GIT_CURRENT_BRANCH := $(shell git branch --show-current 2>/dev/null || echo "unknown")
-GIT_WEB_URL := $(shell git remote get-url origin 2>/dev/null | sed 's/git@github\.umn\.edu:/https:\/\/github.umn.edu\//' | sed 's/\.git$$//' || echo "unknown")
+GIT_WEB_URL := $(shell git remote get-url origin 2>/dev/null | sed 's/git@github\.com:/https:\/\/github.com\//' | sed 's/git@github\.umn\.edu:/https:\/\/github.umn.edu\//' | sed 's/\.git$$//' || echo "unknown")
 GIT_DIRTY := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
 BUILD_DATE := $(shell date -Iseconds)
 VERSION_SHORT := $(SEMANTIC_VERSION)_$(GIT_COMMIT_SHORT)$(GIT_DIRTY)

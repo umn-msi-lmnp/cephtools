@@ -16,7 +16,9 @@ GIT_REMOTE=""
 VERSION_SHORT=""
 
 # Computed values
-if [[ $GIT_REMOTE == git@github* ]]; then
+if [[ $GIT_REMOTE == git@github.com:* ]]; then
+  GIT_WEB_URL="https://github.com/$(echo $GIT_REMOTE | sed 's|git@github.com:||;s|.git||')"
+elif [[ $GIT_REMOTE == git@github.umn.edu:* ]]; then
   GIT_WEB_URL="https://github.umn.edu/$(echo $GIT_REMOTE | sed 's|git@github.umn.edu:||;s|.git||')"
 else
   GIT_WEB_URL=$GIT_REMOTE

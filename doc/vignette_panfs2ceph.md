@@ -51,7 +51,7 @@ cephtools bucketpolicy --verbose --bucket $BUCKET_NAME --policy GROUP_READ --gro
 
 ## Create transfer scripts
 
-NOTE: you can supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.umn.edu/lmnp/tips/tree/main/rclone#umn-tier2-ceph). However, the --remote option is not required and cephtools will automatically find your MSI tier 2 keys and automatically use a temporary rclone remote.
+NOTE: you can supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.com/umn-msi-lmnp/tips/tree/main/rclone#umn-tier2-ceph). However, the --remote option is not required and cephtools will automatically find your MSI tier 2 keys and automatically use a temporary rclone remote.
 
 ```
 cephtools panfs2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
