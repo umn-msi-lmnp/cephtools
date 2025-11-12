@@ -43,6 +43,9 @@ Options:
                             
     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 8].
     
+    -m|--md5sum             Generate MD5 checksums for files in both disaster recovery 
+                            and ceph bucket. [Default = off, checksums not generated]
+    
 
 Description:
   Generate lists of files in a group's disaster_recovery folder and in a bucket on Tier 2 storage. 
@@ -76,6 +79,7 @@ plugin_main() {
     local _group=
     local _verbose=0
     local _threads="8"
+    local _md5sum=0
 
     # __get_option_value()
     #
@@ -137,6 +141,9 @@ plugin_main() {
         -v|--verbose)
             _verbose=1
             ;;
+        -m|--md5sum)
+            _md5sum=1
+            ;;
         -r|--remote)
             _remote="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
@@ -195,9 +202,10 @@ plugin_main() {
     _verb printf "disaster_recovery_dir: %s\\n" "$_disaster_recovery_dir"
     _verb printf "log_dir: %s\\n" "$_log_dir"
     _verb printf "threads: %s\\n" "$_threads"
+    _verb printf "md5sum: %s\\n" "$_md5sum"
 
     # Execute the main workflow
-    _execute_filesinbackup_workflow "$_remote" "$_bucket" "$_group" "$_disaster_recovery_dir" "$_log_dir" "$_threads"
+    _execute_filesinbackup_workflow "$_remote" "$_bucket" "$_group" "$_disaster_recovery_dir" "$_log_dir" "$_threads" "$_md5sum"
 }
 
 ###############################################################################
@@ -211,6 +219,7 @@ _execute_filesinbackup_workflow() {
     local disaster_recovery_dir="$4"
     local log_dir="$5"
     local threads="$6"
+    local md5sum="$7"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -238,7 +247,7 @@ _execute_filesinbackup_workflow() {
     _setup_rclone_credentials "$remote"
 
     # Create SLURM script for analysis
-    _create_filesinbackup_slurm_script "$remote" "$bucket" "$group" "$disaster_recovery_dir" "$work_dir" "$threads" "$timestamp"
+    _create_filesinbackup_slurm_script "$remote" "$bucket" "$group" "$disaster_recovery_dir" "$work_dir" "$threads" "$timestamp" "$md5sum"
 
     _info printf "Change into the log dir and launch the slurm job:\\n"
     _info printf "cd %s && sbatch %s.slurm\\n" "$work_dir" "${group}_${timestamp}"
@@ -308,6 +317,7 @@ _create_filesinbackup_slurm_script() {
     local work_dir="$5"
     local threads="$6"
     local timestamp="$7"
+    local md5sum="$8"
 
     local prefix="${group}_${timestamp}"
     local script_name="${prefix}.slurm"
@@ -433,42 +443,85 @@ echo "Disaster Recovery Directory: ${disaster_recovery_dir}"
 # Generate file lists
 echo "Generating disaster recovery file list..."
 if [[ -d "${disaster_recovery_dir}" ]]; then
-    find "${disaster_recovery_dir}" -type f -exec realpath {} \\; 2>/dev/null | sort > ${prefix}.disaster_recovery_files.txt
+    find "${disaster_recovery_dir}" -type f -exec realpath {} \\; 2> ${prefix}.disaster_recovery_find.err | sort > ${prefix}.disaster_recovery_files.txt
     echo "Found \$(wc -l < ${prefix}.disaster_recovery_files.txt) files in disaster recovery"
     echo "File list saved as: ${prefix}.disaster_recovery_files.txt"
     
+    # Check if find had errors
+    if [[ -s ${prefix}.disaster_recovery_find.err ]]; then
+        echo "WARNING: Find command encountered errors (likely permission issues)"
+        echo "Error log saved as: ${prefix}.disaster_recovery_find.err"
+        echo "Error count: \$(wc -l < ${prefix}.disaster_recovery_find.err)"
+    else
+        rm -f ${prefix}.disaster_recovery_find.err
+    fi
+    
+$(if [[ "$md5sum" == "1" ]]; then
+    cat <<'MD5_DR_EOF'
     # Generate MD5 checksums for disaster recovery files
     echo "Generating MD5 checksums for disaster recovery files..."
     if [[ -s ${prefix}.disaster_recovery_files.txt ]]; then
-        rclone md5sum "${disaster_recovery_dir}" 2>/dev/null > ${prefix}.disaster_recovery_files.md5
+        rclone md5sum "${disaster_recovery_dir}" 2> ${prefix}.disaster_recovery_md5sum.err > ${prefix}.disaster_recovery_files.md5
         echo "MD5 checksums saved as: ${prefix}.disaster_recovery_files.md5"
-    else
-        touch ${prefix}.disaster_recovery_files.md5
+        
+        # Check if md5sum had errors
+        if [[ -s ${prefix}.disaster_recovery_md5sum.err ]]; then
+            echo "WARNING: MD5sum encountered errors"
+            echo "Error log saved as: ${prefix}.disaster_recovery_md5sum.err"
+        else
+            rm -f ${prefix}.disaster_recovery_md5sum.err
+        fi
     fi
+MD5_DR_EOF
+else
+    echo "    echo \"Skipping MD5 checksum generation (not requested)\""
+fi)
 else
     echo "Disaster recovery directory not found: ${disaster_recovery_dir}"
     touch ${prefix}.disaster_recovery_files.txt
-    touch ${prefix}.disaster_recovery_files.md5
 fi
 
 echo "Generating ceph bucket file list..."
-if rclone lsf ${remote}:${bucket} &>/dev/null; then
-    rclone lsf -R ${remote}:${bucket} 2>/dev/null | sed "s|^|s3://${bucket}/|" | sort > ${prefix}.${bucket}_tier2_files.txt
+if rclone lsf ${remote}:${bucket} 2> ${prefix}.ceph_bucket_check.err > /dev/null; then
+    rclone lsf -R ${remote}:${bucket} 2> ${prefix}.ceph_bucket_lsf.err | sed "s|^|s3://${bucket}/|" | sort > ${prefix}.${bucket}_tier2_files.txt
     echo "Found \$(wc -l < ${prefix}.${bucket}_tier2_files.txt) files in ceph bucket"
     echo "File list saved as: ${prefix}.${bucket}_tier2_files.txt"
     
+    # Check if lsf had errors
+    if [[ -s ${prefix}.ceph_bucket_lsf.err ]]; then
+        echo "WARNING: Rclone lsf encountered errors"
+        echo "Error log saved as: ${prefix}.ceph_bucket_lsf.err"
+    else
+        rm -f ${prefix}.ceph_bucket_lsf.err
+    fi
+    rm -f ${prefix}.ceph_bucket_check.err
+    
+$(if [[ "$md5sum" == "1" ]]; then
+    cat <<'MD5_CEPH_EOF'
     # Generate MD5 checksums for ceph bucket files
     echo "Generating MD5 checksums for ceph bucket files..."
     if [[ -s ${prefix}.${bucket}_tier2_files.txt ]]; then
-        rclone md5sum ${remote}:${bucket} 2>/dev/null > ${prefix}.${bucket}_tier2_files.md5
+        rclone md5sum ${remote}:${bucket} 2> ${prefix}.ceph_bucket_md5sum.err > ${prefix}.${bucket}_tier2_files.md5
         echo "MD5 checksums saved as: ${prefix}.${bucket}_tier2_files.md5"
-    else
-        touch ${prefix}.${bucket}_tier2_files.md5
+        
+        # Check if md5sum had errors
+        if [[ -s ${prefix}.ceph_bucket_md5sum.err ]]; then
+            echo "WARNING: MD5sum encountered errors"
+            echo "Error log saved as: ${prefix}.ceph_bucket_md5sum.err"
+        else
+            rm -f ${prefix}.ceph_bucket_md5sum.err
+        fi
     fi
+MD5_CEPH_EOF
+else
+    echo "    echo \"Skipping MD5 checksum generation (not requested)\""
+fi)
 else
     echo "Cannot access ceph bucket or bucket is empty: ${bucket}"
+    if [[ -s ${prefix}.ceph_bucket_check.err ]]; then
+        echo "Error log saved as: ${prefix}.ceph_bucket_check.err"
+    fi
     touch ${prefix}.${bucket}_tier2_files.txt
-    touch ${prefix}.${bucket}_tier2_files.md5
 fi
 
 echo "File listing completed at \$(date)"
