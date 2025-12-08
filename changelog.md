@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.10.0] - 2025-12-08
+
+### Added
+- Added --md5sum/-m flag to filesinbackup plugin to enable optional MD5 checksum generation (default: off)
+
+### Fixed
+- Fixed dd2ceph, dd2dr, bucketpolicy, and filesinbackup plugins to properly use --group parameter for deriving default paths
+  - dd2ceph: When --group specified, defaults to /projects/standard/GROUP/data_delivery for --path and /projects/standard/GROUP/shared/cephtools/dd2ceph for --log_dir
+  - dd2dr: When --group specified, defaults to /projects/standard/GROUP/shared/cephtools/dd2dr for --log_dir; hardcoded paths derived from group
+  - bucketpolicy: When --group specified, defaults to /projects/standard/GROUP/shared/cephtools/bucketpolicy for --log_dir
+  - filesinbackup: When --group specified, correctly derives bucket name, disaster recovery dir, and log dir from specified group
+- Improved error handling in filesinbackup by redirecting errors to specific log files instead of /dev/null
+- Added error checking and reporting for find, rclone lsf, and rclone md5sum commands in filesinbackup
+
 ### Changed
 - Updated all repository URLs from github.umn.edu/lmnp to github.com/umn-msi-lmnp
 - Updated GitHub Actions release workflow to use cephtools-TAG for build directory naming
