@@ -14,22 +14,6 @@ Cephtools is not installed in a common location that is accessible to all MSI us
 
 This is the easiest way to install cephtools. Pre-built releases are available on GitHub and require no compilation.
 
-### tl;dr
-
-```bash
-# Download the latest release
-wget https://github.com/umn-msi-lmnp/cephtools/releases/download/3.10.0/cephtools-3.10.0.tar.gz
-
-# Extract the archive
-tar -xzf cephtools-3.10.0.tar.gz
-
-# Add to PATH
-export PATH="${PWD}/cephtools-3.10.0/bin:${PATH}"
-
-# Test it
-cephtools --help
-```
-
 ### Download a Release
 
 1. Visit the [releases page](https://github.com/umn-msi-lmnp/cephtools/releases) to see all available versions
@@ -37,11 +21,14 @@ cephtools --help
 3. Extract the archive:
 
 ```bash
-# For tar.gz files
-tar -xzf cephtools-VERSION.tar.gz
+# Download the release (example using version 3.10.0)
+wget https://github.com/umn-msi-lmnp/cephtools/releases/download/3.10.0/cephtools-3.10.0.tar.gz
 
-# For zip files
-unzip cephtools-VERSION.zip
+# Extract the tar.gz file
+tar -xzf cephtools-3.10.0.tar.gz
+
+# Or, for zip files
+# unzip cephtools-3.10.0.zip
 ```
 
 ### Update your PATH variable
@@ -50,16 +37,16 @@ Add the cephtools `bin` directory to your PATH:
 
 ```bash
 # If you extracted in your current directory
-export PATH="${PWD}/cephtools-VERSION/bin:${PATH}"
+export PATH="${PWD}/cephtools-3.10.0/bin:${PATH}"
 
 # Or specify the full path
-export PATH="/path/to/cephtools-VERSION/bin:${PATH}"
+export PATH="/path/to/cephtools-3.10.0/bin:${PATH}"
 ```
 
 To make this permanent, add the export command to your `~/.bashrc` file:
 
 ```bash
-echo 'export PATH="/path/to/cephtools-VERSION/bin:${PATH}"' >> ~/.bashrc
+echo 'export PATH="/path/to/cephtools-3.10.0/bin:${PATH}"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
