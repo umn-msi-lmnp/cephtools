@@ -61,18 +61,6 @@ cephtools --version
 
 This method is recommended for developers or users who need access to specific commits, unreleased features, or want to contribute to development.
 
-### tl;dr
-
-```bash
-git clone git@github.com:umn-msi-lmnp/cephtools.git
-# OR, if you do not have ssh key set up, try the https approach:
-# git clone https://github.com/umn-msi-lmnp/cephtools.git
-cd cephtools
-make
-export PATH="${PWD}/build/bin:${PATH}"
-cephtools --help
-```
-
 ### Clone the repository
 
 - The cephtools repo is a public repo on GitHub, allowing anyone with access to [github.com](https://github.com) to view or clone the files.
@@ -137,7 +125,7 @@ module unload ./modulefile
 
 
 
-## Method 3: Load a Module (lmnp MSI project members only)
+## Method 3: Load a Module (`lmnp` MSI project members only)
 
 Cephtools is installed as a module inside the `lmnp` MSI project space. Only members of this project can access files in that project. Therefore, this approach will only work for lmnp project members.
 
@@ -152,7 +140,7 @@ MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" 
 ```bash
 MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
 
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/2.0.0
+MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/3.10.0
 ```
 
 > Technical note:
