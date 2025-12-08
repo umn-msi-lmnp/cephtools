@@ -2,15 +2,83 @@
 
 ## Introduction
 
-There are two ways to access cephtools. Cephtools is not installed in a common location that is accessible to all MSI users, like MSI-supported software. Therefore, the primary way you can access cephtools is by downloading the code, and building the tool in your MSI project space. If you are a member of the `lmnp` MSI project, you can load one of my pre-built modules (but that is possible for only a few people). 
+There are three ways to install and use cephtools:
 
-## Clone the repo and checkout any version tag or commit
+1. **Download a pre-built release** (Recommended) - Download a release tarball or zip file from GitHub, extract it, and use it immediately. No build process required.
+2. **Clone the repo and build** - For developers or users who need specific commits or want to customize the tool.
+3. **Load a module** - Only available for members of the `lmnp` MSI project.
+
+Cephtools is not installed in a common location that is accessible to all MSI users like MSI-supported software. Choose the installation method that best fits your needs.
+
+## Method 1: Download a Pre-Built Release (Recommended)
+
+This is the easiest way to install cephtools. Pre-built releases are available on GitHub and require no compilation.
 
 ### tl;dr
 
+```bash
+# Download the latest release
+wget https://github.com/umn-msi-lmnp/cephtools/releases/download/3.10.0/cephtools-3.10.0.tar.gz
+
+# Extract the archive
+tar -xzf cephtools-3.10.0.tar.gz
+
+# Add to PATH
+export PATH="${PWD}/cephtools-3.10.0/bin:${PATH}"
+
+# Test it
+cephtools --help
 ```
+
+### Download a Release
+
+1. Visit the [releases page](https://github.com/umn-msi-lmnp/cephtools/releases) to see all available versions
+2. Download either the `.tar.gz` or `.zip` file for your desired version
+3. Extract the archive:
+
+```bash
+# For tar.gz files
+tar -xzf cephtools-VERSION.tar.gz
+
+# For zip files
+unzip cephtools-VERSION.zip
+```
+
+### Update your PATH variable
+
+Add the cephtools `bin` directory to your PATH:
+
+```bash
+# If you extracted in your current directory
+export PATH="${PWD}/cephtools-VERSION/bin:${PATH}"
+
+# Or specify the full path
+export PATH="/path/to/cephtools-VERSION/bin:${PATH}"
+```
+
+To make this permanent, add the export command to your `~/.bashrc` file:
+
+```bash
+echo 'export PATH="/path/to/cephtools-VERSION/bin:${PATH}"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### Verify installation
+
+```bash
+cephtools --help
+cephtools --version
+```
+
+## Method 2: Clone the Repo and Build
+
+This method is recommended for developers or users who need access to specific commits, unreleased features, or want to contribute to development.
+
+### tl;dr
+
+```bash
 git clone git@github.com:umn-msi-lmnp/cephtools.git
-# OR, if you do not have ssh key set up, try the https approach (entering your UMN username/password when prompted):
+# OR, if you do not have ssh key set up, try the https approach:
 # git clone https://github.com/umn-msi-lmnp/cephtools.git
 cd cephtools
 make
@@ -18,26 +86,23 @@ export PATH="${PWD}/build/bin:${PATH}"
 cephtools --help
 ```
 
-### Download
+### Clone the repository
 
-- The cephtools repo is a public repo on the UMN GitHub site, allowing anyone with access to [github.com](https://github.com) to view or clone the files. 
-- To clone any repo from the UMN GitHub site, you need to initialize your UMN GitHub account by visiting [github.com](https://github.com) and logging-in using your UMN Internet ID and password.
-- If you're reading this, you've likely already done that step! However, if you are helping someone else try to clone the repo from the command line (i.e. a PI), make sure they have initialized their GitHub account first (otherwise you'll see unclear permissions errors).
-- Cloning from GitHub can be done in two ways, using ssh keys or via https. The https method requires you to enter your UMN Internet ID/password on the command line to download. 
+- The cephtools repo is a public repo on GitHub, allowing anyone with access to [github.com](https://github.com) to view or clone the files.
+- Cloning from GitHub can be done in two ways: using ssh keys or via https. The https method may require you to authenticate.
 
-```
+```bash
 git clone git@github.com:umn-msi-lmnp/cephtools.git
 # OR, if you do not have ssh key set up, try the https approach:
 # git clone https://github.com/umn-msi-lmnp/cephtools.git
 cd cephtools
 ```
 
-
 ### Choose a version
 
-Cloning the repo gives you full access to all the tags and commits. The tagged versions should be stable, but the main branch should contain the most current (possibly unstable) code.
+Cloning the repo gives you full access to all tags and commits. Tagged versions should be stable, but the main branch contains the most current (possibly unstable) code.
 
-```
+```bash
 # List available tags
 git tag
 
@@ -51,24 +116,23 @@ git checkout <commit>
 
 ### Build the tool
 
-The repo contains a makefile that will build the final bash script for you. By default, running `make` will create a new dir named "build" inside the cephtools dir that will contain the program. Make sure you change into the cephtools directory, then run make.
+The repo contains a makefile that will build the final program. By default, running `make` creates a `build` directory inside the cephtools directory.
 
-```
+```bash
 make
 ```
 
-If you want to build the program in a different location, specify an build/install directory by setting a PREFIX variable when running `make`.
+If you want to build the program in a different location, specify a build/install directory by setting a PREFIX variable:
 
-```
+```bash
 make PREFIX=/my/fav/build/dir
 ```
 
-
 ### Update your PATH variable
 
-Update your PATH variable to include the cephtools bin dir.
+Update your PATH variable to include the cephtools bin directory:
 
-```
+```bash
 # If you built the tool with default build prefix
 export PATH="${PWD}/build/bin:${PATH}"
 
@@ -76,9 +140,9 @@ export PATH="${PWD}/build/bin:${PATH}"
 export PATH="${PREFIX}/bin:${PATH}"
 ```
 
-If you are still located in the `cephtools` dir, and you built the tool with default build prefix (`./build`), then running the following commands will add/remove cephtools from your PATH variable. 
+If you are still located in the `cephtools` directory and you built the tool with default build prefix (`./build`), you can use the modulefile:
 
-```
+```bash
 module load ./modulefile
 module unload ./modulefile
 ```
@@ -86,19 +150,19 @@ module unload ./modulefile
 
 
 
-## Load a module *(only if you are a member of the `lmnp` MSI project/group)*
+## Method 3: Load a Module (lmnp MSI project members only)
 
-Cephtools was installed as a module inside the `lmnp` MSI project space. Only members of this project can access files in that project. Therefore, this approach will only work for lmnp project members.
+Cephtools is installed as a module inside the `lmnp` MSI project space. Only members of this project can access files in that project. Therefore, this approach will only work for lmnp project members.
 
-### Load the default version (i.e. most current).
+### Load the default version
 
-```
+```bash
 MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
 ```
 
 ### Check available versions or load a specific version
 
-```
+```bash
 MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
 
 MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/2.0.0
