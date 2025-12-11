@@ -161,8 +161,9 @@ _execute_dd2dr_workflow() {
     local threads="$4"
 
     # Validate group directory structure - derive from group parameter
-    local data_delivery_path="/projects/standard/${group}/data_delivery"
-    local disaster_recovery_path="/projects/standard/${group}/shared/disaster_recovery"
+    # Allow override for testing
+    local data_delivery_path="${DD2DR_TEST_DATA_DELIVERY:-/projects/standard/${group}/data_delivery}"
+    local disaster_recovery_path="${DD2DR_TEST_DISASTER_RECOVERY:-/projects/standard/${group}/shared/disaster_recovery}"
 
     if [[ ! -d "$data_delivery_path" ]]; then
         _exit_1 printf "Data delivery directory does not exist: %s\\n" "$data_delivery_path"

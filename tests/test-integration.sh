@@ -201,6 +201,13 @@ test_dd2dr_workflow() {
     local output_dir="$TEST_OUTPUT_DIR/dd2dr_test"
     mkdir -p "$output_dir"
     
+    # dd2dr expects specific directory structure - create in test environment
+    # Override the standard paths temporarily for testing
+    export DD2DR_TEST_DATA_DELIVERY="$MSIPROJECT/data_delivery"
+    export DD2DR_TEST_DISASTER_RECOVERY="$MSIPROJECT/shared/disaster_recovery"
+    mkdir -p "$DD2DR_TEST_DATA_DELIVERY"
+    mkdir -p "$DD2DR_TEST_DISASTER_RECOVERY"
+    
     local original_dir=$(pwd)
     cd "$output_dir"
     
@@ -229,6 +236,12 @@ test_dd2dr_quota_checking() {
     start_test "dd2dr data transfer functionality"
     
     setup_full_mock_environment
+    
+    # dd2dr expects specific directory structure - create in test environment
+    export DD2DR_TEST_DATA_DELIVERY="$MSIPROJECT/data_delivery"
+    export DD2DR_TEST_DISASTER_RECOVERY="$MSIPROJECT/shared/disaster_recovery"
+    mkdir -p "$DD2DR_TEST_DATA_DELIVERY"
+    mkdir -p "$DD2DR_TEST_DISASTER_RECOVERY"
     
     local output_dir="$TEST_OUTPUT_DIR/dd2dr_quota"
     mkdir -p "$output_dir"
@@ -304,7 +317,8 @@ test_filesinbackup_file_comparison() {
     local original_dir=$(pwd)
     cd "$output_dir"
     
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$output_dir" >/dev/null 2>&1
+    # Use --md5sum flag to test checksum generation
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$output_dir" --md5sum >/dev/null 2>&1
     
     cd "$original_dir"
     

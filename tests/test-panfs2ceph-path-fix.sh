@@ -206,8 +206,9 @@ test_restore_script_fix() {
 }
 
 cleanup_test_outputs() {
-    # Use standard test framework cleanup
-    cleanup_test_environment
+    # Test framework cleanup is handled by cleanup_tests
+    # This function exists for backward compatibility but doesn't need to do anything
+    :
 }
 
 # Main test execution
@@ -222,10 +223,7 @@ main() {
         exec "${SCRIPT_DIR}/test-panfs2ceph-e2e-real.sh"
     fi
     
-    # Set up test environment
-    setup_test_environment
-    
-    # Initialize tests with framework
+    # Initialize tests with framework (this sets up TEST_OUTPUT_DIR)
     init_tests "$TEST_NAME"
     
     # Create mock s3info command

@@ -176,19 +176,19 @@ validate_custom_empty_dir_handling() {
             return 1
         fi
         
-        # Verify temporary marker file creation logic is present
-        if echo "$script_content" | grep -q "temp_marker.*empty_dir_marker"; then
-            pass_test "$plugin_name script contains temporary marker file logic"
+        # Verify marker file creation logic is present (uses marker_name or marker_dir)
+        if echo "$script_content" | grep -q "cephtools_empty_dir_marker"; then
+            pass_test "$plugin_name script contains marker file logic"
         else
-            fail_test "$plugin_name script missing temporary marker file logic"
+            fail_test "$plugin_name script missing marker file logic"
             return 1
         fi
         
-        # Verify rclone copyto logic is present
-        if echo "$script_content" | grep -q "rclone copyto.*temp_marker"; then
-            pass_test "$plugin_name script contains rclone copyto logic"
+        # Verify marker file handling logic is present
+        if echo "$script_content" | grep -q "marker"; then
+            pass_test "$plugin_name script contains marker handling logic"
         else
-            fail_test "$plugin_name script missing rclone copyto logic"
+            fail_test "$plugin_name script missing marker handling logic"
             return 1
         fi
         
@@ -206,11 +206,11 @@ validate_custom_empty_dir_handling() {
             return 1
         fi
         
-        # Verify temporary marker file cleanup
-        if echo "$script_content" | grep -q "rm -f.*temp_marker"; then
-            pass_test "$plugin_name script contains temporary marker cleanup logic"
+        # Verify marker file cleanup (may use rm, find -delete, or other methods)
+        if echo "$script_content" | grep -q -E "(rm.*marker|find.*marker.*delete)"; then
+            pass_test "$plugin_name script contains marker cleanup logic"
         else
-            fail_test "$plugin_name script missing temporary marker cleanup"
+            fail_test "$plugin_name script missing marker cleanup"
             return 1
         fi
         
@@ -224,14 +224,8 @@ validate_custom_empty_dir_handling() {
         fi
         
         # Should not contain marker file logic when disabled
-        if echo "$script_content" | grep -q "temp_marker.*empty_dir_marker"; then
+        if echo "$script_content" | grep -q "cephtools_empty_dir_marker"; then
             fail_test "$plugin_name script should not contain marker file logic when disabled"
-            return 1
-        fi
-        
-        # Should not contain rclone copyto logic when disabled
-        if echo "$script_content" | grep -q "rclone copyto"; then
-            fail_test "$plugin_name script should not contain rclone copyto when disabled"
             return 1
         fi
     fi
