@@ -27,10 +27,10 @@ Options:
                             automatically identify your MSI ceph keys and set the remote. 
                             This option was left here for backward compatibility. 
 
-    -g|--group <STRING>     MSI group ID (required). Used to set default bucket name.
+    -g|--group <STRING>     MSI group ID (required). Your current group is $(id -ng). Used to set default bucket name.
 
     -b|--bucket <STRING>    [Optional] Name of the ceph bucket that data should be used for the 
-                            transfer. [Default = "data-delivery-<GROUP>"]
+                            transfer. [Default = "data-delivery-$(id -ng)"]
     
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered. [Default = "$MSIPROJECT/data_delivery"]
@@ -38,20 +38,20 @@ Options:
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
                             are saved. [Default = "$MSIPROJECT/shared/cephtools/dd2ceph"]
     
-     -d|--dry_run            Dry run option will be enabled in the rclone commands (so nothing 
-                             will be transfered or deleted when scripts run). Also, the slurm 
-                             scripts will be written, but not automatically launched, so you can
-                             review them.
+    -d|--dry_run            Dry run option will be enabled in the rclone commands (so nothing 
+                            will be transfered or deleted when scripts run). Also, the slurm 
+                            scripts will be written, but not automatically launched, so you can
+                            review them.
      
-      -e|--delete_empty_dirs  Do NOT transfer empty dirs from source to ceph. [Default is to 
-                              preserve empty dirs using custom marker files instead of 
-                              rclone's problematic --s3-directory-markers flag which can 
-                              cause compatibility issues. Setting this flag will skip 
-                              empty directory preservation entirely.]
-     
-     -v|--verbose            Verbose mode (print additional info).
-                             
-     -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
+    -e|--delete_empty_dirs  Do NOT transfer empty dirs from source to ceph. [Default is to 
+                            preserve empty dirs using custom marker files instead of 
+                            rclone's problematic --s3-directory-markers flag which can 
+                            cause compatibility issues. Setting this flag will skip 
+                            empty directory preservation entirely.]
+    
+    -v|--verbose            Verbose mode (print additional info).
+                            
+    -t|--threads <INT>      Threads to use for uploading with rclone. [Default = 16].
     
 
 Description:
@@ -565,33 +565,38 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "    --log-file \"${myprefix}.1_copy.rclone.log\" \\"
     echo "    --log-level INFO"
     echo ""
-    echo "# Create temporary marker file for empty directories"
-    echo "temp_marker=\"${myprefix}.empty_dir_marker\""
-    echo "echo \"This file marks an empty directory for cephtools transfer - created \$(date)\" > \"\$temp_marker\""
-    echo ""
-    echo "# Use rclone copyto to place marker file in each empty directory"
+    echo "# Create marker files for empty directories using temp directory approach"
+    echo "marker_temp_dir=\"\$(mktemp -d -t cephtools_markers.XXXXXX)\""
+    echo "mkdir -p \"\$marker_temp_dir\""
     echo "marker_count=0"
     echo "while IFS= read -r empty_dir; do"
     echo "    if [[ -n \"\$empty_dir\" && -d \"\$empty_dir\" ]]; then"
-    echo "        # Convert absolute source path to relative bucket path"
+    echo "        # Convert absolute source path to relative path"
     echo "        relative_path=\"\${empty_dir#${root_path_dir}}\""
     echo "        # Remove leading slash if present"
     echo "        relative_path=\"\${relative_path#/}\""
-    echo "        # Construct bucket destination path"
-    echo "        bucket_path=\"${remote}:${bucket}/\$relative_path/.cephtools_empty_dir_marker\""
-    echo "        echo \"Copying marker to: \$bucket_path\""
-    echo "        if rclone copyto \"\$temp_marker\" \"\$bucket_path\" ${dry_run} --log-level INFO; then"
-    echo "            marker_count=\$((marker_count + 1))"
-    echo "        else"
-    echo "            echo \"Warning: Failed to copy marker to \$bucket_path\""
-    echo "        fi"
+    echo "        # Create local marker file in temp directory structure"
+    echo "        marker_dir=\"\$marker_temp_dir/\$relative_path\""
+    echo "        mkdir -p \"\$marker_dir\""
+    echo "        echo \"This file marks an empty directory for cephtools transfer - created \$(date)\" > \"\$marker_dir/.cephtools_empty_dir_marker\""
+    echo "        marker_count=\$((marker_count + 1))"
     echo "    fi"
     echo "done < \"\$empty_dirs_file\""
     echo ""
-    echo "echo \"Successfully placed markers in \$marker_count empty directories\""
+    echo "# Copy all marker files to bucket in one operation"
+    echo "if [[ \$marker_count -gt 0 ]]; then"
+    echo "    echo \"Copying \$marker_count empty directory markers to bucket...\""
+    echo "    if rclone copy \"\$marker_temp_dir\" \"${remote}:${bucket}\" --copy-links ${dry_run} --log-level INFO; then"
+    echo "        echo \"Successfully placed markers in \$marker_count empty directories\""
+    echo "    else"
+    echo "        echo \"Warning: Failed to copy some empty directory markers\""
+    echo "    fi"
+    echo "else"
+    echo "    echo \"No empty directories found to mark\""
+    echo "fi"
     echo ""
-    echo "# Clean up temporary marker file"
-    echo "rm -f \"\$temp_marker\""
+    echo "# Clean up temporary marker directory"
+    echo "rm -rf \"\$marker_temp_dir\""
 else
     echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
     echo "# Note: We skip the README.txt at the top of the file tree only because it is a"
@@ -614,6 +619,7 @@ echo "Transfer completed at \$(date)"
 echo "Starting verification at \$(date)"  
 rclone check "${root_path_dir}" "${remote}:${bucket}" \\
     --copy-links \\
+    --exclude "/README.txt" \\
     --log-file "${myprefix}.1_verify.rclone.log" \\
     --progress \\
     --log-level DEBUG \\
