@@ -21,14 +21,15 @@ This is the easiest way to install cephtools. Pre-built releases are available o
 3. Extract the archive:
 
 ```bash
-# Download the release (example using version 3.10.0)
-wget https://github.com/umn-msi-lmnp/cephtools/releases/download/3.10.0/cephtools-3.10.0.tar.gz
+# Download the release. To install a different release, change only CEPHTOOLS_VERSION.
+CEPHTOOLS_VERSION=3.12.0
+wget "https://github.com/umn-msi-lmnp/cephtools/releases/download/${CEPHTOOLS_VERSION}/cephtools-${CEPHTOOLS_VERSION}.tar.gz"
 
 # Extract the tar.gz file
-tar -xzf cephtools-3.10.0.tar.gz
+tar -xzf "cephtools-${CEPHTOOLS_VERSION}.tar.gz"
 
 # Or, for zip files
-# unzip cephtools-3.10.0.zip
+# unzip "cephtools-${CEPHTOOLS_VERSION}.zip"
 ```
 
 ### Update your PATH variable
@@ -37,16 +38,17 @@ Add the cephtools `bin` directory to your PATH:
 
 ```bash
 # If you extracted in your current directory
-export PATH="${PWD}/cephtools-3.10.0/bin:${PATH}"
+export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
 
 # Or specify the full path
-export PATH="/path/to/cephtools-3.10.0/bin:${PATH}"
+export PATH="/path/to/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
 ```
 
 To make this permanent, add the export command to your `~/.bashrc` file:
 
 ```bash
-echo 'export PATH="/path/to/cephtools-3.10.0/bin:${PATH}"' >> ~/.bashrc
+echo 'export CEPHTOOLS_VERSION=3.12.0' >> ~/.bashrc
+echo 'export PATH="/path/to/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -140,7 +142,7 @@ MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" 
 ```bash
 MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
 
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/3.10.0
+MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/3.12.0
 ```
 
 > Technical note:
