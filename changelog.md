@@ -5,10 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.12.0] - 2026-08-20
 
 ### Fixed
+- Updated hardcoded `rclone/1.71.0-r1` module references to `rclone/1.74.4`.
 - Resolved group project paths dynamically from `/projects/{standard,regulated,restricted}/GROUP` instead of assuming `/projects/standard/GROUP`.
+- Updated install examples to use `CEPHTOOLS_VERSION=3.12.0` instead of repeating hardcoded release archive paths.
+
+## [3.11.0] - 2025-12-11
+
+### Fixed
+- Fixed `dd2ceph` verification by adding the same `README.txt` exclusion to `rclone check` that is used during copy.
+- Fixed empty directory marker handling in `dd2ceph` by replacing per-directory `rclone copyto` marker uploads with a temporary local marker directory copied in bulk.
+- Improved `dd2ceph` help text formatting and made current-group examples dynamic with `$(id -ng)`.
+
+### Changed
+- Bumped semantic version from `3.10.0` to `3.11.0`.
 
 ## [3.10.0] - 2025-12-08
 
