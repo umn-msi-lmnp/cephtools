@@ -45,8 +45,9 @@ _The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `dat
    Keep a record of all data transfers in shared (common) location. Make sure group permissions are set at this folder.
 
    ```
-   mkdir -m ug+rwxs -p /projects/standard/$MYGROUP/shared/dd2ceph
-   cd /projects/standard/$MYGROUP/shared/dd2ceph
+   GROUP_ROOT=$(for root in /projects/standard /projects/regulated /projects/restricted; do test -d "$root/$MYGROUP" && printf "%s\n" "$root/$MYGROUP"; done)
+   mkdir -m ug+rwxs -p "$GROUP_ROOT/shared/cephtools/dd2ceph"
+   cd "$GROUP_ROOT/shared/cephtools/dd2ceph"
    ```
 
 4. Set bucket policy
@@ -84,7 +85,7 @@ After the PI's bucket has a group READ/WRITE bucket policy set, _the following m
 2. Change into the working directory (created above).
 
    ```
-   cd /projects/standard/$MYGROUP/shared/dd2ceph
+   cd "$GROUP_ROOT/shared/cephtools/dd2ceph"
    ```
 
 3. Run the `cephtools dd2ceph` command.

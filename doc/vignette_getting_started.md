@@ -6,7 +6,7 @@ This vignette describes the basic purpose for each of the `cephtools` subcommand
 
 ## `panfs2ceph`: Transfer a directory from panfs (tier1) to ceph (tier2)
 
-The purpose of this subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps. By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, if the input is `/projects/standard/GROUP/shared/myproject`, the working directory will be created at `/projects/standard/GROUP/shared/myproject___panfs2ceph_archive_DATE`.
+The purpose of this subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps. By default, the working directory is created at the same path as the original input directory, with a suffix name. For example, if the input is `/projects/regulated/GROUP/shared/myproject`, the working directory will be created at `/projects/regulated/GROUP/shared/myproject___panfs2ceph_archive_DATE`.
 
 Inside the working directory:
 
@@ -31,7 +31,7 @@ A few bucket policy presets exist:
 
 ## `dd2ceph`: Backup all files in a group's data_delivery folder to ceph (tier2)
 
-The purpose of this subcommand is to backup all of the data in the group's special "data_delivery" or "data_release" directories (e.g. sequencing data from UMGC or other core facilities). The data deposited into these directories are automatically deleted after a period of time (~ 1 year), so backing up the data is essential. The tool finds all files (and follows symbolic links) in the directory and copies it to ceph (tier2). The tool will create a working directory and output a file list and a slurm job script to complete the steps. By default, the working directory is created at `/projects/standard/MYGROUP/shared/dd2ceph`.
+The purpose of this subcommand is to backup all of the data in the group's special "data_delivery" or "data_release" directories (e.g. sequencing data from UMGC or other core facilities). The data deposited into these directories are automatically deleted after a period of time (~ 1 year), so backing up the data is essential. The tool finds all files (and follows symbolic links) in the directory and copies it to ceph (tier2). The tool resolves the group root from `/projects/{standard,regulated,restricted}/MYGROUP` and creates the working directory at `GROUP_ROOT/shared/cephtools/dd2ceph`.
 
 Inside the working directory:
 

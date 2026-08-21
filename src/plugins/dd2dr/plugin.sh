@@ -23,7 +23,7 @@ Options:
     -g|--group <STRING>     MSI group ID (required)
 
     -l|--log_dir           Absolute or relative path to directory where log files are
-                           saved. [Default: "$MSIPROJECT/shared/cephtools/dd2dr"]
+                           saved. [Default: "/projects/{standard,regulated,restricted}/GROUP/shared/cephtools/dd2dr"]
                            
     -d|--dry_run           Dry run option will be applied to rclone commands. Nothing 
                            transfered or deleted when scripts run.
@@ -130,13 +130,18 @@ plugin_main() {
         _exit_1 printf "Option '--group' is required.\\n"
     fi
 
+    local _project_root=
+    if [[ ( $_log_dir_provided -eq 0 && -z "${TEST_OUTPUT_DIR:-}" ) || -z "${DD2DR_TEST_DATA_DELIVERY:-}" || -z "${DD2DR_TEST_DISASTER_RECOVERY:-}" ]]; then
+        _project_root="$(_resolve_group_project_root "$_group")"
+    fi
+
     # Set default log_dir based on group if not explicitly provided
     if [[ $_log_dir_provided -eq 0 ]]; then
         # Use TEST_OUTPUT_DIR in test environment
         if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
             _log_dir="$TEST_OUTPUT_DIR/dd2dr"
         else
-            _log_dir="/projects/standard/${_group}/shared/cephtools/dd2dr"
+            _log_dir="${_project_root}/shared/cephtools/dd2dr"
         fi
     fi
 
@@ -147,7 +152,7 @@ plugin_main() {
     _verb printf "dry_run: %s\\n" "$([[ ${_dry_run} -eq 1 ]] && echo "yes" || echo "no")"
 
     # Execute the main workflow
-    _execute_dd2dr_workflow "$_group" "$_log_dir" "$_dry_run" "$_threads"
+    _execute_dd2dr_workflow "$_group" "$_log_dir" "$_dry_run" "$_threads" "$_project_root"
 }
 
 ###############################################################################
@@ -159,11 +164,12 @@ _execute_dd2dr_workflow() {
     local log_dir="$2"
     local dry_run="$3"
     local threads="$4"
+    local project_root="$5"
 
     # Validate group directory structure - derive from group parameter
     # Allow override for testing
-    local data_delivery_path="${DD2DR_TEST_DATA_DELIVERY:-/projects/standard/${group}/data_delivery}"
-    local disaster_recovery_path="${DD2DR_TEST_DISASTER_RECOVERY:-/projects/standard/${group}/shared/disaster_recovery}"
+    local data_delivery_path="${DD2DR_TEST_DATA_DELIVERY:-${project_root}/data_delivery}"
+    local disaster_recovery_path="${DD2DR_TEST_DISASTER_RECOVERY:-${project_root}/shared/disaster_recovery}"
 
     if [[ ! -d "$data_delivery_path" ]]; then
         _exit_1 printf "Data delivery directory does not exist: %s\\n" "$data_delivery_path"

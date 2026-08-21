@@ -286,6 +286,8 @@ setup_mock_cephtools() {
     # Create mock directories
     mkdir -p "$MSIPROJECT"/{data_delivery,shared/{disaster_recovery,cephtools}}
     mkdir -p "$MSIPROJECT/shared/cephtools"/{dd2ceph,dd2dr,filesinbackup,panfs2ceph}
+    export DD2DR_TEST_DATA_DELIVERY="$MSIPROJECT/data_delivery"
+    export DD2DR_TEST_DISASTER_RECOVERY="$MSIPROJECT/shared/disaster_recovery"
     
     # Mock the cephtools binary if it doesn't exist
     if [[ ! -f "$cephtools_dir/build/bin/cephtools" ]]; then

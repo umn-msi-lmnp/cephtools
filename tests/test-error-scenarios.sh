@@ -135,6 +135,31 @@ test_nonexistent_paths() {
     fi
 }
 
+test_project_root_resolution() {
+    start_test "Project root resolution"
+
+    local known_group="lmnp"
+    local resolver_output
+
+    if [[ -d "/projects/standard/${known_group}" ]]; then
+        if resolver_output=$(bash -c "source '$PROJECT_ROOT/src/core/common.sh'; _resolve_group_project_root '$known_group'" 2>/dev/null); then
+            assert_equals "/projects/standard/${known_group}" "$resolver_output" "Resolver finds existing standard project root"
+        else
+            fail_test "Resolver failed for known group: ${known_group}"
+        fi
+    else
+        pass_test "Skipping positive resolver test because /projects/standard/${known_group} is unavailable"
+    fi
+
+    local missing_group="cephtools_missing_group_$$"
+    local resolver_error
+    if resolver_error=$(bash -c "source '$PROJECT_ROOT/src/core/common.sh'; _resolve_group_project_root '$missing_group'" 2>&1); then
+        fail_test "Resolver should fail for missing group"
+    else
+        assert_contains "$resolver_error" "Could not resolve project root for group '${missing_group}'" "Resolver errors for missing project root"
+    fi
+}
+
 ###############################################################################
 # Bucket Access Error Scenarios
 ###############################################################################
@@ -188,7 +213,7 @@ test_insufficient_permissions() {
     
     # This should either fail or handle the permission error gracefully
     local test_passed=false
-    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$restricted_dir/subdir" 2>/dev/null; then
+    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$restricted_dir/subdir" 2>/dev/null; then
         # If it succeeds, check if directory was created
         if [[ -d "$restricted_dir/subdir" ]]; then
             pass_test "filesinbackup created directory despite restricted parent"
@@ -220,7 +245,7 @@ test_network_timeouts() {
     
     # Commands should handle network timeouts appropriately
     # Note: With failing rclone, filesinbackup may fail early, which is acceptable
-    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup 2>/dev/null; then
+    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" 2>/dev/null; then
         # If it succeeds, it should have created a SLURM script (dry run behavior)
         local work_dirs=($(find "$MSIPROJECT/shared/cephtools/filesinbackup" -name "filesinbackup_testgroup_*" -type d 2>/dev/null))
         if [[ ${#work_dirs[@]} -gt 0 ]]; then
@@ -245,7 +270,7 @@ test_credential_failures() {
     create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Plugins using s3info should handle credential failures
-    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup 2>/dev/null; then
+    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" 2>/dev/null; then
         # May still succeed if using different remote
         pass_test "filesinbackup handles credential failure appropriately"
     else
@@ -327,7 +352,7 @@ test_module_loading_failures() {
     
     create_mock_command "rclone" "" 0
     
-    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$test_dir" 2>/dev/null; then
+    if "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$test_dir" 2>/dev/null; then
         pass_test "filesinbackup creates script despite module system issues"
         
         # The generated SLURM script should still contain module load commands
@@ -356,10 +381,10 @@ test_concurrent_operations() {
     mkdir -p "$shared_log_dir"
     
     # Run multiple operations concurrently (in background)
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$shared_log_dir" >/dev/null 2>&1 &
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$shared_log_dir" >/dev/null 2>&1 &
     local pid1=$!
     
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$shared_log_dir" >/dev/null 2>&1 &  
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$shared_log_dir" >/dev/null 2>&1 &  
     local pid2=$!
     
     # Wait for both to complete
@@ -421,7 +446,7 @@ test_cleanup_failures() {
     
     # Run operation that might need cleanup
     # Use a different log directory to avoid permission conflicts
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$TEST_OUTPUT_DIR/filesinbackup_logs" 2>/dev/null
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$TEST_OUTPUT_DIR/filesinbackup_logs" 2>/dev/null
     
     # Test that the operation completed despite potential cleanup issues
     # The operation should not hang or crash even if it encounters permission issues
@@ -482,6 +507,7 @@ main() {
     test_invalid_arguments
     test_bucket_name_validation
     test_nonexistent_paths
+    test_project_root_resolution
     
     # Bucket and access errors
     test_bucket_access_failures

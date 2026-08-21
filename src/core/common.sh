@@ -206,6 +206,43 @@ _readlink() {
   printf "%s\\n" "${_result}"
 }
 
+# _resolve_group_project_root()
+#
+# Usage:
+#   _resolve_group_project_root <group>
+#
+# Description:
+#   Resolve a group to exactly one MSI project root. Valid roots are limited to
+#   /projects/{standard,regulated,restricted}/GROUP.
+_resolve_group_project_root() {
+    local group="${1:-}"
+    local root_type=
+    local candidate=
+    local matches=()
+
+    if [[ -z "$group" ]]; then
+        _exit_1 printf "Group is required to resolve project root.\\n"
+    fi
+
+    for root_type in standard regulated restricted; do
+        candidate="/projects/${root_type}/${group}"
+        if [[ -d "$candidate" ]]; then
+            matches+=("$candidate")
+        fi
+    done
+
+    if [[ ${#matches[@]} -eq 1 ]]; then
+        printf "%s\\n" "${matches[0]}"
+        return 0
+    fi
+
+    if [[ ${#matches[@]} -eq 0 ]]; then
+        _exit_1 printf "Could not resolve project root for group '%s'. Expected one of /projects/{standard,regulated,restricted}/%s.\\n" "$group" "$group"
+    fi
+
+    _exit_1 printf "Ambiguous project root for group '%s': %s\\n" "$group" "${matches[*]}"
+}
+
 ###############################################################################
 # AWS/S3 Helpers
 ###############################################################################

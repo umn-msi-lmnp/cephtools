@@ -34,10 +34,10 @@ Options:
     -g|--group <STRING>     MSI group id. Your current group is $(id -ng).
 
     -d|--disaster_recovery_dir <STRING>    Absolute or relative path to the disaster recovery 
-                            directory to scan for files. [Default = "$MSIPROJECT/shared/disaster_recovery"]
+                            directory to scan for files. [Default = "/projects/{standard,regulated,restricted}/GROUP/shared/disaster_recovery"]
 
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files
-                            are saved. [Default = "$MSIPROJECT/shared/cephtools/filesinbackup"]
+                            are saved. [Default = "/projects/{standard,regulated,restricted}/GROUP/shared/cephtools/filesinbackup"]
     
     -v|--verbose            Verbose mode (print additional info).
                             
@@ -196,13 +196,18 @@ plugin_main() {
         _exit_1 printf "Option '--group' is required.\\n"
     fi
 
+    local _project_root=
+    if [[ $_disaster_recovery_dir_provided -eq 0 || ( $_log_dir_provided -eq 0 && -z "${TEST_OUTPUT_DIR:-}" ) ]]; then
+        _project_root="$(_resolve_group_project_root "$_group")"
+    fi
+
     # Set defaults based on group if not explicitly provided
     if [[ $_bucket_provided -eq 0 ]]; then
         _bucket="data-delivery-${_group}"
     fi
     
     if [[ $_disaster_recovery_dir_provided -eq 0 ]]; then
-        _disaster_recovery_dir="/projects/standard/${_group}/shared/disaster_recovery"
+        _disaster_recovery_dir="${_project_root}/shared/disaster_recovery"
     fi
     
     if [[ $_log_dir_provided -eq 0 ]]; then
@@ -210,7 +215,7 @@ plugin_main() {
         if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
             _log_dir="$TEST_OUTPUT_DIR/filesinbackup"
         else
-            _log_dir="/projects/standard/${_group}/shared/cephtools/filesinbackup"
+            _log_dir="${_project_root}/shared/cephtools/filesinbackup"
         fi
     fi
 

@@ -286,7 +286,7 @@ test_filesinbackup_workflow() {
     local original_dir=$(pwd)
     cd "$output_dir"
     
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$output_dir" >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$output_dir" >/dev/null 2>&1
     
     cd "$original_dir"
     
@@ -318,7 +318,7 @@ test_filesinbackup_file_comparison() {
     cd "$output_dir"
     
     # Use --md5sum flag to test checksum generation
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$output_dir" --md5sum >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$output_dir" --md5sum >/dev/null 2>&1
     
     cd "$original_dir"
     
@@ -353,7 +353,7 @@ test_umask_settings() {
     cd "$output_dir"
     
     # Test filesinbackup umask in SLURM script
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$output_dir" >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$output_dir" >/dev/null 2>&1
     
     local slurm_script=$(find "$output_dir" -name "*.slurm" | head -1)
     if [[ -n "$slurm_script" ]]; then
@@ -499,7 +499,7 @@ test_filename_consistency() {
     cd "$test_dir"
     
     # Run plugins that generate timestamped files
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$test_dir" >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$test_dir" >/dev/null 2>&1
     "$CEPHTOOLS_BIN" dd2dr --group testgroup --log_dir "$test_dir" --dry_run >/dev/null 2>&1
     
     cd "$original_dir"
@@ -537,7 +537,7 @@ test_slurm_directive_consistency() {
     cd "$test_dir"
     
     # Generate scripts from multiple plugins
-    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --log_dir "$test_dir" >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" filesinbackup --group testgroup --disaster_recovery_dir "$MSIPROJECT/shared/disaster_recovery" --log_dir "$test_dir" >/dev/null 2>&1
     "$CEPHTOOLS_BIN" dd2dr --group testgroup --log_dir "$test_dir" --dry_run >/dev/null 2>&1
     
     cd "$original_dir"

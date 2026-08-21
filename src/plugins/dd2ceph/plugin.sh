@@ -33,10 +33,10 @@ Options:
                             transfer. [Default = "data-delivery-$(id -ng)"]
     
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
-                            transfered. [Default = "$MSIPROJECT/data_delivery"]
+                            transfered. [Default = "/projects/{standard,regulated,restricted}/GROUP/data_delivery"]
                             
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
-                            are saved. [Default = "$MSIPROJECT/shared/cephtools/dd2ceph"]
+                            are saved. [Default = "/projects/{standard,regulated,restricted}/GROUP/shared/cephtools/dd2ceph"]
     
     -d|--dry_run            Dry run option will be enabled in the rclone commands (so nothing 
                             will be transfered or deleted when scripts run). Also, the slurm 
@@ -179,13 +179,18 @@ plugin_main() {
         _exit_1 printf "Option '--group' is required.\\n"
     fi
 
+    local _project_root=
+    if [[ $_path_provided -eq 0 || ( $_log_dir_provided -eq 0 && -z "${TEST_OUTPUT_DIR:-}" ) ]]; then
+        _project_root="$(_resolve_group_project_root "$_group")"
+    fi
+
     # Set defaults based on group if not explicitly provided
     if [[ -z "${_bucket:-}" ]]; then
         _bucket="data-delivery-${_group}"
     fi
     
     if [[ $_path_provided -eq 0 ]]; then
-        _path="/projects/standard/${_group}/data_delivery"
+        _path="${_project_root}/data_delivery"
     fi
     
     if [[ $_log_dir_provided -eq 0 ]]; then
@@ -193,7 +198,7 @@ plugin_main() {
         if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
             _log_dir="$TEST_OUTPUT_DIR/dd2ceph"
         else
-            _log_dir="/projects/standard/${_group}/shared/cephtools/dd2ceph"
+            _log_dir="${_project_root}/shared/cephtools/dd2ceph"
         fi
     fi
 

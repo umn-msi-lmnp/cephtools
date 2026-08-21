@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Resolved group project paths dynamically from `/projects/{standard,regulated,restricted}/GROUP` instead of assuming `/projects/standard/GROUP`.
+
 ## [3.10.0] - 2025-12-08
 
 ### Added
@@ -14,9 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed dd2ceph, dd2dr, bucketpolicy, and filesinbackup plugins to properly use --group parameter for deriving default paths
-  - dd2ceph: When --group specified, defaults to /projects/standard/GROUP/data_delivery for --path and /projects/standard/GROUP/shared/cephtools/dd2ceph for --log_dir
-  - dd2dr: When --group specified, defaults to /projects/standard/GROUP/shared/cephtools/dd2dr for --log_dir; hardcoded paths derived from group
-  - bucketpolicy: When --group specified, defaults to /projects/standard/GROUP/shared/cephtools/bucketpolicy for --log_dir
+  - dd2ceph: When --group specified, defaults to /projects/{standard,regulated,restricted}/GROUP/data_delivery for --path and /projects/{standard,regulated,restricted}/GROUP/shared/cephtools/dd2ceph for --log_dir
+  - dd2dr: When --group specified, defaults to /projects/{standard,regulated,restricted}/GROUP/shared/cephtools/dd2dr for --log_dir; paths derived from group
+  - bucketpolicy: When --group specified, defaults to /projects/{standard,regulated,restricted}/GROUP/shared/cephtools/bucketpolicy for --log_dir
   - filesinbackup: When --group specified, correctly derives bucket name, disaster recovery dir, and log dir from specified group
 - Improved error handling in filesinbackup by redirecting errors to specific log files instead of /dev/null
 - Added error checking and reporting for find, rclone lsf, and rclone md5sum commands in filesinbackup

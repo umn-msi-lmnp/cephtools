@@ -54,7 +54,7 @@ Options:
     -l|--list               Provide a list of user ids for the particular policy setting
     
     --log_dir <STRING>      Absolute or relative path to the directory where bucket policy files
-                            are saved. [Default = "$MSIPROJECT/shared/cephtools/bucketpolicy"]
+                            are saved. [Default = "/projects/{standard,regulated,restricted}/GROUP/shared/cephtools/bucketpolicy" when --group is used]
      
      -v|--verbose            Verbose mode (print additional info).
 
@@ -250,7 +250,7 @@ plugin_main() {
             _log_dir="$TEST_OUTPUT_DIR/bucketpolicy"
         elif [[ -n "${_group:-}" ]]; then
             # If group is specified, use group's directory
-            _log_dir="/projects/standard/${_group}/shared/cephtools/bucketpolicy"
+            _log_dir="$(_resolve_group_project_root "$_group")/shared/cephtools/bucketpolicy"
         else
             # Otherwise use current user's MSIPROJECT
             _log_dir="$MSIPROJECT/shared/cephtools/bucketpolicy"
