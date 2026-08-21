@@ -494,11 +494,11 @@ trap on_quit QUIT # handles Ctrl-\ (prevents core dump).
 
 # Load required modules - try to get consistent rclone version
 # Force load consistent rclone version, overriding any sticky modules
-if ! module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
-    echo "Error: Failed to load rclone/1.71.0-r1 module even with --force flag"
+if ! module load --force rclone/1.74.4 >/dev/null 2>&1; then
+    echo "Error: Failed to load rclone/1.74.4 module even with --force flag"
     exit 1
 fi
-echo "Successfully loaded rclone/1.71.0-r1 module"
+echo "Successfully loaded rclone/1.74.4 module"
 echo "Using rclone: $(command -v rclone)"
 echo "Version: $(rclone --version 2>/dev/null | head -1 || echo 'version unknown')"
 

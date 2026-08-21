@@ -318,7 +318,7 @@ test_module_loading_failures() {
     setup_mock_cephtools
     
     # Mock module command that fails
-    create_failing_mock_command "module" "Module 'rclone/1.71.0-r1' not found" 1
+    create_failing_mock_command "module" "Module 'rclone/1.74.4' not found" 1
     
     # Should handle module loading failures gracefully
     # (In practice, the generated SLURM scripts contain module load commands)

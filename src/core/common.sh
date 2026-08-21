@@ -309,16 +309,16 @@ EOF
 # _check_rclone_version()
 #
 # Description:
-#   Load the rclone/1.71.0-r1 module for consistent rclone version across all users
+#   Load the rclone/1.74.4 module for consistent rclone version across all users
 #   Uses --force flag to override any sticky modules
 _check_rclone_version() {
     _info printf "Loading rclone module for consistent version...\\n"
     
     # Force load the preferred rclone module, overriding any conflicts
-    if module load --force rclone/1.71.0-r1 >/dev/null 2>&1; then
-        _verb printf "Successfully loaded rclone/1.71.0-r1 module with --force\\n"
+    if module load --force rclone/1.74.4 >/dev/null 2>&1; then
+        _verb printf "Successfully loaded rclone/1.74.4 module with --force\\n"
     else
-        _exit_1 printf "Failed to load rclone/1.71.0-r1 module even with --force flag\\n"
+        _exit_1 printf "Failed to load rclone/1.74.4 module even with --force flag\\n"
         return 1
     fi
     
