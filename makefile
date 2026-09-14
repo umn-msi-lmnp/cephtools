@@ -21,9 +21,11 @@ SEMANTIC_VERSION := $(shell source src/version.txt && echo $$SEMANTIC_VERSION)
 GIT_COMMIT_SHORT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 GIT_LATEST_COMMIT_SHORT := $(GIT_COMMIT_SHORT)
 GIT_LATEST_COMMIT_DATETIME := $(shell git log -1 --format="%cd" --date=iso 2>/dev/null || echo "unknown")
-GIT_CURRENT_BRANCH := $(shell git branch --show-current 2>/dev/null || echo "unknown")
-GIT_WEB_URL := $(shell git remote get-url origin 2>/dev/null | sed 's/git@github\.com:/https:\/\/github.com\//' | sed 's/git@github\.umn\.edu:/https:\/\/github.umn.edu\//' | sed 's/\.git$$//' || echo "unknown")
-GIT_DIRTY := $(shell git diff --quiet 2>/dev/null || echo "-dirty")
+GIT_CURRENT_BRANCH := $(or $(shell git branch --show-current 2>/dev/null),unknown)
+GIT_WEB_URL := $(or $(shell git remote get-url origin 2>/dev/null | sed 's/git@github\.com:/https:\/\/github.com\//' | sed 's/git@github\.umn\.edu:/https:\/\/github.umn.edu\//' | sed 's/\.git$$//'),unknown)
+GIT_LATEST_COMMIT := $(or $(shell git rev-parse HEAD 2>/dev/null),unknown)
+GIT_DIRTY := $(if $(filter unknown,$(GIT_LATEST_COMMIT)),,$(shell git diff --quiet 2>/dev/null || echo "-dirty"))
+GIT_REMOTE := $(shell git remote get-url origin 2>/dev/null || echo "unknown")
 BUILD_DATE := $(shell date -Iseconds)
 VERSION_SHORT := $(SEMANTIC_VERSION)_$(GIT_COMMIT_SHORT)$(GIT_DIRTY)
 
@@ -43,14 +45,6 @@ version: $(VERSION_FILE) ## Generate version info and write to $(PREFIX)/version
 	@cat $(VERSION_FILE)
 
 .FORCE:
-
-# Legacy Git Metadata (for backward compatibility)
-GIT_CURRENT_BRANCH        := $(shell git symbolic-ref --short HEAD)
-GIT_LATEST_COMMIT         := $(shell git rev-parse HEAD)
-GIT_LATEST_COMMIT_SHORT   := $(shell echo $(GIT_LATEST_COMMIT) | cut -c1-7)
-GIT_LATEST_COMMIT_DIRTY   := $(shell git diff --quiet || echo "-dirty")
-GIT_LATEST_COMMIT_DATETIME:= $(shell git show -s --format="%cI" $(GIT_LATEST_COMMIT))
-GIT_REMOTE                := $(shell git ls-remote --get-url)
 
 # Plugin Discovery
 PLUGIN_DIRS := $(wildcard src/plugins/*)
