@@ -8,7 +8,7 @@ In general, `cephtools` creates slurm job scripts that use these standard tools 
 
 ## Installation
 
-There are a couple ways to install cephtools. See the [Install Options](./install.md) file for details.
+There are a couple ways to install cephtools. See the [Install Options](./doc/install.md) file for details.
 
 ## Tutorials
 

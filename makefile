@@ -58,11 +58,11 @@ CORE_FILES := src/core/common.sh \
               src/core/cephtools-simple.sh
 
 # Top-level Targets
-.PHONY: all clean plugins core test validate-plugins list-plugins show-config comprehensive-test
+.PHONY: all clean plugins core docs test validate-plugins list-plugins show-config comprehensive-test
 .PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e
 
 # Default target - build everything
-all: version core plugins validate-plugins
+all: version core plugins validate-plugins docs
 
 # Core framework with proper separation
 core: $(BUILD)/bin/cephtools
@@ -106,6 +106,14 @@ $(BUILD)/share/plugins/%/plugin.sh: src/plugins/%/plugin.sh $(VERSION_FILE)
 	    -e 's|@GIT_WEB_URL@|$(GIT_WEB_URL)|g' \
 	    $< > $@
 	chmod +x $@
+
+# Documentation
+docs:
+	@mkdir -p $(BUILD)/doc
+	@for f in doc/*.md; do \
+		sed 's/@SEMANTIC_VERSION@/$(SEMANTIC_VERSION)/g' "$$f" > $(BUILD)/doc/$$(basename $$f); \
+	done
+	@echo "Documentation generated in $(BUILD)/doc/"
 
 # Plugin validation
 validate-plugins: plugins

@@ -1,5 +1,7 @@
 # cephtools installation instructions
 
+> **Note:** If you're reading this on GitHub, the `@SEMANTIC_VERSION@` placeholder below is replaced automatically at build time. To find the current version, visit the [latest release](https://github.com/umn-msi-lmnp/cephtools/releases).
+
 ## Introduction
 
 There are three ways to install and use cephtools:
@@ -22,7 +24,7 @@ This is the easiest way to install cephtools. Pre-built releases are available o
 
 ```bash
 # Download the release. To install a different release, change only CEPHTOOLS_VERSION.
-CEPHTOOLS_VERSION=3.12.1
+CEPHTOOLS_VERSION=@SEMANTIC_VERSION@
 wget "https://github.com/umn-msi-lmnp/cephtools/releases/download/${CEPHTOOLS_VERSION}/cephtools-${CEPHTOOLS_VERSION}.tar.gz"
 
 # Extract the tar.gz file
@@ -47,7 +49,7 @@ export PATH="/path/to/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
 To make this permanent, add the export command to your `~/.bashrc` file:
 
 ```bash
-echo 'export CEPHTOOLS_VERSION=3.12.1' >> ~/.bashrc
+echo 'export CEPHTOOLS_VERSION=@SEMANTIC_VERSION@' >> ~/.bashrc
 echo 'export PATH="/path/to/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"' >> ~/.bashrc
 source ~/.bashrc
 ```
@@ -142,7 +144,7 @@ MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" 
 ```bash
 MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
 
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/3.12.1
+MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/@SEMANTIC_VERSION@
 ```
 
 > Technical note:

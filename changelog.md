@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.12.2] - 2026-10-05
 
+### Added
+- Added `make docs` target that copies `doc/*.md` into the build directory with `@SEMANTIC_VERSION@` placeholders replaced at build time.
+- Moved `install.md` to `doc/install.md` with version placeholders for build-time substitution.
+
 ### Fixed
 - Fixed `bucketpolicy --list` with process substitution (e.g. `--list <(echo "user1,user2")`) by using `-e` instead of `-f` to detect readable paths, which previously failed because `/dev/fd/N` is not a regular file.
 - Updated bucketpolicy vignette documentation to use realistic UMN InternetID examples and clarify that `--list` expects UMN InternetIDs (not Tier 2 usernames like `uid=XXXXX`).
