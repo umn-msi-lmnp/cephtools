@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.12.2] - 2026-10-05
+
+### Fixed
+- Fixed `bucketpolicy --list` with process substitution (e.g. `--list <(echo "user1,user2")`) by using `-e` instead of `-f` to detect readable paths, which previously failed because `/dev/fd/N` is not a regular file.
+- Updated bucketpolicy vignette documentation to use realistic UMN InternetID examples and clarify that `--list` expects UMN InternetIDs (not Tier 2 usernames like `uid=XXXXX`).
+
 ## [3.12.1] - 2026-09-14
 
 ### Fixed

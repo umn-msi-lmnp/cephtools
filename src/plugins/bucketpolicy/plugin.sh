@@ -374,7 +374,7 @@ _execute_bucketpolicy_workflow() {
     then
         # Read in the specific users in the list
         local _username_msi_csv
-        if [[ -f "$_list" ]]; then
+        if [[ -e "$_list" ]]; then
             _username_msi_csv="$(cat ${_list})"
         else
             _username_msi_csv="$_list"

@@ -62,19 +62,21 @@ cephtools bucketpolicy -v --bucket $BUCKET_NAME --policy GROUP_READ --group $MYG
 
 ### Grant Access to Specific Users
 
-If you want to grant access to specific users instead of an entire group, use the `LIST_READ_WRITE` policy with the `--list` option. You can provide a comma-separated list of users either as a file or directly on the command line:
+If you want to grant access to specific users instead of an entire group, use the `LIST_READ_WRITE` policy with the `--list` option. You can provide a comma-separated list of UMN InternetIDs either as a file or directly on the command line:
 
 **Using a file:**
 ```bash
-# Create a file with user list
-echo "user1000,user2000,user3000" > userlist.txt
+# Create a file with UMN InternetIDs (comma-separated)
+echo "knut0297,jdoe,luxxx987" > userlist.txt
 cephtools bucketpolicy --bucket $BUCKET_NAME --policy LIST_READ_WRITE --group $MYGROUP --list userlist.txt
 ```
 
 **Using command-line process substitution (quick method for a few users):**
 ```bash
 # Grant access to just two users without creating a file
-cephtools bucketpolicy --bucket $BUCKET_NAME --policy LIST_READ_WRITE --group $MYGROUP --list <(echo "user1000,user2000")
+cephtools bucketpolicy --bucket $BUCKET_NAME --policy LIST_READ_WRITE --group $MYGROUP --list <(echo "knut0297,jdoe")
 ```
 
 This command-line approach is particularly useful when you only need to add a small number of specific users and don't want to create a separate file.
+
+**Important:** The `--list` option expects UMN InternetIDs (e.g. `knut0297`). Do not use your MSI Tier 2 username (e.g. `uid=24482`). You can find your Tier 2 username via the `s3info` command, but the tool will automatically convert your UMN InternetID to the correct Tier 2 identifier.
