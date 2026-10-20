@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.13.0] - 2026-10-20
+
+### Added
+- Added `--destination_path` to `panfs2ceph` and `dd2ceph` for selecting a bucket-relative Ceph destination while preserving each command's existing default behavior.
+- Added lexical destination path normalization for leading, trailing, and repeated slashes and `.` or `..` components, with validation against traversal above the bucket root.
+- Added warnings when a custom destination already contains objects because `rclone copy` merges content and overwrites files with matching paths.
+- Added regression tests and documentation for default and custom Ceph destination paths.
+
 ## [3.12.2] - 2026-10-05
 
 ### Added

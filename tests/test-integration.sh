@@ -159,6 +159,98 @@ test_dd2ceph_workflow() {
     fi
 }
 
+test_dd2ceph_custom_destination() {
+    start_test "dd2ceph custom destination integration"
+
+    setup_full_mock_environment
+
+    local output_dir="$TEST_OUTPUT_DIR/dd2ceph_custom_destination"
+    local expected_destination="myremote:test-bucket/deliveries/run-final"
+    mkdir -p "$output_dir"
+
+    if ! "$CEPHTOOLS_BIN" dd2ceph \
+        --group testgroup \
+        --bucket test-bucket \
+        --path "$MSIPROJECT/data_delivery" \
+        --destination_path "./deliveries//staging/../run-final/" \
+        --log_dir "$output_dir" \
+        --dry_run >/dev/null 2>&1; then
+        fail_test "dd2ceph failed with a custom destination"
+        return 1
+    fi
+
+    local slurm_script
+    slurm_script=$(find "$output_dir" -name "*.slurm" | head -1)
+    if [[ -z "$slurm_script" ]]; then
+        fail_test "No dd2ceph SLURM script was generated"
+        return 1
+    fi
+
+    if [[ $(grep -cF "$expected_destination" "$slurm_script") -lt 4 ]]; then
+        fail_test "dd2ceph copy, marker, and verification commands do not share the custom destination"
+        return 1
+    fi
+
+    pass_test "dd2ceph uses the normalized custom destination throughout its generated script"
+}
+
+test_dd2ceph_default_destination() {
+    start_test "dd2ceph retains its bucket-root destination by default"
+
+    setup_full_mock_environment
+
+    local output_dir="$TEST_OUTPUT_DIR/dd2ceph_default_destination"
+    mkdir -p "$output_dir"
+
+    if ! "$CEPHTOOLS_BIN" dd2ceph \
+        --group testgroup \
+        --bucket test-bucket \
+        --path "$MSIPROJECT/data_delivery" \
+        --log_dir "$output_dir" \
+        --dry_run >/dev/null 2>&1; then
+        fail_test "dd2ceph failed with its default destination"
+        return 1
+    fi
+
+    local slurm_script
+    slurm_script=$(find "$output_dir" -name "*.slurm" | head -1)
+    if [[ -z "$slurm_script" ]]; then
+        fail_test "No dd2ceph SLURM script was generated"
+        return 1
+    fi
+
+    if ! grep -qF 'rclone check ' "$slurm_script" || ! grep -qF 'myremote:test-bucket \' "$slurm_script"; then
+        fail_test "dd2ceph no longer targets the bucket root by default"
+        return 1
+    fi
+
+    if grep -qF 'myremote:test-bucket/data_delivery' "$slurm_script"; then
+        fail_test "dd2ceph unexpectedly appended the source directory to its default destination"
+        return 1
+    fi
+
+    pass_test "dd2ceph default destination remains the bucket root"
+}
+
+test_nonempty_destination_warning() {
+    start_test "custom destination check warns about merge behavior"
+
+    local output
+    output=$(bash -c '
+        source "$1"
+        _warn() { "$@"; }
+        rclone() { printf "existing-object.txt\\n"; }
+        _warn_if_destination_not_empty "myremote:test-bucket/archive" ""
+    ' bash "$PROJECT_ROOT/src/core/common.sh" 2>&1)
+
+    if [[ "$output" != *"already contains objects"* ]] || [[ "$output" != *"merge content and overwrite files"* ]]; then
+        fail_test "Nonempty custom destination warning did not explain merge behavior"
+        return 1
+    fi
+
+    pass_test "Nonempty custom destination emits a warning explaining merge behavior"
+}
+
 test_dd2ceph_credential_setup() {
     start_test "dd2ceph credential setup in SLURM script"
     
@@ -574,6 +666,9 @@ main() {
     
     # dd2ceph tests
     test_dd2ceph_workflow
+    test_dd2ceph_custom_destination
+    test_dd2ceph_default_destination
+    test_nonempty_destination_warning
     test_dd2ceph_credential_setup
     
     # dd2dr tests

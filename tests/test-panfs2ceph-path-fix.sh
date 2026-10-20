@@ -205,6 +205,74 @@ test_restore_script_fix() {
     fi
 }
 
+test_custom_destination_path() {
+    start_test "panfs2ceph uses one normalized custom destination in all scripts"
+
+    local test_source_dir="${TEST_OUTPUT_DIR}/custom_destination/source"
+    local log_dir="${TEST_OUTPUT_DIR}/logs_custom_destination"
+    local expected_destination="myremote:${TEST_BUCKET}/archives/project-a/final"
+    mkdir -p "${test_source_dir}/empty"
+    echo "custom destination content" > "${test_source_dir}/test.txt"
+
+    local output
+    if ! output=$(timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
+        --bucket "${TEST_BUCKET}" \
+        --path "${test_source_dir}" \
+        --destination_path "/archives//project-a/./run/../final/" \
+        --log_dir "${log_dir}" \
+        --dry_run 2>&1); then
+        fail_test "panfs2ceph command failed: ${output}"
+        return 1
+    fi
+
+    local copy_script="${log_dir}/source.1_copy_and_verify.slurm"
+    local delete_script="${log_dir}/source.2_delete.slurm"
+    local restore_script="${log_dir}/source.3_restore.slurm"
+    local script
+
+    for script in "${copy_script}" "${delete_script}" "${restore_script}"; do
+        if [[ ! -f "${script}" ]]; then
+            fail_test "Expected script was not generated: ${script}"
+            return 1
+        fi
+        if ! grep -qF "${expected_destination}" "${script}"; then
+            fail_test "Custom destination missing from ${script}"
+            return 1
+        fi
+    done
+
+    if [[ $(grep -cF "${expected_destination}" "${copy_script}") -lt 4 ]]; then
+        fail_test "Copy, marker, and verification commands do not share the custom destination"
+        return 1
+    fi
+
+    if grep -qF "${TEST_BUCKET}/${test_source_dir#/}" "${copy_script}"; then
+        fail_test "Default source breadcrumb was retained with a custom destination"
+        return 1
+    fi
+
+    pass_test "Custom destination is normalized and shared by copy, verify, delete, and restore scripts"
+}
+
+test_invalid_custom_destination_path() {
+    start_test "panfs2ceph rejects destination traversal above bucket root"
+
+    local test_source_dir="${TEST_OUTPUT_DIR}/invalid_destination/source"
+    mkdir -p "${test_source_dir}"
+
+    if timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
+        --bucket "${TEST_BUCKET}" \
+        --path "${test_source_dir}" \
+        --destination_path "../../outside" \
+        --log_dir "${TEST_OUTPUT_DIR}/logs_invalid_destination" \
+        --dry_run >/dev/null 2>&1; then
+        fail_test "panfs2ceph accepted destination traversal above the bucket root"
+        return 1
+    fi
+
+    pass_test "Destination traversal above the bucket root is rejected"
+}
+
 cleanup_test_outputs() {
     # Test framework cleanup is handled by cleanup_tests
     # This function exists for backward compatibility but doesn't need to do anything
@@ -233,6 +301,8 @@ main() {
     test_path_construction_fix
     test_multiple_path_formats  
     test_restore_script_fix
+    test_custom_destination_path
+    test_invalid_custom_destination_path
     
     # Print results
     print_test_summary

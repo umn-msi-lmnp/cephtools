@@ -32,6 +32,11 @@ Options:
     
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered.
+
+    --destination_path <PATH>
+                            [Optional] Bucket-relative destination path. Leading and
+                            trailing slashes and dot segments are normalized. By default,
+                            the absolute source path is preserved below the bucket.
                             
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
                             are saved. [Default: "<path>___panfs2ceph_archive_<date_time>"]
@@ -72,6 +77,8 @@ plugin_main() {
     local _bucket=
     local _remote="myremote"
     local _path=
+    local _destination_path=
+    local _destination_path_provided=0
     local _log_dir=
     local _dry_run=
     local _verbose=0
@@ -128,6 +135,11 @@ plugin_main() {
             ;;
         -p|--path)
             _path="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
+        --destination_path)
+            _destination_path="$(__get_option_value "${__arg}" "${__val:-}")"
+            _destination_path_provided=1
             shift
             ;;
         -l|--log_dir)
@@ -194,6 +206,14 @@ plugin_main() {
 
     # Convert relative path to absolute path
     _path="$(cd "${_path}" && pwd)" || _exit_1 printf "Path '%s' does not exist or is not accessible.\\n" "${_path}"
+
+    if [[ ${_destination_path_provided} -eq 1 ]]; then
+        _destination_path="$(__normalize_destination_path "${_destination_path}")"
+    else
+        _destination_path="${_path#/}"
+    fi
+    local _destination
+    _destination="$(__build_rclone_destination "${_remote}" "${_bucket}" "${_destination_path}")"
     
     # Set default log directory if not provided
     if [[ -z "${_log_dir:-}" ]]; then
@@ -213,6 +233,7 @@ plugin_main() {
     _verb printf "  Bucket: %s\\n" "${_bucket}"
     _verb printf "  Remote: %s\\n" "${_remote}"
     _verb printf "  Path: %s\\n" "${_path}"
+    _verb printf "  Destination Path: %s\\n" "${_destination_path}"
     _verb printf "  Log Directory: %s\\n" "${_log_dir}"
     _verb printf "  Threads: %s\\n" "${_threads}"
     _verb printf "  Dry Run: %s\\n" "${_dry_run:-disabled}"
@@ -224,7 +245,7 @@ plugin_main() {
     
     _info printf "Starting panfs2ceph transfer preparation\\n"
     _info printf "Source: %s\\n" "${_path}"
-    _info printf "Destination: %s:%s\\n" "${_remote}" "${_bucket}"
+    _info printf "Destination: %s\\n" "${_destination}"
     
     # Run comprehensive pre-flight checks
     if ! _run_preflight_checks "${_path}" "${_remote}" "${_bucket}" "${_log_dir}" "${_dry_run}"; then
@@ -235,9 +256,13 @@ plugin_main() {
             _warn printf "Pre-flight checks had issues, but continuing with dry run.\\n"
         fi
     fi
+
+    if [[ ${_destination_path_provided} -eq 1 ]]; then
+        _warn_if_destination_not_empty "${_destination}" "${_dry_run}"
+    fi
     
     # Create the transfer scripts
-    _create_transfer_scripts "${_bucket}" "${_remote}" "${_path}" "${_log_dir}" "${_dry_run}" "${_delete_empty_dirs}" "${_threads}"
+    _create_transfer_scripts "${_path}" "${_destination}" "${_log_dir}" "${_dry_run}" "${_delete_empty_dirs}" "${_threads}"
     
     #######################################################################
     # Print instructions to terminal
@@ -259,6 +284,7 @@ dry_run=${_dry_run}
 delete_empty_dirs=${_delete_empty_dirs}
 remote=${_remote}
 bucket=${_bucket}
+destination_path=${_destination_path}
 threads=${_threads}
 
 
@@ -315,16 +341,17 @@ _find_empty_directories() {
 }
 
 _create_transfer_scripts() {
-    local bucket="${1}"
-    local remote="${2}"
-    local path="${3}"
-    local log_dir="${4}"
-    local dry_run="${5}"
-    local delete_empty_dirs="${6}"
-    local threads="${7}"
+    local path="${1}"
+    local destination="${2}"
+    local log_dir="${3}"
+    local dry_run="${4}"
+    local delete_empty_dirs="${5}"
+    local threads="${6}"
     
     local path_basename="$(basename "${path}")"
     local script_prefix="${log_dir}/${path_basename}"
+    local destination_q
+    printf -v destination_q '%q' "${destination}"
     
     # Create the combined copy and verify script
     cat > "${script_prefix}.1_copy_and_verify.slurm" <<EOF
@@ -453,7 +480,7 @@ echo "✓ Source directory accessibility verified"
 # Perform the transfer
 echo "Starting transfer at \$(date)"
 echo "Source: ${path}"
-echo "Destination: ${remote}:${bucket}/${path#/}"
+echo Destination: ${destination_q}
 
 $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "echo \"Using custom empty directory handling...\""
@@ -465,7 +492,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "echo \"Found \$empty_count empty directories\""
     echo ""
     echo "# Main file transfer"
-    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
+    echo "rclone copy \"${path}\" ${destination_q} \\"
     echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
@@ -495,7 +522,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "# Copy all marker files to bucket in one operation"
     echo "if [[ \$marker_count -gt 0 ]]; then"
     echo "    echo \"Copying \$marker_count empty directory markers to bucket...\""
-        echo "    if rclone copy \"\$marker_temp_dir\" \"${remote}:${bucket}/${path#/}\" --links ${dry_run} --log-level INFO; then"
+        echo "    if rclone copy \"\$marker_temp_dir\" ${destination_q} --links ${dry_run} --log-level INFO; then"
     echo "        echo \"Successfully placed markers in \$marker_count empty directories\""
     echo "    else"
     echo "        echo \"Warning: Failed to copy some empty directory markers\""
@@ -508,7 +535,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "rm -rf \"\$marker_temp_dir\""
 else
     echo "echo \"Skipping empty directories (--delete_empty_dirs flag set)...\""
-    echo "rclone copy \"${path}\" \"${remote}:${bucket}/${path#/}\" \\"
+    echo "rclone copy \"${path}\" ${destination_q} \\"
     echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
@@ -522,7 +549,7 @@ echo "Transfer completed at \$(date)"
 
 # Verify the transfer immediately
 echo "Starting verification at \$(date)"  
-rclone check "${path}" "${remote}:${bucket}/${path#/}" \\
+rclone check "${path}" ${destination_q} \\
     --links \\
     --log-file "${script_prefix}.1_verify.rclone.log" \\
     --progress \\
@@ -677,7 +704,7 @@ rclone purge "${path}" \\
 if [[ \$? -eq 0 ]]; then
     echo "Deletion completed successfully at \$(date)"
     echo "Original data has been removed from: ${path}"
-    echo "Data remains safely stored in: ${remote}:${bucket}/${path#/}"
+    echo Data remains safely stored in: ${destination_q}
 else
     echo "ERROR: Deletion failed. Please check the log file:"
     echo "  ${script_prefix}.2_delete.rclone.log"
@@ -788,7 +815,7 @@ echo ""
 
 # Restore process
 echo "Starting restore process at \$(date)"
-echo "Source: ${remote}:${bucket}/${path#/}"
+echo Source: ${destination_q}
 echo "Destination: ${path}"
 
 # Safety checks
@@ -801,9 +828,9 @@ fi
 
 # Verify source exists in tier 2 storage
 echo "Verifying source data exists in tier 2 storage..."
-if ! rclone lsd "${remote}:${bucket}/${path#/}" >/dev/null 2>&1; then
+if ! rclone lsd ${destination_q} >/dev/null 2>&1; then
     echo "ERROR: Source data not found in tier 2 storage"
-    echo "Expected location: ${remote}:${bucket}/${path#/}"
+    echo Expected location: ${destination_q}
     echo "Please verify the bucket and path are correct"
     exit 1
 fi
@@ -827,7 +854,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "echo \"Restoring with custom empty directory handling...\""
     echo ""
     echo "# Main file restore (includes marker files)"
-    echo "rclone copy \"${remote}:${bucket}/${path#/}\" \"${path}\" \\"
+    echo "rclone copy ${destination_q} \"${path}\" \\"
     echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
@@ -842,7 +869,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "echo \"Cleaned up empty directory marker files from restored data\""
 else
     echo "echo \"Restoring without empty directory preservation...\""
-    echo "rclone copy \"${remote}:${bucket}/${path#/}\" \"${path}\" \\"
+    echo "rclone copy ${destination_q} \"${path}\" \\"
     echo "    --links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"

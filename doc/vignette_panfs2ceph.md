@@ -57,6 +57,26 @@ NOTE: you can supply your `rclone` remote name in the command below. To learn mo
 cephtools panfs2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
 ```
 
+By default, the absolute source path is preserved below the bucket. For example,
+the command above stores the directory contents below
+`$BUCKET_NAME/projects/.../shared/myproject`.
+
+Use `--destination_path` to select an exact bucket-relative destination instead:
+
+```
+cephtools panfs2ceph \
+    --bucket $BUCKET_NAME \
+    --path $MSIPROJECT/shared/myproject \
+    --destination_path archives/myproject
+```
+
+This stores the source directory contents below
+`$BUCKET_NAME/archives/myproject`. Relative paths, leading or trailing slashes,
+repeated slashes, and `.` or `..` components are normalized. Paths cannot traverse
+above the bucket root. If the custom destination already contains objects,
+`panfs2ceph` warns because `rclone copy` merges content and overwrites files with
+matching paths.
+
 ### Empty Directory Handling
 
 By default, `panfs2ceph` preserves empty directories during transfer operations using a custom approach that avoids S3 compatibility issues:

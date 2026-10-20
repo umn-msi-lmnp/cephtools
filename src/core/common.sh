@@ -405,6 +405,95 @@ __validate_bucket_name() {
   printf "%s\\n" "$bucket_name"
 }
 
+# __normalize_destination_path()
+#
+# Usage:
+#   __normalize_destination_path <path>
+#
+# Description:
+#   Normalizes a bucket-relative object path without consulting the local
+#   filesystem. Empty paths and traversal above the bucket root are rejected.
+__normalize_destination_path() {
+    local destination_path="${1:-}"
+    local component
+    local normalized=
+    local -a components=()
+    local -a normalized_components=()
+
+    if [[ -z "$destination_path" ]]; then
+        _exit_1 printf "Destination path cannot be empty.\\n"
+    fi
+
+    if [[ "$destination_path" =~ [[:cntrl:]] ]]; then
+        _exit_1 printf "Destination path cannot contain control characters.\\n"
+    fi
+
+    IFS='/' read -r -a components <<< "$destination_path"
+    for component in "${components[@]}"; do
+        case "$component" in
+        ""|.)
+            ;;
+        ..)
+            if [[ ${#normalized_components[@]} -eq 0 ]]; then
+                _exit_1 printf "Destination path cannot traverse above the bucket root: '%s'\\n" "$destination_path"
+            fi
+            unset 'normalized_components[${#normalized_components[@]}-1]'
+            ;;
+        *)
+            normalized_components+=("$component")
+            ;;
+        esac
+    done
+
+    if [[ ${#normalized_components[@]} -eq 0 ]]; then
+        _exit_1 printf "Destination path must identify a location below the bucket root.\\n"
+    fi
+
+    normalized="$(IFS=/; printf "%s" "${normalized_components[*]}")"
+    printf "%s\\n" "$normalized"
+}
+
+# __build_rclone_destination()
+#
+# Usage:
+#   __build_rclone_destination <remote> <bucket> [destination_path]
+__build_rclone_destination() {
+    local remote="${1:-}"
+    local bucket="${2:-}"
+    local destination_path="${3:-}"
+
+    if [[ -n "$destination_path" ]]; then
+        printf "%s:%s/%s\\n" "$remote" "$bucket" "$destination_path"
+    else
+        printf "%s:%s\\n" "$remote" "$bucket"
+    fi
+}
+
+# _warn_if_destination_not_empty()
+#
+# Usage:
+#   _warn_if_destination_not_empty <rclone_destination> <dry_run>
+_warn_if_destination_not_empty() {
+    local destination="${1:-}"
+    local dry_run="${2:-}"
+    local listing=
+
+    if [[ -n "$dry_run" ]]; then
+        _info printf "Skipping custom destination content check (dry run mode)\\n"
+        return 0
+    fi
+
+    if ! listing="$(rclone lsf --max-depth 1 "$destination" 2>/dev/null)"; then
+        _warn printf "Could not determine whether custom destination is empty: %s\\n" "$destination"
+        return 0
+    fi
+
+    if [[ -n "$listing" ]]; then
+        _warn printf "Custom destination already contains objects: %s\\n" "$destination"
+        _warn printf "rclone copy will merge content and overwrite files with matching paths.\\n"
+    fi
+}
+
 # _validate_rclone_connectivity()
 #
 # Usage:

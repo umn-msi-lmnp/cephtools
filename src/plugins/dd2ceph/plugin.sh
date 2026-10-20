@@ -34,6 +34,11 @@ Options:
     
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered. [Default = "/projects/{standard,regulated,restricted}/GROUP/data_delivery"]
+
+    --destination_path <PATH>
+                            [Optional] Bucket-relative destination path. Leading and
+                            trailing slashes and dot segments are normalized. By default,
+                            the source directory tree is preserved below the bucket root.
                             
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
                             are saved. [Default = "/projects/{standard,regulated,restricted}/GROUP/shared/cephtools/dd2ceph"]
@@ -83,6 +88,8 @@ plugin_main() {
     local _bucket=
     local _path=
     local _path_provided=0
+    local _destination_path=
+    local _destination_path_provided=0
     local _log_dir=
     local _log_dir_provided=0
     local _dry_run=
@@ -147,6 +154,11 @@ plugin_main() {
             _path_provided=1
             shift
             ;;
+        --destination_path)
+            _destination_path="$(__get_option_value "${__arg}" "${__val:-}")"
+            _destination_path_provided=1
+            shift
+            ;;
         -l|--log_dir)
             _log_dir="$(__get_option_value "${__arg}" "${__val:-}")"
             _log_dir_provided=1
@@ -192,6 +204,12 @@ plugin_main() {
     if [[ $_path_provided -eq 0 ]]; then
         _path="${_project_root}/data_delivery"
     fi
+
+    if [[ ${_destination_path_provided} -eq 1 ]]; then
+        _destination_path="$(__normalize_destination_path "${_destination_path}")"
+    fi
+    local _destination
+    _destination="$(__build_rclone_destination "${_remote}" "${_bucket}" "${_destination_path}")"
     
     if [[ $_log_dir_provided -eq 0 ]]; then
         # Use TEST_OUTPUT_DIR in test environment
@@ -223,6 +241,7 @@ plugin_main() {
     _verb printf "remote: %s\\n" "$_remote"
     _verb printf "bucket: %s\\n" "$_bucket"
     _verb printf "path: %s\\n" "$_path"
+    _verb printf "destination_path: %s\\n" "${_destination_path:-<bucket root>}"
     _verb printf "log_dir: %s\\n" "$_log_dir"
      _verb printf "dry_run: %s\\n" "$_dry_run"
      _verb printf "verbose: %s\\n" "$_verbose"
@@ -244,7 +263,7 @@ plugin_main() {
 
     _info printf "Starting dd2ceph transfer preparation\\n"
     _info printf "Source: %s\\n" "${_root_path_dir}"
-    _info printf "Destination: %s:%s\\n" "${_remote}" "${_bucket}"
+    _info printf "Destination: %s\\n" "${_destination}"
     
     # Run comprehensive pre-flight checks (skip source permission checks for read-only data_delivery)
     if ! _run_preflight_checks "${_root_path_dir}" "${_remote}" "${_bucket}" "${_log_dir}" "${_dry_run}" "false"; then
@@ -259,8 +278,12 @@ plugin_main() {
     # Check s3cmd availability
     _check_s3cmd_access "$_bucket" "$_dry_run"
 
+    if [[ ${_destination_path_provided} -eq 1 ]]; then
+        _warn_if_destination_not_empty "${_destination}" "${_dry_run}"
+    fi
+
      # Execute the main workflow
-     _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads" "$_delete_empty_dirs"
+     _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_destination" "$_destination_path" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads" "$_delete_empty_dirs"
 }
 
 ###############################################################################
@@ -313,11 +336,13 @@ _check_s3cmd_access() {
  _execute_dd2ceph_workflow() {
      local remote="$1"
      local bucket="$2"
-     local root_path_dir="$3"
-     local log_dir="$4"
-     local dry_run="$5"
-     local threads="$6"
-     local delete_empty_dirs="$7"
+     local destination="$3"
+     local destination_path="$4"
+     local root_path_dir="$5"
+     local log_dir="$6"
+     local dry_run="$7"
+     local threads="$8"
+     local delete_empty_dirs="$9"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -343,7 +368,7 @@ _check_s3cmd_access() {
     _check_pathname_lengths "${myprefix}"
 
      # Create the transfer scripts
-     _create_dd2ceph_copy_and_verify_script "${remote}" "${bucket}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
+     _create_dd2ceph_copy_and_verify_script "${destination}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
 
     #######################################################################
     # Print instructions to terminal
@@ -365,6 +390,7 @@ dry_run=${dry_run}
 delete_empty_dirs=${delete_empty_dirs}
 remote=${remote}
 bucket=${bucket}
+destination_path=${destination_path:-<bucket root>}
 threads=${threads}
 
 
@@ -410,14 +436,15 @@ _check_pathname_lengths() {
 }
 
  _create_dd2ceph_copy_and_verify_script() {
-     local remote="$1"
-     local bucket="$2"
-     local root_path_dir="$3" 
-     local myprefix_dir="$4"
-     local myprefix="$5"
-     local dry_run="$6"
-     local threads="$7"
-     local delete_empty_dirs="$8"
+     local destination="$1"
+     local root_path_dir="$2"
+     local myprefix_dir="$3"
+     local myprefix="$4"
+     local dry_run="$5"
+     local threads="$6"
+     local delete_empty_dirs="$7"
+     local destination_q
+     printf -v destination_q '%q' "${destination}"
 
     # Create the combined copy and verify script
     cat > "${myprefix}.1_copy_and_verify.slurm" <<EOF
@@ -545,7 +572,7 @@ echo "✓ Source directory is accessible"
 # Perform the transfer
 echo "Starting dd2ceph transfer at \$(date)"
 echo "Source: ${root_path_dir}"
-echo "Destination: ${remote}:${bucket}"
+echo Destination: ${destination_q}
 
 $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "echo \"Using custom empty directory handling...\""
@@ -560,7 +587,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "# Note: We skip the README.txt at the top of the file tree only because it is a"
     echo "# symlink that cannot be resolved, but it is not actual data that needs to be backed up."
     echo "# Without skipping this file, rclone will error."
-    echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "rclone copy \"${root_path_dir}\" ${destination_q} \\"
     echo "    --copy-links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
@@ -591,7 +618,7 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "# Copy all marker files to bucket in one operation"
     echo "if [[ \$marker_count -gt 0 ]]; then"
     echo "    echo \"Copying \$marker_count empty directory markers to bucket...\""
-    echo "    if rclone copy \"\$marker_temp_dir\" \"${remote}:${bucket}\" --copy-links ${dry_run} --log-level INFO; then"
+    echo "    if rclone copy \"\$marker_temp_dir\" ${destination_q} --copy-links ${dry_run} --log-level INFO; then"
     echo "        echo \"Successfully placed markers in \$marker_count empty directories\""
     echo "    else"
     echo "        echo \"Warning: Failed to copy some empty directory markers\""
@@ -607,7 +634,7 @@ else
     echo "# Note: We skip the README.txt at the top of the file tree only because it is a"
     echo "# symlink that cannot be resolved, but it is not actual data that needs to be backed up."
     echo "# Without skipping this file, rclone will error."
-    echo "rclone copy \"${root_path_dir}\" \"${remote}:${bucket}\" \\"
+    echo "rclone copy \"${root_path_dir}\" ${destination_q} \\"
     echo "    --copy-links \\"
     echo "    --transfers ${threads} \\"
     echo "    --progress \\"
@@ -622,7 +649,7 @@ echo "Transfer completed at \$(date)"
 
 # Verify the transfer immediately
 echo "Starting verification at \$(date)"  
-rclone check "${root_path_dir}" "${remote}:${bucket}" \\
+rclone check "${root_path_dir}" ${destination_q} \\
     --copy-links \\
     --exclude "/README.txt" \\
     --log-file "${myprefix}.1_verify.rclone.log" \\

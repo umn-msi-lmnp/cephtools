@@ -100,6 +100,28 @@ After the PI's bucket has a group READ/WRITE bucket policy set, _the following m
    cephtools dd2ceph -v --group $MYGROUP
    ```
 
+   By default, files are stored at their original path relative to `data_delivery`
+   inside the bucket. The directory hierarchy is preserved rather than flattened.
+   For example, `data_delivery/project-a/results/file.txt` is stored as
+   `data-delivery-$MYGROUP/project-a/results/file.txt`.
+
+   Use `--destination_path` to place that same directory tree below an exact
+   bucket-relative destination instead:
+
+   ```
+   cephtools dd2ceph \
+       --group $MYGROUP \
+       --destination_path deliveries/run-2026-10
+   ```
+
+   With this example, `data_delivery/project-a/results/file.txt` is stored as
+   `data-delivery-$MYGROUP/deliveries/run-2026-10/project-a/results/file.txt`.
+
+   Relative paths, leading or trailing slashes, repeated slashes, and `.` or `..`
+   components are normalized. Paths cannot traverse above the bucket root. If the
+   custom destination already contains objects, `dd2ceph` warns because
+   `rclone copy` merges content and overwrites files with matching paths.
+
 4. Review the output and launch the SLURM job.
 
    Change into the working directory for this run.
