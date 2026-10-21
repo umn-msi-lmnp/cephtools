@@ -863,10 +863,12 @@ $(if [[ ${delete_empty_dirs} -eq 0 ]]; then
     echo "    --log-file \"${script_prefix}.3_restore.rclone.log\" \\"
     echo "    --log-level INFO"
     echo ""
-    echo "# Remove marker files from restored directories (they preserve the empty dirs but aren't needed locally)"
-    echo "marker_name=\".cephtools_empty_dir_marker\""
-    echo "find \"${path}\" -name \"\$marker_name\" -type f -delete 2>/dev/null || true"
-    echo "echo \"Cleaned up empty directory marker files from restored data\""
+    if [[ -z "${dry_run}" ]]; then
+        echo "# Remove marker files from restored directories (they preserve the empty dirs but aren't needed locally)"
+        echo "marker_name=\".cephtools_empty_dir_marker\""
+        echo "find \"${path}\" -name \"\$marker_name\" -type f -delete 2>/dev/null || true"
+        echo "echo \"Cleaned up empty directory marker files from restored data\""
+    fi
 else
     echo "echo \"Restoring without empty directory preservation...\""
     echo "rclone copy ${destination_q} \"${path}\" \\"
