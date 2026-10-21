@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.14.0] - 2026-10-20
+
+### Changed
+- Removed the obsolete internal `s3cmd` wrapper and now use MSI's maintained, nounset-safe `s3cmd` function directly.
+- Updated `s3cmd` dependency reporting to support shell functions as well as executables on `PATH`.
+
+### Fixed
+- Fixed `bucketpolicy --make_bucket` issuing the bucket creation command twice.
+- Updated mocked tests to isolate them from MSI's exported `s3cmd` function and added regression coverage for native function preservation and single bucket creation.
+
 ## [3.13.0] - 2026-10-20
 
 ### Added

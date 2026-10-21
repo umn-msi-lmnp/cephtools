@@ -280,69 +280,6 @@ _setup_rclone_credentials() {
   fi
 }
 
-# s3cmd()
-#
-# Description:
-#   Wrapper function that sources our corrected s3cmd script instead of the buggy system one
-#   This fixes the "AWS_ACCESS_KEY: unbound variable" issue in /opt/msi/bin/s3cmd
-s3cmd() {
-    # Check if test environment has provided a mock override
-    if [[ -n "${S3CMD_MOCK_OVERRIDE:-}" && -x "${S3CMD_MOCK_OVERRIDE}" ]]; then
-        "${S3CMD_MOCK_OVERRIDE}" "$@"
-        return $?
-    fi
-    
-    # Create temporary corrected s3cmd script
-    local temp_s3cmd_script=$(mktemp)
-    cat > "$temp_s3cmd_script" << 'EOF'
-#!/bin/bash
-
-# Ensure vars always exist
-: "${AWS_ACCESS_KEY:=}"
-: "${AWS_SECRET_KEY:=}"
-: "${S3CMD_CONFIG:=}"
-
-if [ -f "$HOME/.s3cfg" ]; then
-  # User created a custom config; it should have precedence.
-  if [ "${S3CMD_CONFIG:-}" == '/etc/msi/s3cfg-generic' ]; then
-    unset S3CMD_CONFIG
-    unset AWS_ACCESS_KEY
-    unset AWS_SECRET_KEY
-  fi
-  /usr/bin/s3cmd "$@"
-else
-  if [ -z "${AWS_ACCESS_KEY:-}" ]; then
-    DATA=$(s3info --keys)
-    if [[ $? -eq 0 ]]; then
-      read -r ACCESS_KEY SECRET_KEY <<< "$DATA"
-      export AWS_ACCESS_KEY=$ACCESS_KEY
-      export AWS_SECRET_KEY=$SECRET_KEY
-    fi
-  fi
-
-  if [ -z "${S3CMD_CONFIG:-}" ]; then
-    export S3CMD_CONFIG='/etc/msi/s3cfg-generic'
-  fi
-
-  if [ -n "${AWS_ACCESS_KEY:-}" ]; then
-    /usr/bin/s3cmd "$@"
-  else
-    >&2 echo "An error occurred fetching S3 credentials."
-  fi
-fi
-EOF
-    
-    # Source the corrected script with the provided arguments
-    chmod +x "$temp_s3cmd_script"
-    "$temp_s3cmd_script" "$@"
-    local exit_code=$?
-    
-    # Clean up
-    rm -f "$temp_s3cmd_script"
-    
-    return $exit_code
-}
-
 # _check_rclone_version()
 #
 # Description:

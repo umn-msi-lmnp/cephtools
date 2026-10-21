@@ -15,51 +15,6 @@ CEPHTOOLS_BIN="${PROJECT_ROOT}/build/bin/cephtools"
 # Setup Functions
 ###############################################################################
 
-create_s3cmd_function_override() {
-    # Create a special s3cmd mock that handles bucket operations properly
-    local log_file="$TEST_OUTPUT_DIR/s3cmd.log"
-    
-    # Create an s3cmd script that will be called by the environment
-    cat > "$TEST_OUTPUT_DIR/mock-bin/s3cmd_override" <<EOF
-#!/bin/bash
-echo "Mock s3cmd override executed with args: \$*" >> "$log_file"
-
-# Handle different s3cmd operations for bucketpolicy plugin
-case "\$1" in
-    "ls")
-        # Simulate successful bucket listing (bucket exists and is accessible)
-        echo "2025-09-12 19:52     0 s3://test-bucket/"
-        exit 0
-        ;;
-    "info")
-        # Simulate bucket info
-        echo "s3://test-bucket/ (bucket):"
-        echo "   Location:  us-east-1"  
-        echo "   Payer:     BucketOwner"
-        echo "   Expiration Rule: none"
-        exit 0
-        ;;
-    "setpolicy")
-        # Simulate successful policy setting
-        echo "s3://test-bucket/: Policy updated"
-        exit 0
-        ;;
-    "--version")
-        echo "s3cmd version 2.3.0"
-        exit 0
-        ;;
-    *)
-        echo "Success"
-        exit 0
-        ;;
-esac
-EOF
-    chmod +x "$TEST_OUTPUT_DIR/mock-bin/s3cmd_override"
-    
-    # Set an environment variable that our modified s3cmd function can use
-    export S3CMD_MOCK_OVERRIDE="$TEST_OUTPUT_DIR/mock-bin/s3cmd_override"
-}
-
 setup_full_mock_environment() {
     # Set up complete mock environment with all dependencies
     setup_mock_cephtools "$PROJECT_ROOT"
@@ -82,6 +37,24 @@ setup_full_mock_environment() {
     # Create test data
     create_test_data "$MSIPROJECT/data_delivery" 5
     create_test_data "$MSIPROJECT/shared/disaster_recovery" 3
+}
+
+test_common_preserves_s3cmd_function() {
+    start_test "common utilities preserve the MSI s3cmd function"
+
+    local output
+    output=$(bash -c '
+        s3cmd() { printf "host-s3cmd\\n"; }
+        source "$1"
+        s3cmd
+    ' bash "$PROJECT_ROOT/src/core/common.sh")
+
+    if [[ "$output" != "host-s3cmd" ]]; then
+        fail_test "Sourcing common.sh replaced the existing s3cmd function"
+        return 1
+    fi
+
+    pass_test "Existing s3cmd function remains unchanged"
 }
 
 verify_slurm_script_basics() {
@@ -545,9 +518,6 @@ test_bucketpolicy_workflow() {
     # Mock s3cmd bucket operations
     create_logging_mock_command "s3cmd"
     
-    # Override the s3cmd function for bucketpolicy plugin
-    create_s3cmd_function_override
-    
     # Create test directory and run bucketpolicy from there
     local test_dir="$TEST_OUTPUT_DIR/bucketpolicy_test"
     mkdir -p "$test_dir"
@@ -571,6 +541,56 @@ test_bucketpolicy_workflow() {
     else
         fail_test "Bucket existence not checked"
     fi
+}
+
+test_bucketpolicy_makes_bucket_once() {
+    start_test "bucketpolicy creates a missing bucket once"
+
+    setup_full_mock_environment
+
+    local test_dir="$TEST_OUTPUT_DIR/bucketpolicy_make_bucket"
+    local s3cmd_log="$TEST_OUTPUT_DIR/s3cmd.log"
+    mkdir -p "$test_dir"
+
+    cat > "$TEST_OUTPUT_DIR/mock-bin/s3cmd" <<EOF
+#!/usr/bin/env bash
+printf "%s\\n" "\$*" >> "$s3cmd_log"
+case "\${1:-}" in
+    --version)
+        printf "s3cmd version 2.4.0\\n"
+        exit 0
+        ;;
+    ls)
+        exit 1
+        ;;
+    mb)
+        exit 0
+        ;;
+    *)
+        exit 0
+        ;;
+esac
+EOF
+    chmod +x "$TEST_OUTPUT_DIR/mock-bin/s3cmd"
+
+    if ! "$CEPHTOOLS_BIN" bucketpolicy \
+        --bucket test-new-bucket \
+        --policy OTHERS_READ \
+        --make_bucket \
+        --do_not_setpolicy \
+        --log_dir "$test_dir" >/dev/null 2>&1; then
+        fail_test "bucketpolicy failed to create a missing bucket"
+        return 1
+    fi
+
+    local mb_count
+    mb_count=$(grep -cF "mb s3://test-new-bucket" "$s3cmd_log" || true)
+    if [[ "$mb_count" -ne 1 ]]; then
+        fail_test "Expected one bucket creation call, found $mb_count"
+        return 1
+    fi
+
+    pass_test "Missing bucket is created exactly once"
 }
 
 ###############################################################################
@@ -663,6 +683,8 @@ main() {
     init_tests "Integration Tests with Mocks"
     
     echo "Running integration tests with mocked dependencies..."
+
+    test_common_preserves_s3cmd_function
     
     # dd2ceph tests
     test_dd2ceph_workflow
@@ -687,6 +709,7 @@ main() {
     
     # bucketpolicy tests
     test_bucketpolicy_workflow
+    test_bucketpolicy_makes_bucket_once
     
     # Cross-plugin consistency
     test_filename_consistency

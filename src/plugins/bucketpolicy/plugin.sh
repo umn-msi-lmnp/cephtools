@@ -292,10 +292,9 @@ _execute_bucketpolicy_workflow() {
     fi
 
     # Check s3cmd availability
-    S3CMD="$(which s3cmd)"
     if command -v s3cmd &> /dev/null
     then
-        _verb printf "Using s3cmd found in PATH: %s\\n" "$(which s3cmd)"
+        _verb printf "Using s3cmd: %s\\n" "$(command -V s3cmd)"
         _verb printf "%s\\n" "$(s3cmd --version)" 
     else
         _exit_1 printf "s3cmd could not be found in PATH\\n"
@@ -306,8 +305,7 @@ _execute_bucketpolicy_workflow() {
         if ((_make_bucket))
         then
             if s3cmd mb s3://${_bucket} &>/dev/null; then
-                s3cmd mb s3://${_bucket}
-                _info printf "Bucket was made: %s" "${_bucket}"
+                _info printf "Bucket was made: %s\\n" "${_bucket}"
             else
                 _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
             fi

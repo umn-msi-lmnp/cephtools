@@ -278,6 +278,11 @@ assert_exit_code() {
 # Set up a mock cephtools environment
 setup_mock_cephtools() {
     local cephtools_dir="${1:-$(pwd)}"
+
+    # Ensure PATH-based mocks take precedence over MSI's exported shell function.
+    if [[ "$(type -t s3cmd 2>/dev/null || true)" == "function" ]]; then
+        unset -f s3cmd
+    fi
     
     # Mock MSI environment
     export USER="testuser"
