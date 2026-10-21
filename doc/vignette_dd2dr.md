@@ -81,8 +81,7 @@ The `dd2dr` tool:
 1. **Validates access** to both source and destination directories
 2. **Creates working directory** with timestamp for tracking  
 3. **Copies all files** from `data_delivery` to `disaster_recovery` using rclone
-4. **Generates file lists** for verification
-5. **Provides completion report** with file counts and locations
+4. **Generates a file list** of the destination for verification
 
 ## Tips and best practices
 
@@ -90,7 +89,7 @@ The `dd2dr` tool:
 - **Use dry run first**: Always test with `--dry_run` to preview what will be copied
 - **Check space**: The tool will warn if there are space issues
 - **Keep logs**: All operations are logged in the working directory for future reference
-- **Verify results**: Check the generated file lists to confirm all data was copied
+- **Verify results**: Check the generated file list to confirm all data was copied
 
 ## Command options
 

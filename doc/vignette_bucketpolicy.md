@@ -8,10 +8,10 @@ A few bucket policy presets exist:
 
 - `NONE`: Removes any policy currently set.
 - `GROUP_READ`: This policy gives all current users of an MSI group read-only access to all files in bucket. This is great for sharing data with coworkers.
-- `GROUP_READ_WRITE`: This policy gives all current users of an MSI group read and write access to all files in bucket. This is great for allowing coworkers to write files into your bucket.
+- `GROUP_READ_WRITE`: This policy gives all current users of an MSI group full bucket permissions (s3:*). This is great for allowing coworkers to write files into your bucket.
 - `LIST_READ`: This policy gives specific users (provided via --list) read-only access to all files in bucket.
-- `LIST_READ_WRITE`: This policy gives specific users (provided via --list) read and write access to all files in bucket.
-- `OTHERS_READ`: Allows anyone read-only access to the bucket (i.e. world public read-only access). This policy will expose all files in the bucket to the entire Internet for viewing or downloading. This can be a good option for hosting a public static website (or simple R markdown report, etc.).
+- `LIST_READ_WRITE`: This policy gives specific users (provided via --list) full bucket permissions (s3:*).
+- `OTHERS_READ`: Allows anyone to download objects when they know the object key. Does not allow bucket listing. This can be a good option for sharing specific files publicly (e.g. a static report).
 
 ## Set up environment
 
@@ -81,4 +81,11 @@ cephtools bucketpolicy --bucket $BUCKET_NAME --policy LIST_READ --list "knut0297
 ### Useful flags
 
 - `--do_not_setpolicy` (`-n`): Write the policy JSON and readme files without applying the policy to the bucket. Useful for review before committing.
+- `--make_bucket` (`-m`): Create the bucket if it does not already exist.
 - `--log_dir <PATH>`: Override the default directory where policy files are saved.
+
+### Notes
+
+- Applying a preset **replaces** the entire existing policy. It does not merge with prior rules.
+- GROUP policies capture the group's current member list at the time the command runs. Re-run after membership changes.
+- After applying a policy, verify it took effect: `s3cmd getpolicy s3://$BUCKET_NAME`

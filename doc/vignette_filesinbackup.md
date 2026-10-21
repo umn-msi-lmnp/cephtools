@@ -1,8 +1,8 @@
-# filesinbackup: Compare Backup Files Between Tier 1 and Tier 2
+# filesinbackup: List Backup Files in Tier 1 and Tier 2
 
 ## Purpose
 
-The `filesinbackup` tool generates comprehensive file lists comparing what's stored in your disaster recovery directory (Tier 1) versus your ceph bucket (Tier 2). This helps you:
+The `filesinbackup` tool generates file lists for your disaster recovery directory (Tier 1) and your ceph bucket (Tier 2). This helps you:
 
 - **Track what files are backed up** without manually searching directories
 - **Maintain backup integrity** by knowing exactly what's stored where
@@ -15,12 +15,12 @@ cephtools filesinbackup --group <GROUP>
 
 ## What Files Get Generated
 
-After running the SLURM job, you'll get these comparison files:
+After running the SLURM job, you'll get:
 
 - **`GROUP_TIMESTAMP.disaster_recovery_files.txt`** - Complete list of files in disaster recovery
-- **`GROUP_TIMESTAMP.disaster_recovery_files.md5`** - MD5 checksums for disaster recovery files
 - **`GROUP_TIMESTAMP.BUCKET_tier2_files.txt`** - Complete list of files in ceph bucket
-- **`GROUP_TIMESTAMP.BUCKET_tier2_files.md5`** - MD5 checksums for ceph bucket files
+
+If `--md5sum` is specified, additional MD5 checksum files are generated for each list.
 
 ## Command Options
 
@@ -33,6 +33,7 @@ After running the SLURM job, you'll get these comparison files:
 - `--log_dir <PATH>` - Where to save results [Default: `$MSIPROJECT/shared/cephtools/filesinbackup`]
 - `--remote <REMOTE>` - Rclone remote name [Default: auto-configured]
 - `--threads <NUM>` - Number of threads for rclone [Default: 8]
+- `--md5sum` - Generate MD5 checksums for both file lists [Default: off]
 - `--verbose` - Print additional information
 
 ### Custom Example

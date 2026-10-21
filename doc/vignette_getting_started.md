@@ -10,11 +10,9 @@ The purpose of this subcommand is to backup a single directory, and all its cont
 
 Inside the working directory:
 
-- A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to a ceph bucket.
-- A `PREFIX.2_verify.slurm` job file can be launched to verify all the data was transferred correctly.
-- A `PREFIX.3_delete.slurm` job file can be launched to delete all the data from panfs.
-- A `PREFIX.4_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
-- Finally, a `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
+- A `PREFIX.1_copy_and_verify.slurm` job file can be launched to copy all the data to a ceph bucket and verify the transfer.
+- A `PREFIX.2_delete.slurm` job file can be launched to delete all the data from panfs.
+- A `PREFIX.3_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
 
 ## `bucketpolicy`: Allow others to access your ceph (tier2) bucket
 
@@ -24,10 +22,10 @@ A few bucket policy presets exist:
 
 - `NONE`: Removes any policy currently set.
 - `GROUP_READ`: This policy gives all current users of an MSI group read-only access to all files in bucket. This is great for sharing data with coworkers.
-- `GROUP_READ_WRITE`: This policy gives all current users of an MSI group read and write access to all files in bucket. This is great for allowing coworkers to write files into your bucket.
-- `OTHERS_READ`: Allows anyone read-only access to the bucket (i.e. world public read-only access). This policy will expose all files in the bucket to the entire Internet for viewing or downloading. This can be a good option for hosting a public static website (or simple R markdown report, etc.).
-- `LIST_READ`: Allows a specific list of users to have read-only access to the bucket. Must be a comma separated x500 list without spaces.
-- `LIST_READ_WRITE`: Allows a specific list of users to have read and write access to the bucket. Must be a comma separated x500 list without spaces.
+- `GROUP_READ_WRITE`: This policy gives all current users of an MSI group full bucket permissions (s3:*). This is great for allowing coworkers to write files into your bucket.
+- `OTHERS_READ`: Allows anyone to download objects when they know the object key. Does not allow bucket listing. This can be a good option for sharing specific files publicly.
+- `LIST_READ`: Allows a specific list of users (UMN InternetIDs via `--list`) to have read-only access to the bucket.
+- `LIST_READ_WRITE`: Allows a specific list of users (UMN InternetIDs via `--list`) to have full bucket permissions (s3:*).
 
 ## `dd2ceph`: Backup all files in a group's data_delivery folder to ceph (tier2)
 
@@ -35,8 +33,7 @@ The purpose of this subcommand is to backup all of the data in the group's speci
 
 Inside the working directory:
 
-- A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to a ceph bucket.
-- A `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
+- A `PREFIX.1_copy_and_verify.slurm` job file can be launched to copy all the data to a ceph bucket and verify the transfer.
 
 ## `dd2dr`: Backup all files in a group's data_delivery folder to disaster_recovery (tier1)
 
@@ -44,19 +41,18 @@ The purpose of this subcommand is to backup all of the data in the group's speci
 
 Inside the working directory:
 
-- A `PREFIX.1_copy.slurm` job file can be launched to copy all the data to the disaster recovery directory.
-- A `PREFIX.readme.md` file is created that describes the process and where the files in disaster recovery are located.
+- A SLURM job file can be launched to copy all the data to the disaster recovery directory.
 
 ## `filesinbackup`: Create file lists from tier 2 bucket and `shared/disaster_recovery`
 
-The purpose of this subcommand is to generate a list of files that are stored in a tier 2 bucket. It also generates a file list for all files in the $MSIPROJECT/shared/disaster_recovery. Finally, the tool will compare these file lists and report differences. Many people backup files in these two locations, but it's helpful to have a current list of files.  
+The purpose of this subcommand is to generate a list of files stored in a tier 2 bucket and a list of files in the `$MSIPROJECT/shared/disaster_recovery` directory. Many people backup files in these two locations, but it's helpful to have a current inventory of what's stored where.  
 
 ## FAQs
 
 - How do these tools handle symbolic links?
   - `panfs2ceph` does NOT follow symbolic links and does not transfer the actual file. It transfers the symbolic link itself. See the `rclone` flag [`--links`](https://rclone.org/local/#links-l) for details. `dd2ceph` and `dd2dr` commands DO follow symbolic links and copy the actual file (i.e. it copies the dereferenced file). The rationale is that any symlinks in the data_delivery dir will want to be copied (backed up) as real files. However, symlinks in a regular project dir should remain as symlinks in the backup. 
 - How fast is the transfer?
-  - The empirical data transfer rate from panfs to ceph is approximately 1 TB per 30 min (or around 30 GB/min). By default, `panfs2ceph` requests a 24 hr job time and `dd2ceph` requests a 72 hr job time. These times can be adjusted directly in the slurm script before launching. Reviewing the end of a slurm error log file will show a summary from `rclone`, indicating how much data was transfered and how long it took.
+  - The empirical data transfer rate from panfs to ceph is approximately 1 TB per 30 min (or around 30 GB/min). By default, both `panfs2ceph` and `dd2ceph` request a 24 hr job time. These times can be adjusted directly in the slurm script before launching. Reviewing the end of a slurm error log file will show a summary from `rclone`, indicating how much data was transferred and how long it took.
 - Do I have to create a bucket first?
   - Yes, you'll need to create a bucket before using it with `cephtools`. `cephtools` checks that the bucket exists before running for added safety and transparency. `rclone` can automatically create buckets when transferring for the first time, but `cephtools` fails before writing the "copy" slurm script if the bucket does not exist. To create a new bucket, run: `s3cmd mb s3://MY-BUCKET-NAME`.
 - How should I name buckets?
