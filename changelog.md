@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.15.0] - 2026-10-20
+
+### Added
+- Added `s3info`-based principal resolution for `bucketpolicy` GROUP and LIST policies; unresolved users now stop execution with a clear error.
+- Added list-input normalization (trim, deduplicate) for `--list`.
+- Added result tracking so the terminal summary and readme report the actual policy operation outcome.
+
+### Fixed
+- `bucketpolicy` no longer reports success when `s3cmd setpolicy` or `s3cmd delpolicy` fails; it now returns a nonzero exit code.
+- `--do_not_setpolicy` output now clearly states the bucket was not changed rather than implying a policy was applied.
+
 ## [3.14.0] - 2026-10-20
 
 ### Changed

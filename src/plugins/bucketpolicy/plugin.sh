@@ -17,41 +17,33 @@ plugin_describe() {
 cat <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} bucketpolicy [options] --bucket <BUCKET> --policy <POLICY_OPTION>
+    ${_ME} bucketpolicy [options] --bucket <BUCKET>
 
 Options:
     -b|--bucket <STRING>    Name of the ceph bucket for policy. Required.
 
-    -m|--make_bucket        If the bucket does not exist, make it. [Default = buckets are not created
-                            but policies will be adjusted if a bucket already exists.]
+    -m|--make_bucket        Attempt to create the bucket if it cannot be accessed.
 
     -p|--policy <STRING>    What policy should be created? [Default = "GROUP_READ"]
                             Policy options: 
                                 NONE: Removes any policy currently set.
-                                GROUP_READ: Allows all current memebers of the MSI group 
+                                GROUP_READ: Allows resolved members of the MSI group
                                     read-only access to the bucket. 
-                                GROUP_READ_WRITE: Allows all current memebers of the MSI 
-                                    group read and write access to the bucket.
-                                OTHERS_READ: Allows anyone read-only access to the bucket
-                                    (i.e. world public read-only access). WARNING: this
-                                    policy will expose all files in the bucket to the 
-                                    entire Internet for viewing or downloading. However,
-                                    this can be a good option for hosting a public static
-                                    website.
+                                GROUP_READ_WRITE: Allows resolved members of the MSI group
+                                    full bucket permissions (s3:*).
+                                OTHERS_READ: Allows anyone to retrieve objects when they
+                                    know the object key. Does not allow bucket listing.
                                 LIST_READ: Allows a specific list of users to have read-only 
-                                    access to the bucket. Must be a comma separated x500 
-                                    list without spaces.
+                                    access to the bucket.
                                 LIST_READ_WRITE: Allows a specific list of users to have 
-                                    read and write access to the bucket. Must be a comma 
-                                    separated x500 list without spaces.
-                                    
-    -g|--group <STRING>     MSI group id. Required only if "--policy GROUP_READ" is
-                            specified.
+                                    full bucket permissions (s3:*).
+
+    -g|--group <STRING>     MSI group ID for GROUP policies. [Default = current group]
     
-    -n|--do_not_setpolicy   If specified, the policy will be created (i.e. written to
-                            file) but it will not be set on the bucket.
-                            
-    -l|--list               Provide a list of user ids for the particular policy setting
+    -n|--do_not_setpolicy   Write policy files without changing the bucket policy.
+
+    -l|--list <STRING>      Comma-separated InternetIDs or a file containing them.
+                            Required for LIST policies.
     
     --log_dir <STRING>      Absolute or relative path to the directory where bucket policy files
                             are saved. [Default = "/projects/{standard,regulated,restricted}/GROUP/shared/cephtools/bucketpolicy" when --group is used]
@@ -274,6 +266,51 @@ plugin_main() {
 # Helper Functions
 ###############################################################################
 
+_resolve_policy_users() {
+    local user_input="$1"
+    local -n resolved_users_ref="$2"
+    local -n principal_string_ref="$3"
+    local -a internet_ids=()
+    local internet_id
+    local s3info_output
+    local ceph_username
+    local principal
+
+    readarray -t internet_ids < <(
+        printf "%s\n" "$user_input" |
+            tr ',' '\n' |
+            sed 's/^[[:space:]]*//;s/[[:space:]]*$//' |
+            awk 'NF && $0 != "." && !seen[$0]++'
+    )
+
+    if [[ ${#internet_ids[@]} -eq 0 ]]; then
+        _exit_1 printf "No valid UMN InternetIDs were found for the policy.\\n"
+    fi
+
+    if ! command -v s3info >/dev/null 2>&1; then
+        _exit_1 printf "s3info is required to resolve UMN InternetIDs for bucket policies.\\n"
+    fi
+
+    for internet_id in "${internet_ids[@]}"; do
+        if ! s3info_output="$(s3info info --user "$internet_id" 2>/dev/null)"; then
+            _exit_1 printf "Could not resolve Tier 2 username for UMN InternetID: %s\\n" "$internet_id"
+        fi
+
+        ceph_username="$(printf "%s\\n" "$s3info_output" | sed -n 's/^Tier 2 username:[[:space:]]*//p' | head -n 1)"
+        if [[ -z "$ceph_username" ]]; then
+            _exit_1 printf "s3info returned no Tier 2 username for UMN InternetID: %s\\n" "$internet_id"
+        fi
+
+        resolved_users_ref+=("$internet_id")
+        principal="\"arn:aws:iam:::user/${ceph_username}\""
+        if [[ -z "$principal_string_ref" ]]; then
+            principal_string_ref="$principal"
+        else
+            principal_string_ref+=",${principal}"
+        fi
+    done
+}
+
 _execute_bucketpolicy_workflow() {
     local _bucket="$1"
     local _policy="$2"
@@ -301,10 +338,10 @@ _execute_bucketpolicy_workflow() {
     fi
 
     # Make sure access to bucket is possible
-    if ! s3cmd ls s3://${_bucket} &>/dev/null; then
+    if ! s3cmd ls "s3://${_bucket}" &>/dev/null; then
         if ((_make_bucket))
         then
-            if s3cmd mb s3://${_bucket} &>/dev/null; then
+            if s3cmd mb "s3://${_bucket}" &>/dev/null; then
                 _info printf "Bucket was made: %s\\n" "${_bucket}"
             else
                 _exit_1 printf "Errors occured when trying to make bucket: '%s'\\nCheck the bucket access policy using 's3cmd info s3://%s'\\n" "${_bucket}" "${_bucket}"
@@ -336,35 +373,15 @@ _execute_bucketpolicy_workflow() {
         # Skip user collection for NONE policy
     elif [[ "${_policy}" =~ ^.*GROUP.*$ ]]
     then
-        # Find all usernames in the group
-        local _username_msi_csv="$(getent group "${_group}" | cut -d":" -f4-)"
-        readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
+        local _group_entry
+        if ! _group_entry="$(getent group "${_group}")"; then
+            _exit_1 printf "Could not resolve MSI group: %s\\n" "${_group}"
+        fi
 
-        local _username_ceph=()
+        local _username_msi_csv="${_group_entry##*:}"
         local _username_ceph_msi=()
-        for i in "${!_username_msi[@]}"
-        do
-            # Skip empty usernames
-            if [[ -z "${_username_msi[$i]}" ]] || [[ "${_username_msi[$i]}" == "." ]]; then
-                continue
-            fi
-            
-            if s3info info --user "${_username_msi[$i]}" &>/dev/null
-            then
-                local _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
-                _username_ceph+=("${_curr_ceph_username}")
-                _username_ceph_msi+=("${_username_msi[$i]}")
-                local _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
-                if [ -z "$_all_ceph_username_string" ]; then
-                    _all_ceph_username_string="${_curr_ceph_username_string}"
-                else
-                    _all_ceph_username_string+=",${_curr_ceph_username_string}"
-                fi
-            else
-                _warn printf "s3info info command failed for username: %s.\\n" "${_username_msi[$i]}"
-            fi
-        done
-        _users_with_access=(${_username_ceph_msi[@]})
+        _resolve_policy_users "${_username_msi_csv}" _username_ceph_msi _all_ceph_username_string
+        _users_with_access=("${_username_ceph_msi[@]}")
     elif [[ "${_policy}" =~ ^.*OTHERS.*$ ]]
     then
         _users_with_access="All MSI users and the entire public Internet"
@@ -373,61 +390,45 @@ _execute_bucketpolicy_workflow() {
         # Read in the specific users in the list
         local _username_msi_csv
         if [[ -e "$_list" ]]; then
-            _username_msi_csv="$(cat ${_list})"
+            if [[ ! -r "$_list" ]]; then
+                _exit_1 printf "User list file is not readable: %s\\n" "$_list"
+            fi
+            _username_msi_csv="$(cat "${_list}")"
         else
             _username_msi_csv="$_list"
         fi
-        readarray -t _username_msi <<< "$(printf "%s\\n" "${_username_msi_csv}" | sed -e 'y/,/\n/')"
 
-        local _username_ceph=()
         local _username_ceph_msi=()
-        for i in "${!_username_msi[@]}"
-        do
-            # Skip empty usernames
-            if [[ -z "${_username_msi[$i]}" ]] || [[ "${_username_msi[$i]}" == "." ]]; then
-                continue
-            fi
-            
-            if s3info info --user "${_username_msi[$i]}" &>/dev/null
-            then
-                local _curr_ceph_username="$(s3info info --user "${_username_msi[$i]}" | grep "Tier 2 username" | sed 's/Tier 2 username: //')"
-                _username_ceph+=("${_curr_ceph_username}")
-                _username_ceph_msi+=("${_username_msi[$i]}")
-                local _curr_ceph_username_string="\"arn:aws:iam:::user/${_curr_ceph_username}\""
-                if [ -z "$_all_ceph_username_string" ]; then
-                    _all_ceph_username_string="${_curr_ceph_username_string}"
-                else
-                    _all_ceph_username_string+=",${_curr_ceph_username_string}"
-                fi
-            else
-                _warn printf "s3info info command failed for username: %s.\\n" "${_username_msi[$i]}"
-            fi
-        done
-        _users_with_access=(${_username_ceph_msi[@]})
+        _resolve_policy_users "${_username_msi_csv}" _username_ceph_msi _all_ceph_username_string
+        _users_with_access=("${_username_ceph_msi[@]}")
     fi
 
     # Generate the policy JSON using original structure
     _generate_policy_json_original "$_policy" "$_bucket" "$_all_ceph_username_string" "$_bucket_policy"
 
     # Apply the policy if requested
+    local _policy_result
+    local _policy_operation_failed=0
     if ((_do_not_setpolicy))
     then
-        _verb printf "The '--do_not_setpolicy' option was specified. The bucket policy will not be set.\\n"
+        _policy_result="Policy files generated; bucket policy was not changed."
     else
         if _contains "${_policy}" "NONE"
         then
-            if s3cmd delpolicy s3://${_bucket} &>/dev/null
+            if s3cmd delpolicy "s3://${_bucket}" &>/dev/null
             then
-                _info printf "The bucket policy was removed.\\n"
+                _policy_result="Bucket policy removed."
             else
-                _warn printf "The 's3cmd delpolicy' command failed (policy may not have existed).\\n"
+                _policy_result="Failed to remove the bucket policy."
+                _policy_operation_failed=1
             fi
         else
-            if s3cmd setpolicy ${_bucket_policy} s3://${_bucket} &>/dev/null
+            if s3cmd setpolicy "${_bucket_policy}" "s3://${_bucket}" &>/dev/null
             then
-                _info printf "The bucket policy was set.\\n"
+                _policy_result="Bucket policy applied."
             else
-                _warn printf "The 's3cmd setpolicy' command failed.\\n"
+                _policy_result="Failed to apply the bucket policy."
+                _policy_operation_failed=1
             fi
         fi
     fi
@@ -435,10 +436,10 @@ _execute_bucketpolicy_workflow() {
     # Create summary readme
     if [[ "${_policy}" == "NONE" ]] || [[ "${_policy}" =~ ^.*OTHERS.*$ ]]; then
         # For NONE and OTHERS policies, _users_with_access is a string, not an array
-        _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme"
+        _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme" "$_policy_result"
     else
         # For GROUP and LIST policies, pass all users in the array
-        _generate_readme_with_users "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_bucket_policy_readme" "${_users_with_access[@]}"
+        _generate_readme_with_users "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_bucket_policy_readme" "$_policy_result" "${_users_with_access[@]}"
     fi
 
     # Set file permissions
@@ -469,8 +470,8 @@ group=${_group}
 list=${_list}
 
 
-The bucket policy was modified for ceph bucket:
-${_bucket}
+Result:
+${_policy_result}
 
 
 Policy files created in:
@@ -480,7 +481,7 @@ ${_log_dir}
 Next steps:
 1. Review the readme file for details: ${_log_dir}/${_bucket}.bucket_policy_readme.md
 2. Review the JSON bucket policy for details: ${_log_dir}/${_bucket}.bucket_policy.json
-3. Repeat this process when new group members are added or removed, so the policy is updated.
+3. Verify the live bucket policy after applying a change.
 
 
 
@@ -492,6 +493,10 @@ REPO: https://github.com/umn-msi-lmnp/cephtools
 HEREDOC
 
     echo "$instructions_message"
+
+    if [[ ${_policy_operation_failed} -eq 1 ]]; then
+        return 1
+    fi
 }
 
 _generate_readme() {
@@ -501,6 +506,7 @@ _generate_readme() {
     local _do_not_setpolicy="$4"
     local _users_with_access="$5"
     local _bucket_policy_readme="$6"
+    local _policy_result="$7"
 
     if _contains "${_policy}" "NONE"
     then
@@ -525,7 +531,7 @@ REPO: https://github.com/umn-msi-lmnp/cephtools
 
 ## Policy
 
-Any bucket policy that was present was removed. 
+${_policy_result}
 
 HEREDOC
     else
@@ -549,6 +555,11 @@ policy_json=${_bucket_policy}
 VERSION: @VERSION_SHORT@  
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
 REPO: https://github.com/umn-msi-lmnp/cephtools
+
+
+## Result
+
+${_policy_result}
 
 
 ## MSI users included in the access policy
@@ -578,7 +589,8 @@ _generate_readme_with_users() {
     local _curr_date_time="$3"
     local _do_not_setpolicy="$4"
     local _bucket_policy_readme="$5"
-    shift 5  # Remove first 5 arguments, remaining are user list
+    local _policy_result="$6"
+    shift 6  # Remove fixed arguments, remaining are user list
     local _user_list=("$@")  # All remaining arguments are users
 
     # Build the user list string with one user per line
@@ -611,6 +623,11 @@ policy_json=${_bucket_policy}
 VERSION: @VERSION_SHORT@  
 QUESTIONS: Please submit an issue on Github or lmp-help@msi.umn.edu
 REPO: https://github.com/umn-msi-lmnp/cephtools
+
+
+## Result
+
+${_policy_result}
 
 
 ## MSI users included in the access policy

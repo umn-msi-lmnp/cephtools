@@ -22,7 +22,18 @@ setup_full_mock_environment() {
     # Mock all external commands
     create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3cmd" "s3cmd version 2.3.0" 0
-    create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
+    cat > "$TEST_OUTPUT_DIR/mock-bin/s3info" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    --keys)
+        printf "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12\\n"
+        ;;
+    info)
+        printf "Tier 2 username: uid=%s\\n" "${3:-unknown}"
+        ;;
+esac
+EOF
+    chmod +x "$TEST_OUTPUT_DIR/mock-bin/s3info"
 
 
     create_mock_command "getent" "testgroup:x:1001:user1,user2,user3" 0
@@ -593,6 +604,147 @@ EOF
     pass_test "Missing bucket is created exactly once"
 }
 
+test_bucketpolicy_generated_only_result() {
+    start_test "bucketpolicy reports generated-only policies accurately"
+
+    setup_full_mock_environment
+
+    local test_dir="$TEST_OUTPUT_DIR/bucketpolicy_generated_only"
+    local output
+    mkdir -p "$test_dir"
+
+    if ! output=$("$CEPHTOOLS_BIN" bucketpolicy \
+        --bucket test-bucket \
+        --policy NONE \
+        --do_not_setpolicy \
+        --log_dir "$test_dir" 2>&1); then
+        fail_test "bucketpolicy failed in generated-only mode"
+        return 1
+    fi
+
+    local readme="$test_dir/test-bucket.bucket_policy_readme.md"
+    if [[ "$output" != *"bucket policy was not changed"* ]] ||
+        ! grep -qF "bucket policy was not changed" "$readme" ||
+        grep -qF "policy was removed" "$readme"; then
+        fail_test "Generated-only output incorrectly reports a live policy change"
+        return 1
+    fi
+
+    pass_test "Generated-only output clearly states that the bucket was not changed"
+}
+
+test_bucketpolicy_apply_failure() {
+    start_test "bucketpolicy fails when policy application fails"
+
+    setup_full_mock_environment
+
+    local test_dir="$TEST_OUTPUT_DIR/bucketpolicy_apply_failure"
+    mkdir -p "$test_dir"
+    cat > "$TEST_OUTPUT_DIR/mock-bin/s3cmd" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+    --version)
+        printf "s3cmd version 2.4.0\\n"
+        exit 0
+        ;;
+    ls)
+        exit 0
+        ;;
+    setpolicy)
+        exit 1
+        ;;
+    *)
+        exit 0
+        ;;
+esac
+EOF
+    chmod +x "$TEST_OUTPUT_DIR/mock-bin/s3cmd"
+
+    local output
+    if output=$("$CEPHTOOLS_BIN" bucketpolicy \
+        --bucket test-bucket \
+        --policy OTHERS_READ \
+        --log_dir "$test_dir" 2>&1); then
+        fail_test "bucketpolicy succeeded despite a failed setpolicy command"
+        return 1
+    fi
+
+    if [[ "$output" != *"Failed to apply the bucket policy"* ]] ||
+        ! grep -qF "Failed to apply the bucket policy" "$test_dir/test-bucket.bucket_policy_readme.md"; then
+        fail_test "Policy application failure was not reported accurately"
+        return 1
+    fi
+
+    pass_test "Policy application failure returns nonzero and is recorded"
+}
+
+test_bucketpolicy_rejects_unresolved_user() {
+    start_test "bucketpolicy rejects unresolved users"
+
+    setup_full_mock_environment
+
+    local test_dir="$TEST_OUTPUT_DIR/bucketpolicy_unresolved_user"
+    mkdir -p "$test_dir"
+    cat > "$TEST_OUTPUT_DIR/mock-bin/s3info" <<'EOF'
+#!/usr/bin/env bash
+if [[ "${1:-}" == "--keys" ]]; then
+    printf "test-access-key test-secret-key\\n"
+    exit 0
+fi
+exit 1
+EOF
+    chmod +x "$TEST_OUTPUT_DIR/mock-bin/s3info"
+
+    local output
+    if output=$("$CEPHTOOLS_BIN" bucketpolicy \
+        --bucket test-bucket \
+        --policy LIST_READ \
+        --list user1 \
+        --do_not_setpolicy \
+        --log_dir "$test_dir" 2>&1); then
+        fail_test "bucketpolicy accepted a user that s3info could not resolve"
+        return 1
+    fi
+
+    if [[ "$output" != *"Could not resolve Tier 2 username"* ]]; then
+        fail_test "Unresolved user error was not informative"
+        return 1
+    fi
+
+    pass_test "Unresolved users stop policy generation"
+}
+
+test_bucketpolicy_normalizes_user_list() {
+    start_test "bucketpolicy normalizes and deduplicates user lists"
+
+    setup_full_mock_environment
+
+    local test_dir="$TEST_OUTPUT_DIR/bucketpolicy_normalized_list"
+    local policy_file="$test_dir/test-bucket.bucket_policy.json"
+    mkdir -p "$test_dir"
+
+    if ! "$CEPHTOOLS_BIN" bucketpolicy \
+        --bucket test-bucket \
+        --policy LIST_READ \
+        --list " user1, user1 , user2 " \
+        --do_not_setpolicy \
+        --log_dir "$test_dir" >/dev/null 2>&1; then
+        fail_test "bucketpolicy failed to normalize a valid user list"
+        return 1
+    fi
+
+    local user1_count
+    local user2_count
+    user1_count=$(grep -cF 'arn:aws:iam:::user/uid=user1' "$policy_file" || true)
+    user2_count=$(grep -cF 'arn:aws:iam:::user/uid=user2' "$policy_file" || true)
+    if [[ "$user1_count" -ne 1 || "$user2_count" -ne 1 ]]; then
+        fail_test "Normalized user list did not contain each principal exactly once"
+        return 1
+    fi
+
+    pass_test "User-list whitespace and duplicates are normalized"
+}
+
 ###############################################################################
 # Cross-Plugin Consistency Tests
 ###############################################################################
@@ -710,6 +862,10 @@ main() {
     # bucketpolicy tests
     test_bucketpolicy_workflow
     test_bucketpolicy_makes_bucket_once
+    test_bucketpolicy_generated_only_result
+    test_bucketpolicy_apply_failure
+    test_bucketpolicy_rejects_unresolved_user
+    test_bucketpolicy_normalizes_user_list
     
     # Cross-plugin consistency
     test_filename_consistency
