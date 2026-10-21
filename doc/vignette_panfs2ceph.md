@@ -98,7 +98,6 @@ Inside the working directory:
 - A `PREFIX.1_copy_and_verify.slurm` job file can be launched to copy and verify all the data to a ceph bucket.
 - A `PREFIX.2_delete.slurm` job file can be launched to delete all the data from panfs.
 - A `PREFIX.3_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
-- Finally, a `PREFIX.readme.md` file is created that describes the process and where the files on ceph are located.
 
 ## Launch the transfer job scripts
 
