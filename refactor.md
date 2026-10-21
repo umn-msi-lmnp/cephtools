@@ -1,28 +1,14 @@
 # Refactor Plan
 
-## #1 bucketpolicy reliability (IN PROGRESS)
+## #1 bucketpolicy reliability (DONE)
 
-Scope: fail on unresolved principals, fail on failed policy application,
-accurate result summaries in terminal and readme, normalize LIST input,
-tighten CLI help.
+- [x] All code changes, tests, changelog, version bump, commit `4da7400`
 
-- [x] Add `_resolve_policy_users` helper (s3info resolution, fail-fast)
-- [x] Wire helper into GROUP and LIST branches
-- [x] Track `_policy_result` through setpolicy/delpolicy/do_not_setpolicy
-- [x] Pass result into readme and terminal summary
-- [x] Return 1 on policy application failure
-- [x] Normalize LIST input: tr comma, trim whitespace, deduplicate
-- [x] Tighten CLI help text (GROUP_READ_WRITE / LIST_READ_WRITE = "full bucket permissions")
-- [x] Integration tests: generated-only, apply failure, unresolved user, list normalization
-- [x] All tests pass
-- [ ] Update changelog + bump version
-- [ ] Commit
+## #2 doc/vignette_bucketpolicy.md corrections (DONE)
 
-## #2 doc/vignette_bucketpolicy.md corrections (PENDING)
-
-- Align vignette with actual CLI flags and behavior
-- Remove stale examples, add `--do_not_setpolicy` example
-- Keep lean; no verbose rewrites
+- [x] Added missing LIST_READ, removed unnecessary --group from LIST examples,
+  simplified process substitution example, added --do_not_setpolicy/--log_dir notes
+- [x] Commit `9a26570`
 
 ## #3 README.md typo + minor doc fixes (PENDING)
 
