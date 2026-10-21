@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] - 2026-10-21
+
+### Changed
+- Renamed `panfs2ceph` to `vast2ceph` to reflect migration from Panasas to VAST tier 1 storage. This is a breaking change -- update any scripts calling `cephtools panfs2ceph` to `cephtools vast2ceph`.
+- Log directory naming pattern updated from `___panfs2ceph_archive_DATE` to `___vast2ceph_archive_DATE`.
+
+## [3.15.1] - 2026-10-21
+
+### Added
+- Added `-o` short flag for `--destination_path` in `panfs2ceph` and `dd2ceph`.
+
 ## [3.15.0] - 2026-10-20
 
 ### Added

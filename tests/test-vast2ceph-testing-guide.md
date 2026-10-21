@@ -1,16 +1,16 @@
-# panfs2ceph Testing Guide
+# vast2ceph Testing Guide
 
-This guide explains the comprehensive testing strategy for the panfs2ceph path construction fix and custom empty directory handling implementation.
+This guide explains the comprehensive testing strategy for the vast2ceph path construction fix and custom empty directory handling implementation.
 
 ## Background
 
-The original panfs2ceph tool had a path construction bug that caused `BucketAlreadyExists` errors. Additionally, rclone's native `--s3-directory-markers` flag caused S3 compatibility issues on some Ceph installations. This has been resolved by implementing custom empty directory handling using marker files instead of problematic S3-specific flags.
+The original vast2ceph tool had a path construction bug that caused `BucketAlreadyExists` errors. Additionally, rclone's native `--s3-directory-markers` flag caused S3 compatibility issues on some Ceph installations. This has been resolved by implementing custom empty directory handling using marker files instead of problematic S3-specific flags.
 
 ## Test Coverage
 
 ### 1. Mock Tests (Fast, Safe) 
 
-**File:** `test-panfs2ceph-path-fix.sh`
+**File:** `test-vast2ceph-path-fix.sh`
 
 **Purpose:** Validates script generation and path construction syntax without actual S3 execution.
 
@@ -29,15 +29,15 @@ The original panfs2ceph tool had a path construction bug that caused `BucketAlre
 **Usage:**
 ```bash
 # Run mock tests (default)
-./tests/test-panfs2ceph-path-fix.sh
+./tests/test-vast2ceph-path-fix.sh
 
 # View help
-./tests/test-panfs2ceph-path-fix.sh --help
+./tests/test-vast2ceph-path-fix.sh --help
 ```
 
 ### 2. End-to-End Real Bucket Tests (Comprehensive)
 
-**File:** `test-panfs2ceph-e2e-real.sh`
+**File:** `test-vast2ceph-e2e-real.sh`
 
 **Purpose:** Validates actual rclone execution against real S3/Ceph buckets to catch runtime issues.
 
@@ -59,24 +59,24 @@ The original panfs2ceph tool had a path construction bug that caused `BucketAlre
 **Usage:**
 ```bash
 # Run E2E tests (requires S3 setup)
-./tests/test-panfs2ceph-e2e-real.sh
+./tests/test-vast2ceph-e2e-real.sh
 
 # Or via the path fix test
-./tests/test-panfs2ceph-path-fix.sh --real
+./tests/test-vast2ceph-path-fix.sh --real
 ```
 
 ## Test Scenarios
 
 ### Scenario 1: Default Behavior (Custom Empty Directory Handling)
 
-Tests panfs2ceph with default settings:
+Tests vast2ceph with default settings:
 - Uses custom marker files for empty directory preservation
 - **Expected result:** Should work without S3 compatibility issues
 - **Purpose:** Validates the custom empty directory handling approach
 
 ### Scenario 2: With --delete_empty_dirs (Skip Empty Directories)
 
-Tests panfs2ceph with `--delete_empty_dirs` flag:
+Tests vast2ceph with `--delete_empty_dirs` flag:
 - Skips empty directory handling entirely
 - **Expected result:** Should work without errors, no marker files created
 - **Purpose:** Validates that empty directory handling can be disabled when not needed
@@ -106,13 +106,13 @@ make test-all path-fix
 ### Individual Test Execution
 ```bash
 # Mock tests only
-./tests/test-panfs2ceph-path-fix.sh
+./tests/test-vast2ceph-path-fix.sh
 
 # Real S3 tests only  
-./tests/test-panfs2ceph-e2e-real.sh
+./tests/test-vast2ceph-e2e-real.sh
 
 # Real tests via mock test script
-./tests/test-panfs2ceph-path-fix.sh --real
+./tests/test-vast2ceph-path-fix.sh --real
 ```
 
 ## Expected Results
@@ -142,12 +142,12 @@ The custom empty directory handling is working correctly for both script generat
 ## Test Artifacts
 
 ### Mock Test Outputs
-- **Location:** `tests/outputs/panfs2ceph-path-fix-*`
+- **Location:** `tests/outputs/vast2ceph-path-fix-*`
 - **Contents:** Generated SLURM scripts, test data
 - **Purpose:** Manual inspection of generated commands
 
 ### Real Test Outputs  
-- **Location:** `tests/outputs/panfs2ceph-e2e-real-*`
+- **Location:** `tests/outputs/vast2ceph-e2e-real-*`
 - **Contents:** Generated SLURM scripts, rclone logs, test data
 - **Purpose:** Debugging real execution issues
 
@@ -173,7 +173,7 @@ Run the E2E tests to catch runtime issues not visible in mock tests.
 
 ## Development Workflow
 
-1. **Make changes** to panfs2ceph plugin
+1. **Make changes** to vast2ceph plugin
 2. **Run mock tests** for quick validation
 3. **Run real tests** to catch runtime issues  
 4. **Review test artifacts** for detailed analysis

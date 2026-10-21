@@ -463,15 +463,15 @@ test_umask_settings() {
 }
 
 ###############################################################################
-# panfs2ceph Integration Tests
+# vast2ceph Integration Tests
 ###############################################################################
 
-test_panfs2ceph_workflow() {
-    start_test "panfs2ceph complete workflow integration"
+test_vast2ceph_workflow() {
+    start_test "vast2ceph complete workflow integration"
     
     setup_full_mock_environment
     
-    local output_dir="$TEST_OUTPUT_DIR/panfs2ceph_test"
+    local output_dir="$TEST_OUTPUT_DIR/vast2ceph_test"
     local test_source_dir="$TEST_OUTPUT_DIR/test_source"
     mkdir -p "$output_dir" "$test_source_dir"
     create_test_data "$test_source_dir" 3
@@ -482,38 +482,38 @@ test_panfs2ceph_workflow() {
     local original_dir=$(pwd)
     cd "$output_dir"
     
-    "$CEPHTOOLS_BIN" panfs2ceph --bucket test-bucket --path "$test_source_dir" --dry_run >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" vast2ceph --bucket test-bucket --path "$test_source_dir" --dry_run >/dev/null 2>&1
     
     cd "$original_dir"
     
     # Should create SLURM scripts (combined copy and verify, delete, restore)
-    # panfs2ceph creates working directory based on source path, so look in the broader directory
+    # vast2ceph creates working directory based on source path, so look in the broader directory
     local copy_and_verify_script=$(find "$TEST_OUTPUT_DIR" -name "*copy_and_verify*.slurm" | head -1)
     local delete_script=$(find "$TEST_OUTPUT_DIR" -name "*delete*.slurm" | head -1)
     local restore_script=$(find "$TEST_OUTPUT_DIR" -name "*restore*.slurm" | head -1)
     
     if [[ -n "$copy_and_verify_script" ]]; then
-        pass_test "panfs2ceph copy and verify script created"
+        pass_test "vast2ceph copy and verify script created"
         verify_slurm_script_basics "$copy_and_verify_script" "copy_and_verify"
         assert_contains "$(cat "$copy_and_verify_script")" "rclone copy" "Contains rclone copy command"
         assert_contains "$(cat "$copy_and_verify_script")" "rclone check" "Contains rclone check command"
     else
-        fail_test "No panfs2ceph copy and verify script created"
+        fail_test "No vast2ceph copy and verify script created"
     fi
     
     if [[ -n "$delete_script" ]]; then
-        pass_test "panfs2ceph delete script created"
+        pass_test "vast2ceph delete script created"
         verify_slurm_script_basics "$delete_script" "delete"
         assert_contains "$(cat "$delete_script")" "rclone purge" "Contains rclone purge command"
     else
-        fail_test "No panfs2ceph delete script created"
+        fail_test "No vast2ceph delete script created"
     fi
     
     if [[ -n "$restore_script" ]]; then
-        pass_test "panfs2ceph restore script created"
+        pass_test "vast2ceph restore script created"
         verify_slurm_script_basics "$restore_script" "restore"
     else
-        fail_test "No panfs2ceph restore script created"
+        fail_test "No vast2ceph restore script created"
     fi
 }
 
@@ -856,8 +856,8 @@ main() {
     # Umask and permissions tests
     test_umask_settings
     
-    # panfs2ceph tests
-    test_panfs2ceph_workflow
+    # vast2ceph tests
+    test_vast2ceph_workflow
     
     # bucketpolicy tests
     test_bucketpolicy_workflow

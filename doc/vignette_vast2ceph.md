@@ -1,14 +1,14 @@
-# Cephtools: Transfer a directory from panfs (tier1) to ceph (tier2)
+# Cephtools: Transfer a directory from vast (tier1) to ceph (tier2)
 
 ## Introduction
 
-The purpose of the `panfs2ceph` subcommand is to backup a single directory, and all its contents, from panfs to ceph. The tool will create a working directory and output a file list and slurm job scripts to complete the steps. Notably, this tool was built when tier 1 storage was located on Panasas (panfs) -- now, most tier 1 data is stored on the VAST storage platform. Either way, panfs2ceph is really for transferring data from tier 1 to tier 2, regardless of their names.
+The purpose of the `vast2ceph` subcommand is to backup a single directory, and all its contents, from tier 1 (vast) to tier 2 (ceph). The tool will create a working directory and output a file list and slurm job scripts to complete the steps. This tool was originally named `panfs2ceph` when tier 1 storage was located on Panasas; it has been renamed to reflect the current VAST tier 1 storage platform. In either case, `vast2ceph` is for transferring data from tier 1 to tier 2, regardless of the specific storage technology.
 
 A common use case for this tool is this:
 
-- You completed a project on panfs and don't plan on accessing the data for computation anymore
+- You completed a project on tier 1 and don't plan on accessing the data for computation anymore
 - You would like to archive the project to ceph
-- You would like to delete the files from panfs, freeing up storage
+- You would like to delete the files from tier 1, freeing up storage
 - You would like a trail of info regarding where the project files are located and how to access them
 - You would like to browse the project files (but not use them for computation) on ceph
 
@@ -54,7 +54,7 @@ cephtools bucketpolicy --verbose --bucket $BUCKET_NAME --policy GROUP_READ --gro
 NOTE: you can supply your `rclone` remote name in the command below. To learn more about rclone remotes, [see this tips page](https://github.com/umn-msi-lmnp/tips/tree/main/rclone#umn-tier2-ceph). However, the --remote option is not required and cephtools will automatically find your MSI tier 2 keys and automatically use a temporary rclone remote.
 
 ```
-cephtools panfs2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
+cephtools vast2ceph --bucket $BUCKET_NAME --path $MSIPROJECT/shared/myproject
 ```
 
 By default, the absolute source path is preserved below the bucket. For example,
@@ -64,7 +64,7 @@ the command above stores the directory contents below
 Use `--destination_path` to select an exact bucket-relative destination instead:
 
 ```
-cephtools panfs2ceph \
+cephtools vast2ceph \
     --bucket $BUCKET_NAME \
     --path $MSIPROJECT/shared/myproject \
     --destination_path archives/myproject
@@ -74,12 +74,12 @@ This stores the source directory contents below
 `$BUCKET_NAME/archives/myproject`. Relative paths, leading or trailing slashes,
 repeated slashes, and `.` or `..` components are normalized. Paths cannot traverse
 above the bucket root. If the custom destination already contains objects,
-`panfs2ceph` warns because `rclone copy` merges content and overwrites files with
+`vast2ceph` warns because `rclone copy` merges content and overwrites files with
 matching paths.
 
 ### Empty Directory Handling
 
-By default, `panfs2ceph` preserves empty directories during transfer operations using a custom approach that avoids S3 compatibility issues:
+By default, `vast2ceph` preserves empty directories during transfer operations using a custom approach that avoids S3 compatibility issues:
 
 - **Copy to Ceph**: Uses custom marker files (`.cephtools_empty_dir_marker`) to preserve empty directories without relying on problematic S3-specific flags
 - **Restore from Ceph**: Recreates empty directories and removes marker files during restore operations
@@ -91,13 +91,13 @@ By default, the working directory is created at the same path as the original in
 
 | Input dir path name                       | Working dir path name                                               |
 | ----------------------------------------- | ------------------------------------------------------------------- |
-| `$MSIPROJECT/shared/myproject` | `$MSIPROJECT/shared/myproject___panfs2ceph_archive_DATE` |
+| `$MSIPROJECT/shared/myproject` | `$MSIPROJECT/shared/myproject___vast2ceph_archive_DATE` |
 
 Inside the working directory:
 
 - A `PREFIX.1_copy_and_verify.slurm` job file can be launched to copy and verify all the data to a ceph bucket.
-- A `PREFIX.2_delete.slurm` job file can be launched to delete all the data from panfs.
-- A `PREFIX.3_restore.slurm` job file can be launched to copy all the data back from ceph to panfs, if you ever need to restore the project directory to the original location.
+- A `PREFIX.2_delete.slurm` job file can be launched to delete all the data from tier 1.
+- A `PREFIX.3_restore.slurm` job file can be launched to copy all the data back from ceph to tier 1, if you ever need to restore the project directory to the original location.
 
 ## Launch the transfer job scripts
 
@@ -112,13 +112,13 @@ sbatch PREFIX.1_copy_and_verify.slurm
 - Review progress in the job error log file (`tail PREFIX.1_copy_and_verify.slurm.e*`)
 - The combined script will copy data to ceph and immediately verify the transfer
 - Review the verification log (`PREFIX.1_verify.rclone.log`) to ensure all files were transferred successfully
-- After verification is complete and successful, delete the original data from panfs (tier1)
+- After verification is complete and successful, delete the original data from tier 1
 
 ```
 sbatch PREFIX.2_delete.slurm
 ```
 
-- After the data is removed from panfs (tier1), you can restore it back to its original location by running the restore script.
+- After the data is removed from tier 1, you can restore it back to its original location by running the restore script.
 
 ```
 sbatch PREFIX.3_restore.slurm

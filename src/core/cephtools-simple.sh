@@ -26,7 +26,7 @@ help() {
   else
     # Show general help
     printf "cephtools\\n\\n"
-    printf "Tools for transferring data between panfs (tier1) and ceph (tier2) MSI storage.\\n\\n"
+    printf "Tools for transferring data between vast (tier1) and ceph (tier2) MSI storage.\\n\\n"
     printf "Version: %s\\n\\n" "${VERSION_SHORT}"
     printf "Usage:\\n"
     printf "  %s <subcommand> [--subcommand-options] [<arguments>]\\n" "${_ME}"

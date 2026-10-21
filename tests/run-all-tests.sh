@@ -119,24 +119,24 @@ run_permission_tests() {
         "Tests file permission detection and error handling"
 }
 
-run_panfs2ceph_path_fix_tests() {
+run_vast2ceph_path_fix_tests() {
     run_test_suite \
-        "panfs2ceph Path Construction Fix Tests" \
-        "$SCRIPT_DIR/test-panfs2ceph-path-fix.sh" \
+        "vast2ceph Path Construction Fix Tests" \
+        "$SCRIPT_DIR/test-vast2ceph-path-fix.sh" \
         "Tests the fix for BucketAlreadyExists path construction bug"
 }
 
-run_panfs2ceph_e2e_real_tests() {
+run_vast2ceph_e2e_real_tests() {
     run_test_suite \
-        "panfs2ceph End-to-End Real Bucket Tests" \
-        "$SCRIPT_DIR/test-panfs2ceph-e2e-real.sh" \
+        "vast2ceph End-to-End Real Bucket Tests" \
+        "$SCRIPT_DIR/test-vast2ceph-e2e-real.sh" \
         "End-to-end tests with real S3 buckets to catch runtime issues"
 }
 
-run_vignette_panfs2ceph_e2e_tests() {
+run_vignette_vast2ceph_e2e_tests() {
     run_test_suite \
-        "Vignette panfs2ceph Complete End-to-End Tests" \
-        "$SCRIPT_DIR/test-vignette-panfs2ceph-e2e.sh" \
+        "Vignette vast2ceph Complete End-to-End Tests" \
+        "$SCRIPT_DIR/test-vignette-vast2ceph-e2e.sh" \
         "Complete vignette workflow: bucket creation, policies, and all 3 scripts"
 }
 
@@ -213,8 +213,8 @@ show_usage() {
     echo "  real-s3           Real S3 integration tests (creates actual buckets)"
     echo "  empty-dirs        Empty directory flag tests (--delete_empty_dirs)"
     echo "  permissions       File permission detection and error handling tests"
-    echo "  path-fix          panfs2ceph path construction fix tests (mock)"
-    echo "  e2e-real          panfs2ceph end-to-end tests with real buckets"
+    echo "  path-fix          vast2ceph path construction fix tests (mock)"
+    echo "  e2e-real          vast2ceph end-to-end tests with real buckets"
     echo "  vignette-e2e      Complete vignette workflow test (bucket + policy + all 3 scripts)"
     echo
     echo "Examples:"
@@ -330,13 +330,13 @@ main() {
                 run_permission_tests || overall_success=false
                 ;;
             path-fix)
-                run_panfs2ceph_path_fix_tests || overall_success=false
+                run_vast2ceph_path_fix_tests || overall_success=false
                 ;;
             e2e-real)
-                run_panfs2ceph_e2e_real_tests || overall_success=false
+                run_vast2ceph_e2e_real_tests || overall_success=false
                 ;;
             vignette-e2e)
-                run_vignette_panfs2ceph_e2e_tests || overall_success=false
+                run_vignette_vast2ceph_e2e_tests || overall_success=false
                 ;;
             real-s3)
                 run_real_s3_tests || overall_success=false

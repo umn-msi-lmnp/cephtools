@@ -33,7 +33,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **dd2ceph**: Complete workflow, credential setup in SLURM scripts
 - ✅ **dd2dr**: Complete workflow, quota checking logic  
 - ✅ **filesinbackup**: Complete workflow, file comparison logic
-- ✅ **panfs2ceph**: Copy and verify script generation
+- ✅ **vast2ceph**: Copy and verify script generation
 - ✅ **bucketpolicy**: Bucket operations and policy management
 - ✅ **Cross-Plugin Consistency**: Filename patterns, SLURM directives
 
@@ -63,7 +63,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 #### 6. Empty Directory Flag Tests (`test-empty-dirs-flag.sh`)
 - ✅ **Mock Tests**: SLURM script generation with custom empty directory handling
 - ✅ **Real Ceph Tests**: End-to-end validation of marker file-based empty directory preservation
-- ✅ **panfs2ceph Plugin**: Default custom handling and --delete_empty_dirs flag
+- ✅ **vast2ceph Plugin**: Default custom handling and --delete_empty_dirs flag
 - ✅ **dd2ceph Plugin**: Default custom handling and --delete_empty_dirs flag
 - ✅ **Marker File Validation**: Verification of .cephtools_empty_dir_marker files
 - ✅ **S3 Compatibility**: Ensures no problematic --s3-directory-markers flags are used
@@ -71,17 +71,17 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 #### 7. Permission Handling Tests (`test-permission-handling.sh`)
 - ✅ **Permission Detection**: Validates _check_path_permissions function
 - ✅ **Failure Scenarios**: Tests with unreadable files and directories
-- ✅ **Plugin Integration**: Full panfs2ceph plugin behavior with permission issues
+- ✅ **Plugin Integration**: Full vast2ceph plugin behavior with permission issues
 - ✅ **Dry Run Mode**: Ensures --dry_run continues despite permission problems
 - ✅ **Error Messages**: Validates informative error reporting
 - ✅ **Edge Cases**: Empty directories, single files, completely inaccessible paths
 - ✅ **File Counting**: Verifies accurate reporting of readable/unreadable items
 
-#### 8. Complete Vignette Workflow Tests (`test-vignette-panfs2ceph-e2e.sh`)
-- ✅ **Full Workflow**: Complete vignette_panfs2ceph.md workflow validation
+#### 8. Complete Vignette Workflow Tests (`test-vignette-vast2ceph-e2e.sh`)
+- ✅ **Full Workflow**: Complete vignette_vast2ceph.md workflow validation
 - ✅ **Bucket Creation**: Real MSI Ceph bucket creation and cleanup
 - ✅ **Bucket Policy**: GROUP_READ policy setup and permission verification
-- ✅ **Script Generation**: All three panfs2ceph scripts (copy, delete, restore)
+- ✅ **Script Generation**: All three vast2ceph scripts (copy, delete, restore)
 - ✅ **Flag Verification**: Correct rclone flags in each script type (no S3-problematic flags)
 - ✅ **Script Execution**: Real execution of copy/verify and restore scripts
 - ✅ **Custom Empty Directory Handling**: Marker file-based empty directory preservation
@@ -132,7 +132,7 @@ make test-vignette-e2e  # Complete vignette workflow (requires S3 access)
 - SLURM compatibility
 
 #### **Plugin Functionality**  
-- All 5 plugins tested: dd2ceph, dd2dr, filesinbackup, panfs2ceph, bucketpolicy
+- All 5 plugins tested: dd2ceph, dd2dr, filesinbackup, vast2ceph, bucketpolicy
 - SLURM script generation and validation
 - Credential setup and configuration
 - File operations and comparisons

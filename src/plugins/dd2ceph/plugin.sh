@@ -35,7 +35,7 @@ Options:
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered. [Default = "/projects/{standard,regulated,restricted}/GROUP/data_delivery"]
 
-    --destination_path <PATH>
+    -o|--destination_path <PATH>
                             [Optional] Bucket-relative destination path. Leading and
                             trailing slashes and dot segments are normalized. By default,
                             the source directory tree is preserved below the bucket root.
@@ -154,7 +154,7 @@ plugin_main() {
             _path_provided=1
             shift
             ;;
-        --destination_path)
+        -o|--destination_path)
             _destination_path="$(__get_option_value "${__arg}" "${__val:-}")"
             _destination_path_provided=1
             shift

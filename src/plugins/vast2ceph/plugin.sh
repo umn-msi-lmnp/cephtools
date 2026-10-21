@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 ###############################################################################
-# panfs2ceph Plugin for cephtools
-# Archiving tool to copy a single directory from tier 1 (panfs) storage to tier 2 (ceph).
+# vast2ceph Plugin for cephtools
+# Archiving tool to copy a single directory from tier 1 (vast) storage to tier 2 (ceph).
 ###############################################################################
 
 # Plugin metadata
-PLUGIN_NAME="panfs2ceph"
+PLUGIN_NAME="vast2ceph"
 
-PLUGIN_DESCRIPTION="Archive tool to copy directories from panfs to ceph"
+PLUGIN_DESCRIPTION="Archive tool to copy directories from vast (tier 1) to ceph (tier 2)"
 
 ###############################################################################
 # Plugin Interface Functions
@@ -17,7 +17,7 @@ plugin_describe() {
 cat <<HEREDOC
 ---------------------------------------------------------------------
 Usage:
-    ${_ME} panfs2ceph [options] --bucket <BUCKET> --path <DIR_PATH>
+    ${_ME} vast2ceph [options] --bucket <BUCKET> --path <DIR_PATH>
 
 Options:
     -r|--remote <STRING>    [Optional] Rclone remote name. (use "rclone listremotes" for available
@@ -33,18 +33,18 @@ Options:
     -p|--path <STRING>      Absolute or relative path to the directory that should be 
                             transfered.
 
-    --destination_path <PATH>
+    -o|--destination_path <PATH>
                             [Optional] Bucket-relative destination path. Leading and
                             trailing slashes and dot segments are normalized. By default,
                             the absolute source path is preserved below the bucket.
                             
     -l|--log_dir <STRING>   Absolute or relative path to the directory where log files 
-                            are saved. [Default: "<path>___panfs2ceph_archive_<date_time>"]
+                            are saved. [Default: "<path>___vast2ceph_archive_<date_time>"]
     
     -d|--dry_run            Dry run option will be applied to rclone commands. Nothing 
                             transfered or deleted when scripts run.
     
-     -e|--delete_empty_dirs  Do NOT transfer empty dirs from panfs to ceph. [Default is to 
+     -e|--delete_empty_dirs  Do NOT transfer empty dirs from tier 1 to tier 2. [Default is to 
                              preserve empty dirs using custom marker files instead of 
                              rclone's problematic --s3-directory-markers flag which can 
                              cause compatibility issues. Setting this flag will skip 
@@ -55,10 +55,10 @@ Options:
     -v|--verbose            Verbose mode (print additional info).
 
 Description:
-  Archiving tool to copy a single directory from tier 1 (panfs) storage to tier 2 (ceph).
+  Archiving tool to copy a single directory from tier 1 (vast) storage to tier 2 (ceph).
   
 Help (print this screen):
-    ${_ME} help panfs2ceph
+    ${_ME} help vast2ceph
 
 Questions: Please submit an issue on Github or lmp-help@msi.umn.edu
 GitHub: https://github.com/umn-msi-lmnp/cephtools
@@ -137,7 +137,7 @@ plugin_main() {
             _path="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
-        --destination_path)
+        -o|--destination_path)
             _destination_path="$(__get_option_value "${__arg}" "${__val:-}")"
             _destination_path_provided=1
             shift
@@ -220,9 +220,9 @@ plugin_main() {
         # In test environment, use TEST_OUTPUT_DIR as base
         if [[ -n "${TEST_OUTPUT_DIR:-}" ]]; then
             local path_basename="$(basename "${_path}")"
-            _log_dir="${TEST_OUTPUT_DIR}/${path_basename}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
+            _log_dir="${TEST_OUTPUT_DIR}/${path_basename}___vast2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
         else
-            _log_dir="${_path}___panfs2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
+            _log_dir="${_path}___vast2ceph_archive_$(date +%Y%m%d_%H%M%S)_$(date +"%N" | cut -c1-6)"
         fi
     fi
 
@@ -243,7 +243,7 @@ plugin_main() {
     # Execute the main workflow
     # ---------------------------------------------------------------------
     
-    _info printf "Starting panfs2ceph transfer preparation\\n"
+    _info printf "Starting vast2ceph transfer preparation\\n"
     _info printf "Source: %s\\n" "${_path}"
     _info printf "Destination: %s\\n" "${_destination}"
     
@@ -276,7 +276,7 @@ plugin_main() {
     heredoc2var instructions_message << HEREDOC
 
 ---------------------------------------------------------------------
-cephtools panfs2ceph summary
+cephtools vast2ceph summary
 
 
 Options used:
@@ -302,7 +302,7 @@ Next steps:
 2. Review the generated SLURM scripts for details.
 3. Launch the copy and verify jobfile: sbatch $(basename "${_path}").1_copy_and_verify.slurm
 4. After successful copy and verify, launch the delete jobfile: sbatch $(basename "${_path}").2_delete.slurm
-5. After the data has been deleted from panfs -- and you need it back in the same location, launch the restore jobfile: sbatch $(basename "${_path}").3_restore.slurm
+5. After the data has been deleted from tier 1 -- and you need it back in the same location, launch the restore jobfile: sbatch $(basename "${_path}").3_restore.slurm
 
 
 

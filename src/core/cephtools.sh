@@ -28,7 +28,7 @@ help() {
     cat <<HEREDOC
 cephtools
 
-Tools for transferring data between panfs (tier1) and ceph (tier2) MSI storage.
+Tools for transferring data between vast (tier1) and ceph (tier2) MSI storage.
 
 Version: ${VERSION_SHORT}
 

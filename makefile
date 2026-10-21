@@ -229,8 +229,8 @@ test-permissions: all test-setup
 
 test-vignette-e2e: all test-setup
 	@echo "Running complete vignette workflow end-to-end test..."
-	@chmod +x tests/test-vignette-panfs2ceph-e2e.sh
-	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-vignette-panfs2ceph-e2e.sh
+	@chmod +x tests/test-vignette-vast2ceph-e2e.sh
+	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-vignette-vast2ceph-e2e.sh
 
 # Help target for testing
 test-help:

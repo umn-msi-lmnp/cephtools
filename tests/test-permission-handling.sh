@@ -153,96 +153,96 @@ test_permission_check_nonexistent_path() {
 # Full Plugin Integration Tests
 ###############################################################################
 
-test_panfs2ceph_fails_with_permission_issues() {
-    start_test "panfs2ceph plugin fails on permission issues"
+test_vast2ceph_fails_with_permission_issues() {
+    start_test "vast2ceph plugin fails on permission issues"
     
-    local test_dir="$TEST_OUTPUT_DIR/panfs2ceph_perm_test"
+    local test_dir="$TEST_OUTPUT_DIR/vast2ceph_perm_test"
     create_test_directory_with_permission_issues "$test_dir"
     
-    # Change to test output directory to ensure panfs2ceph creates files there
+    # Change to test output directory to ensure vast2ceph creates files there
     local original_dir=$(pwd)
     cd "$TEST_OUTPUT_DIR"
     
-    # Run panfs2ceph and expect it to fail due to permission issues
+    # Run vast2ceph and expect it to fail due to permission issues
     local exit_code=0
-    "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >/dev/null 2>&1 || exit_code=$?
+    "$CEPHTOOLS_BIN" vast2ceph -b test-bucket -p "$test_dir" >/dev/null 2>&1 || exit_code=$?
     
     cd "$original_dir"
     
     if [[ $exit_code -ne 0 ]]; then
-        pass_test "panfs2ceph correctly failed when permission issues detected"
+        pass_test "vast2ceph correctly failed when permission issues detected"
     else
-        fail_test "panfs2ceph should have failed due to permission issues"
+        fail_test "vast2ceph should have failed due to permission issues"
     fi
 }
 
-test_panfs2ceph_succeeds_with_dry_run() {
-    start_test "panfs2ceph plugin continues with --dry_run despite permission issues"
+test_vast2ceph_succeeds_with_dry_run() {
+    start_test "vast2ceph plugin continues with --dry_run despite permission issues"
     
-    local test_dir="$TEST_OUTPUT_DIR/panfs2ceph_dry_run_test"
+    local test_dir="$TEST_OUTPUT_DIR/vast2ceph_dry_run_test"
     create_test_directory_with_permission_issues "$test_dir"
     
-    # Change to test output directory to ensure panfs2ceph creates files there
+    # Change to test output directory to ensure vast2ceph creates files there
     local original_dir=$(pwd)
     cd "$TEST_OUTPUT_DIR"
     
-    # Run panfs2ceph with --dry_run and expect it to continue despite permission issues
+    # Run vast2ceph with --dry_run and expect it to continue despite permission issues
     local exit_code=0
-    "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" --dry_run >/dev/null 2>&1 || exit_code=$?
+    "$CEPHTOOLS_BIN" vast2ceph -b test-bucket -p "$test_dir" --dry_run >/dev/null 2>&1 || exit_code=$?
     
     cd "$original_dir"
     
     if [[ $exit_code -eq 0 ]]; then
-        pass_test "panfs2ceph correctly continued with --dry_run despite permission issues"
+        pass_test "vast2ceph correctly continued with --dry_run despite permission issues"
     else
-        fail_test "panfs2ceph should have continued with --dry_run despite permission issues"
+        fail_test "vast2ceph should have continued with --dry_run despite permission issues"
     fi
 }
 
-test_panfs2ceph_succeeds_with_clean_directory() {
-    start_test "panfs2ceph plugin succeeds with clean directory"
+test_vast2ceph_succeeds_with_clean_directory() {
+    start_test "vast2ceph plugin succeeds with clean directory"
     
-    local test_dir="$TEST_OUTPUT_DIR/panfs2ceph_clean_test"
+    local test_dir="$TEST_OUTPUT_DIR/vast2ceph_clean_test"
     mkdir -p "$test_dir"
     echo "clean test file" > "$test_dir/testfile.txt"
     
-    # Change to test output directory to ensure panfs2ceph creates files there
+    # Change to test output directory to ensure vast2ceph creates files there
     local original_dir=$(pwd)
     cd "$TEST_OUTPUT_DIR"
     
-    # Run panfs2ceph with --dry_run and expect it to succeed
+    # Run vast2ceph with --dry_run and expect it to succeed
     local exit_code=0
-    "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" --dry_run >/dev/null 2>&1 || exit_code=$?
+    "$CEPHTOOLS_BIN" vast2ceph -b test-bucket -p "$test_dir" --dry_run >/dev/null 2>&1 || exit_code=$?
     
     cd "$original_dir"
     
     if [[ $exit_code -eq 0 ]]; then
-        pass_test "panfs2ceph succeeded with clean directory"
+        pass_test "vast2ceph succeeded with clean directory"
     else
-        fail_test "panfs2ceph should have succeeded with clean directory"
+        fail_test "vast2ceph should have succeeded with clean directory"
     fi
 }
 
-test_panfs2ceph_fails_with_inaccessible_directory() {
-    start_test "panfs2ceph plugin fails with completely inaccessible directory"
+test_vast2ceph_fails_with_inaccessible_directory() {
+    start_test "vast2ceph plugin fails with completely inaccessible directory"
     
     local test_dir="$TEST_OUTPUT_DIR/inaccessible_test"
     create_inaccessible_directory "$test_dir"
     
-    # Change to test output directory to ensure panfs2ceph creates files there
+    # Change to test output directory to ensure vast2ceph creates files there
     local original_dir=$(pwd)
     cd "$TEST_OUTPUT_DIR"
     
-    # Run panfs2ceph and expect it to fail immediately
+    # Run vast2ceph and expect it to fail immediately
     local exit_code=0
-    "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >/dev/null 2>&1 || exit_code=$?
+    "$CEPHTOOLS_BIN" vast2ceph -b test-bucket -p "$test_dir" >/dev/null 2>&1 || exit_code=$?
     
     cd "$original_dir"
     
     if [[ $exit_code -ne 0 ]]; then
-        pass_test "panfs2ceph correctly failed with inaccessible directory"
+        pass_test "vast2ceph correctly failed with inaccessible directory"
     else
-        fail_test "panfs2ceph should have failed with inaccessible directory"
+        fail_test "vast2ceph should have failed with inaccessible directory"
     fi
     
     # Clean up the inaccessible directory (need to fix permissions first)
@@ -259,13 +259,13 @@ test_permission_error_messages() {
     local test_dir="$TEST_OUTPUT_DIR/message_test"
     create_test_directory_with_permission_issues "$test_dir"
     
-    # Change to test output directory to ensure panfs2ceph creates files there
+    # Change to test output directory to ensure vast2ceph creates files there
     local original_dir=$(pwd)
     cd "$TEST_OUTPUT_DIR"
     
     # Capture the error output
     local output_file="$TEST_OUTPUT_DIR/error_output.txt"
-    "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >"$output_file" 2>&1 || true
+    "$CEPHTOOLS_BIN" vast2ceph -b test-bucket -p "$test_dir" >"$output_file" 2>&1 || true
     
     cd "$original_dir"
     
@@ -289,13 +289,13 @@ test_permission_counts_reported() {
     local test_dir="$TEST_OUTPUT_DIR/count_test"
     create_test_directory_with_permission_issues "$test_dir"
     
-    # Change to test output directory to ensure panfs2ceph creates files there
+    # Change to test output directory to ensure vast2ceph creates files there
     local original_dir=$(pwd)
     cd "$TEST_OUTPUT_DIR"
     
     # Capture the output
     local output_file="$TEST_OUTPUT_DIR/count_output.txt"
-    "$CEPHTOOLS_BIN" panfs2ceph -b test-bucket -p "$test_dir" >"$output_file" 2>&1 || true
+    "$CEPHTOOLS_BIN" vast2ceph -b test-bucket -p "$test_dir" >"$output_file" 2>&1 || true
     
     cd "$original_dir"
     
@@ -360,10 +360,10 @@ run_permission_tests() {
     test_permission_check_nonexistent_path
     
     # Full plugin integration tests
-    test_panfs2ceph_fails_with_permission_issues
-    test_panfs2ceph_succeeds_with_dry_run
-    test_panfs2ceph_succeeds_with_clean_directory
-    test_panfs2ceph_fails_with_inaccessible_directory
+    test_vast2ceph_fails_with_permission_issues
+    test_vast2ceph_succeeds_with_dry_run
+    test_vast2ceph_succeeds_with_clean_directory
+    test_vast2ceph_fails_with_inaccessible_directory
     
     # Message and reporting tests
     test_permission_error_messages

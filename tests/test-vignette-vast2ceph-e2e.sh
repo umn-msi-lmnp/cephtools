@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 ###############################################################################
-# Comprehensive End-to-End Test for vignette_panfs2ceph.md Workflow
+# Comprehensive End-to-End Test for vignette_vast2ceph.md Workflow
 # Tests the complete workflow: bucket creation, bucket policy setup, 
-# panfs2ceph script generation, and execution of all three scripts
+# vast2ceph script generation, and execution of all three scripts
 ###############################################################################
 
 set -euo pipefail
@@ -16,7 +16,7 @@ export CEPHTOOLS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export CEPHTOOLS_BIN="${CEPHTOOLS_ROOT}/build/bin/cephtools"
 
 # Test configuration
-TEST_NAME="vignette-panfs2ceph-e2e"
+TEST_NAME="vignette-vast2ceph-e2e"
 TEST_BUCKET_PREFIX="cephtools-vignette-e2e"
 TEST_TIMESTAMP="$(date +%Y%m%d_%H%M%S_$$)"
 TEST_BUCKET="${TEST_BUCKET_PREFIX}-${TEST_TIMESTAMP}"
@@ -24,7 +24,7 @@ TEST_GROUP="$(id -ng)"
 TEST_USER="$(id -un)"
 
 # Test outputs directory
-TEST_OUTPUTS_DIR="${SCRIPT_DIR}/outputs/vignette-panfs2ceph-e2e-${TEST_TIMESTAMP}"
+TEST_OUTPUTS_DIR="${SCRIPT_DIR}/outputs/vignette-vast2ceph-e2e-${TEST_TIMESTAMP}"
 
 # Cleanup tracking
 CLEANUP_ITEMS=()
@@ -180,14 +180,14 @@ test_step2_set_bucket_policy() {
 }
 
 test_step3_generate_scripts() {
-    start_test "Step 3: Generate panfs2ceph scripts (following vignette)"
+    start_test "Step 3: Generate vast2ceph scripts (following vignette)"
     
-    echo "📝 Generating panfs2ceph transfer scripts..."
+    echo "📝 Generating vast2ceph transfer scripts..."
     cd "${TEST_OUTPUTS_DIR}"
     
-    # Run panfs2ceph as described in vignette
+    # Run vast2ceph as described in vignette
     local output
-    if output=$("$CEPHTOOLS_BIN" panfs2ceph \
+    if output=$("$CEPHTOOLS_BIN" vast2ceph \
         --bucket "$TEST_BUCKET" \
         --path "$TEST_PROJECT_DATA_DIR" \
         --log_dir "$TEST_OUTPUTS_DIR" 2>&1); then
@@ -211,7 +211,7 @@ test_step3_generate_scripts() {
                 export SCRIPT3_PATH="$script3"
                 export SCRIPTS_DIR="$script_dir"
                 
-                pass_test "All three panfs2ceph scripts generated successfully"
+                pass_test "All three vast2ceph scripts generated successfully"
                 return 0
             else
                 fail_test "Not all expected scripts were created"
@@ -222,7 +222,7 @@ test_step3_generate_scripts() {
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed: $output"
+        fail_test "vast2ceph command failed: $output"
         return 1
     fi
 }
@@ -407,7 +407,7 @@ cleanup_vignette_test() {
 trap cleanup_vignette_test EXIT
 
 main() {
-    echo "🚀 Starting Comprehensive Vignette panfs2ceph End-to-End Test"
+    echo "🚀 Starting Comprehensive Vignette vast2ceph End-to-End Test"
     echo "Test: $TEST_NAME"
     echo "Timestamp: $TEST_TIMESTAMP"
     echo "Bucket: $TEST_BUCKET"
@@ -453,7 +453,7 @@ main() {
     echo "🪣 Test bucket: $TEST_BUCKET (will be cleaned up)"
     echo ""
     echo "This test validates the complete workflow described in:"
-    echo "   doc/vignette_panfs2ceph.md"
+    echo "   doc/vignette_vast2ceph.md"
     echo ""
     
     return 0
@@ -462,12 +462,12 @@ main() {
 # Handle command line arguments
 case "${1:-}" in
     -h|--help)
-        echo "Comprehensive End-to-End Test for vignette_panfs2ceph.md"
+        echo "Comprehensive End-to-End Test for vignette_vast2ceph.md"
         echo ""
-        echo "This test validates the complete workflow described in the panfs2ceph vignette:"
+        echo "This test validates the complete workflow described in the vast2ceph vignette:"
         echo "1. Create bucket"
         echo "2. Set bucket policy" 
-        echo "3. Generate panfs2ceph scripts"
+        echo "3. Generate vast2ceph scripts"
         echo "4. Verify correct rclone flags"
         echo "5. Execute copy/verify script (script 1)"
         echo "6. Verify bucket policy permissions"

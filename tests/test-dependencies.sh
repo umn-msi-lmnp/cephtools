@@ -230,10 +230,10 @@ test_filesinbackup_dependencies() {
     assert_command_exists "module"
 }
 
-test_panfs2ceph_dependencies() {
-    start_test "panfs2ceph plugin dependencies"
+test_vast2ceph_dependencies() {
+    start_test "vast2ceph plugin dependencies"
     
-    # Set up all required dependencies for panfs2ceph
+    # Set up all required dependencies for vast2ceph
     create_mock_command "rclone" "rclone v1.71.0" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
     create_mock_command "module" "Module loaded" 0
@@ -322,7 +322,7 @@ main() {
     test_dd2ceph_dependencies
     test_dd2dr_dependencies
     test_filesinbackup_dependencies
-    test_panfs2ceph_dependencies
+    test_vast2ceph_dependencies
     test_bucketpolicy_dependencies
     
     # Print results

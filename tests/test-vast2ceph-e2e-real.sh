@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ###############################################################################
-# End-to-End Real Bucket Tests for panfs2ceph
+# End-to-End Real Bucket Tests for vast2ceph
 # Tests actual rclone execution against real S3/Ceph buckets to catch runtime issues
 ###############################################################################
 
@@ -13,13 +13,13 @@ export CEPHTOOLS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export CEPHTOOLS_BIN="${CEPHTOOLS_ROOT}/build/bin/cephtools"
 
 # Test configuration
-TEST_NAME="panfs2ceph-e2e-real"
+TEST_NAME="vast2ceph-e2e-real"
 TEST_BUCKET_PREFIX="cephtools-e2e-test"
 TEST_TIMESTAMP="$(date +%Y%m%d_%H%M%S_$$)"
 TEST_BUCKET="${TEST_BUCKET_PREFIX}-${TEST_TIMESTAMP}"
 
 # Test outputs directory
-TEST_OUTPUTS_DIR="${SCRIPT_DIR}/outputs/panfs2ceph-e2e-real-${TEST_TIMESTAMP}"
+TEST_OUTPUTS_DIR="${SCRIPT_DIR}/outputs/vast2ceph-e2e-real-${TEST_TIMESTAMP}"
 
 # Cleanup tracking
 CLEANUP_ITEMS=()
@@ -127,8 +127,8 @@ create_test_data() {
 # Test Functions
 ###############################################################################
 
-test_panfs2ceph_default_behavior_real_execution() {
-    start_test "panfs2ceph default behavior with real bucket execution"
+test_vast2ceph_default_behavior_real_execution() {
+    start_test "vast2ceph default behavior with real bucket execution"
     
     # Create test data
     local test_data_dir="${TEST_OUTPUTS_DIR}/test_data_default"
@@ -137,9 +137,9 @@ test_panfs2ceph_default_behavior_real_execution() {
     # Clean bucket first
     timeout 30 s3cmd rm "s3://${TEST_BUCKET}" --recursive --force >/dev/null 2>&1 || true
     
-    # Run panfs2ceph with default settings
+    # Run vast2ceph with default settings
     local output
-    if output=$(timeout 60 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if output=$(timeout 60 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_data_dir}" \
         --log_dir "${TEST_OUTPUTS_DIR}/logs_default" \
@@ -228,14 +228,14 @@ test_panfs2ceph_default_behavior_real_execution() {
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed"
+        fail_test "vast2ceph command failed"
         echo "Output: $output"
         return 1
     fi
 }
 
-test_panfs2ceph_delete_empty_dirs_real_execution() {
-    start_test "panfs2ceph with --delete_empty_dirs flag real execution"
+test_vast2ceph_delete_empty_dirs_real_execution() {
+    start_test "vast2ceph with --delete_empty_dirs flag real execution"
     
     # Create test data
     local test_data_dir="${TEST_OUTPUTS_DIR}/test_data_no_empty"
@@ -244,9 +244,9 @@ test_panfs2ceph_delete_empty_dirs_real_execution() {
     # Clean bucket first
     timeout 30 s3cmd rm "s3://${TEST_BUCKET}" --recursive --force >/dev/null 2>&1 || true
     
-    # Run panfs2ceph with --delete_empty_dirs flag
+    # Run vast2ceph with --delete_empty_dirs flag
     local output
-    if output=$(timeout 60 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if output=$(timeout 60 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_data_dir}" \
         --log_dir "${TEST_OUTPUTS_DIR}/logs_no_empty" \
@@ -349,7 +349,7 @@ test_panfs2ceph_delete_empty_dirs_real_execution() {
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed"
+        fail_test "vast2ceph command failed"
         echo "Output: $output"
         return 1
     fi
@@ -367,9 +367,9 @@ test_path_construction_with_real_execution() {
     # Clean bucket first
     timeout 30 s3cmd rm "s3://${TEST_BUCKET}" --recursive --force >/dev/null 2>&1 || true
     
-    # Run panfs2ceph with --delete_empty_dirs to skip empty directory handling
+    # Run vast2ceph with --delete_empty_dirs to skip empty directory handling
     local output
-    if output=$(timeout 60 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if output=$(timeout 60 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_data_dir}" \
         --log_dir "${TEST_OUTPUTS_DIR}/logs_path" \
@@ -437,7 +437,7 @@ test_path_construction_with_real_execution() {
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed"
+        fail_test "vast2ceph command failed"
         echo "Output: $output"
         return 1
     fi
@@ -509,7 +509,7 @@ show_test_summary() {
 ###############################################################################
 
 main() {
-    echo "🧪 Starting panfs2ceph End-to-End Real Bucket Tests"
+    echo "🧪 Starting vast2ceph End-to-End Real Bucket Tests"
     echo "=================================================="
     
     # Check if we can run real tests
@@ -522,7 +522,7 @@ main() {
         echo "• s3info for credentials"
         echo "• Network access to S3 service"
         echo
-        echo "Run the mock version instead: ./test-panfs2ceph-path-fix.sh"
+        echo "Run the mock version instead: ./test-vast2ceph-path-fix.sh"
         exit 1
     fi
     
@@ -543,13 +543,13 @@ main() {
     echo
     
     # Run tests in order
-    test_panfs2ceph_delete_empty_dirs_real_execution  # Test the working scenario first
+    test_vast2ceph_delete_empty_dirs_real_execution  # Test the working scenario first
     test_path_construction_with_real_execution        # Test path construction with real execution
     
     # Test default behavior with new custom empty directory handling
     echo
     echo "✅  Testing default behavior with custom empty directory handling..."
-    test_panfs2ceph_default_behavior_real_execution
+    test_vast2ceph_default_behavior_real_execution
     
     # Print results
     echo

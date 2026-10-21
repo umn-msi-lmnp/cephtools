@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ###############################################################################
 # Empty Directory Flag Tests for cephtools
-# Tests --delete_empty_dirs flag functionality for both panfs2ceph and dd2ceph
+# Tests --delete_empty_dirs flag functionality for both vast2ceph and dd2ceph
 ###############################################################################
 
 set -euo pipefail
@@ -264,7 +264,7 @@ validate_empty_dirs_with_markers() {
 # Mock-Based Test Functions (Fast, no real Ceph)
 ###############################################################################
 
-test_panfs2ceph_empty_dirs_default_generates_flags() {
+test_vast2ceph_empty_dirs_default_generates_flags() {
     setup_mock_environment
     
     # Build cephtools if needed
@@ -276,18 +276,18 @@ test_panfs2ceph_empty_dirs_default_generates_flags() {
     fi
     
     # Create test data with empty directories
-    local test_data_dir="$TEST_OUTPUT_DIR/panfs2ceph_test_data"
+    local test_data_dir="$TEST_OUTPUT_DIR/vast2ceph_test_data"
     create_test_data_with_empty_dirs "$test_data_dir"
     
     # Create test output directory
-    local output_dir="$TEST_OUTPUT_DIR/panfs2ceph_default_test"
+    local output_dir="$TEST_OUTPUT_DIR/vast2ceph_default_test"
     mkdir -p "$output_dir"
     
-    # Run panfs2ceph with default settings (should include empty dir flags)
+    # Run vast2ceph with default settings (should include empty dir flags)
     local original_dir=$(pwd)
     cd "$output_dir"
     
-    if "$CEPHTOOLS_BIN" panfs2ceph \
+    if "$CEPHTOOLS_BIN" vast2ceph \
         --bucket test-bucket \
         --path "$test_data_dir" \
         --log_dir "$output_dir" \
@@ -298,14 +298,14 @@ test_panfs2ceph_empty_dirs_default_generates_flags() {
         script_file=$(find "$output_dir" -name "*.1_copy_and_verify.slurm" | head -1)
         
         if [[ -n "$script_file" ]]; then
-            validate_custom_empty_dir_handling "$script_file" "true" "panfs2ceph"
+            validate_custom_empty_dir_handling "$script_file" "true" "vast2ceph"
         else
-            fail_test "panfs2ceph did not generate expected SLURM script"
+            fail_test "vast2ceph did not generate expected SLURM script"
             cd "$original_dir"
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed with default settings"
+        fail_test "vast2ceph command failed with default settings"
         cd "$original_dir"
         return 1
     fi
@@ -313,22 +313,22 @@ test_panfs2ceph_empty_dirs_default_generates_flags() {
     cd "$original_dir"
 }
 
-test_panfs2ceph_empty_dirs_flag_omits_flags() {
+test_vast2ceph_empty_dirs_flag_omits_flags() {
     setup_mock_environment
     
     # Create test data with empty directories
-    local test_data_dir="$TEST_OUTPUT_DIR/panfs2ceph_test_data_flag"
+    local test_data_dir="$TEST_OUTPUT_DIR/vast2ceph_test_data_flag"
     create_test_data_with_empty_dirs "$test_data_dir"
     
     # Create test output directory
-    local output_dir="$TEST_OUTPUT_DIR/panfs2ceph_flag_test"
+    local output_dir="$TEST_OUTPUT_DIR/vast2ceph_flag_test"
     mkdir -p "$output_dir"
     
-    # Run panfs2ceph with --delete_empty_dirs flag (should omit empty dir flags)
+    # Run vast2ceph with --delete_empty_dirs flag (should omit empty dir flags)
     local original_dir=$(pwd)
     cd "$output_dir"
     
-    if "$CEPHTOOLS_BIN" panfs2ceph \
+    if "$CEPHTOOLS_BIN" vast2ceph \
         --bucket test-bucket \
         --path "$test_data_dir" \
         --log_dir "$output_dir" \
@@ -340,14 +340,14 @@ test_panfs2ceph_empty_dirs_flag_omits_flags() {
         script_file=$(find "$output_dir" -name "*.1_copy_and_verify.slurm" | head -1)
         
         if [[ -n "$script_file" ]]; then
-            validate_custom_empty_dir_handling "$script_file" "false" "panfs2ceph"
+            validate_custom_empty_dir_handling "$script_file" "false" "vast2ceph"
         else
-            fail_test "panfs2ceph did not generate expected SLURM script with --delete_empty_dirs"
+            fail_test "vast2ceph did not generate expected SLURM script with --delete_empty_dirs"
             cd "$original_dir"
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed with --delete_empty_dirs flag"
+        fail_test "vast2ceph command failed with --delete_empty_dirs flag"
         cd "$original_dir"
         return 1
     fi
@@ -374,8 +374,8 @@ test_dd2ceph_empty_dirs_default_generates_flags() {
         return 1
     fi
     
-    # Note: dd2ceph has more strict validation than panfs2ceph for bucket access
-    # Since the refactoring logic is identical and panfs2ceph tests prove it works,
+    # Note: dd2ceph has more strict validation than vast2ceph for bucket access
+    # Since the refactoring logic is identical and vast2ceph tests prove it works,
     # we focus on verifying the option exists and can be parsed
     local original_dir=$(pwd)
     cd "$output_dir"
@@ -482,16 +482,16 @@ check_ceph_prerequisites() {
     return 1
 }
 
-test_panfs2ceph_empty_dirs_real_transfer_with_flags() {
+test_vast2ceph_empty_dirs_real_transfer_with_flags() {
     # Create test bucket
     if ! timeout 15 s3cmd mb "s3://$TEST_BUCKET" &>/dev/null; then
-        fail_test "Failed to create test bucket for panfs2ceph real test"
+        fail_test "Failed to create test bucket for vast2ceph real test"
         return 1
     fi
     CLEANUP_ITEMS+=("$TEST_BUCKET")
     
     # Create test data with empty directories
-    local test_data_dir="/tmp/${TEST_PREFIX}_panfs2ceph_real_with"
+    local test_data_dir="/tmp/${TEST_PREFIX}_vast2ceph_real_with"
     create_test_data_with_empty_dirs "$test_data_dir"
     CLEANUP_ITEMS+=("$test_data_dir")
     
@@ -511,7 +511,7 @@ test_panfs2ceph_empty_dirs_real_transfer_with_flags() {
     # Run actual transfer with custom approach
     if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" --transfers 4 &>/dev/null; then
         # Validate that empty directories are preserved via marker files
-        validate_empty_dirs_with_markers "$TEST_BUCKET" "true" "panfs2ceph"
+        validate_empty_dirs_with_markers "$TEST_BUCKET" "true" "vast2ceph"
         
         # Clean up marker files
         while IFS= read -r empty_dir; do
@@ -520,17 +520,17 @@ test_panfs2ceph_empty_dirs_real_transfer_with_flags() {
             fi
         done < "$empty_dirs_file"
     else
-        fail_test "panfs2ceph real transfer with empty dir flags failed"
+        fail_test "vast2ceph real transfer with empty dir flags failed"
         return 1
     fi
 }
 
-test_panfs2ceph_empty_dirs_real_transfer_without_flags() {
+test_vast2ceph_empty_dirs_real_transfer_without_flags() {
     # Clean bucket first
     timeout 30 s3cmd rm "s3://$TEST_BUCKET" --recursive --force &>/dev/null || true
     
     # Create test data with empty directories
-    local test_data_dir="/tmp/${TEST_PREFIX}_panfs2ceph_real_without"
+    local test_data_dir="/tmp/${TEST_PREFIX}_vast2ceph_real_without"
     create_test_data_with_empty_dirs "$test_data_dir"
     CLEANUP_ITEMS+=("$test_data_dir")
     
@@ -538,9 +538,9 @@ test_panfs2ceph_empty_dirs_real_transfer_without_flags() {
     if timeout 300 rclone copy "$test_data_dir" "$TEST_BUCKET:" --transfers 4 &>/dev/null; then
         
         # Validate that empty directories do NOT exist in bucket (no marker files)
-        validate_empty_dirs_with_markers "$TEST_BUCKET" "false" "panfs2ceph"
+        validate_empty_dirs_with_markers "$TEST_BUCKET" "false" "vast2ceph"
     else
-        fail_test "panfs2ceph real transfer without empty dir flags failed"
+        fail_test "vast2ceph real transfer without empty dir flags failed"
         return 1
     fi
 }
@@ -635,16 +635,16 @@ main() {
     init_tests "Empty Directory Flag Tests"
     
     # Mock-based tests (fast, no real dependencies)
-    start_test "panfs2ceph default behavior (mock)" && test_panfs2ceph_empty_dirs_default_generates_flags
-    start_test "panfs2ceph --delete_empty_dirs (mock)" && test_panfs2ceph_empty_dirs_flag_omits_flags
+    start_test "vast2ceph default behavior (mock)" && test_vast2ceph_empty_dirs_default_generates_flags
+    start_test "vast2ceph --delete_empty_dirs (mock)" && test_vast2ceph_empty_dirs_flag_omits_flags
     start_test "dd2ceph default behavior (mock)" && test_dd2ceph_empty_dirs_default_generates_flags
     start_test "dd2ceph --delete_empty_dirs (mock)" && test_dd2ceph_empty_dirs_flag_omits_flags
     
     # Real Ceph tests (if prerequisites met)
     if check_ceph_prerequisites; then
         log_info "Prerequisites met - running real Ceph integration tests"
-        start_test "panfs2ceph real transfer with empty dirs" && test_panfs2ceph_empty_dirs_real_transfer_with_flags
-        start_test "panfs2ceph real transfer without empty dirs" && test_panfs2ceph_empty_dirs_real_transfer_without_flags
+        start_test "vast2ceph real transfer with empty dirs" && test_vast2ceph_empty_dirs_real_transfer_with_flags
+        start_test "vast2ceph real transfer without empty dirs" && test_vast2ceph_empty_dirs_real_transfer_without_flags
         start_test "dd2ceph real transfer with empty dirs" && test_dd2ceph_empty_dirs_real_transfer_with_flags
         start_test "dd2ceph real transfer without empty dirs" && test_dd2ceph_empty_dirs_real_transfer_without_flags
     else

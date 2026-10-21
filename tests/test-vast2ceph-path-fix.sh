@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ###############################################################################
-# Integration test for panfs2ceph path construction fix
+# Integration test for vast2ceph path construction fix
 # Tests the fix for BucketAlreadyExists error caused by incorrect path concatenation
 ###############################################################################
 
@@ -13,18 +13,18 @@ export CEPHTOOLS_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export CEPHTOOLS_BIN="${CEPHTOOLS_ROOT}/build/bin/cephtools"
 
 # Test configuration
-TEST_NAME="panfs2ceph-path-fix"
-TEST_BUCKET="cephtools-test-panfs2ceph-paths"
+TEST_NAME="vast2ceph-path-fix"
+TEST_BUCKET="cephtools-test-vast2ceph-paths"
 
 # Use standard test framework for output directory management
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/test-framework.sh"
 
 # Initialize test framework (this sets up TEST_OUTPUT_DIR automatically)
-init_tests "panfs2ceph-path-fix"
+init_tests "vast2ceph-path-fix"
 
 test_path_construction_fix() {
-    start_test "panfs2ceph path construction generates correct rclone destinations"
+    start_test "vast2ceph path construction generates correct rclone destinations"
     
     # Create test directory structure with absolute path in test outputs
     local test_source_dir="${TEST_OUTPUT_DIR}/test_data/home/user/project/data"
@@ -41,9 +41,9 @@ test_path_construction_fix() {
     # Set MSIPROJECT to our test output directory to control where logs go
     export MSIPROJECT="${TEST_OUTPUT_DIR}"
     
-    # Run panfs2ceph with absolute path and dry run, specifying log directory
+    # Run vast2ceph with absolute path and dry run, specifying log directory
     local output
-    if output=$(timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if output=$(timeout 30 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_source_dir}" \
         --log_dir "${TEST_OUTPUT_DIR}/logs" \
@@ -98,14 +98,14 @@ test_path_construction_fix() {
             return 1
         fi
     else
-        fail_test "panfs2ceph command failed"
+        fail_test "vast2ceph command failed"
         echo "Output: $output"
         return 1
     fi
 }
 
 test_multiple_path_formats() {
-    start_test "panfs2ceph handles various absolute path formats correctly"
+    start_test "vast2ceph handles various absolute path formats correctly"
     
     local test_paths=(
         "/tmp/test"
@@ -119,9 +119,9 @@ test_multiple_path_formats() {
         mkdir -p "$full_test_path"
         echo "test content for $test_path" > "${full_test_path}/test.txt"
         
-        # Run panfs2ceph with explicit log directory
+        # Run vast2ceph with explicit log directory
         local output
-        if output=$(timeout 20 "${CEPHTOOLS_BIN}" panfs2ceph \
+        if output=$(timeout 20 "${CEPHTOOLS_BIN}" vast2ceph \
             --bucket "${TEST_BUCKET}" \
             --path "$full_test_path" \
             --log_dir "${TEST_OUTPUT_DIR}/logs_$(basename "$test_path")" \
@@ -153,23 +153,23 @@ test_multiple_path_formats() {
                 return 1
             fi
         else
-            fail_test "panfs2ceph failed for path: $test_path"
+            fail_test "vast2ceph failed for path: $test_path"
             return 1
         fi
     done
 }
 
 test_restore_script_fix() {
-    start_test "panfs2ceph restore script also has correct path construction"
+    start_test "vast2ceph restore script also has correct path construction"
     
     # Create test directory in our test outputs area
     local test_source_dir="${TEST_OUTPUT_DIR}/restore_test/test/path"
     mkdir -p "${test_source_dir}"
     echo "restore test content" > "${test_source_dir}/restore.txt"
     
-    # Run panfs2ceph with explicit log directory
+    # Run vast2ceph with explicit log directory
     local output
-    if output=$(timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if output=$(timeout 30 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_source_dir}" \
         --log_dir "${TEST_OUTPUT_DIR}/logs_restore" \
@@ -200,13 +200,13 @@ test_restore_script_fix() {
             return 1
         fi
     else
-        fail_test "panfs2ceph failed"
+        fail_test "vast2ceph failed"
         return 1
     fi
 }
 
 test_custom_destination_path() {
-    start_test "panfs2ceph uses one normalized custom destination in all scripts"
+    start_test "vast2ceph uses one normalized custom destination in all scripts"
 
     local test_source_dir="${TEST_OUTPUT_DIR}/custom_destination/source"
     local log_dir="${TEST_OUTPUT_DIR}/logs_custom_destination"
@@ -215,13 +215,13 @@ test_custom_destination_path() {
     echo "custom destination content" > "${test_source_dir}/test.txt"
 
     local output
-    if ! output=$(timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if ! output=$(timeout 30 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_source_dir}" \
         --destination_path "/archives//project-a/./run/../final/" \
         --log_dir "${log_dir}" \
         --dry_run 2>&1); then
-        fail_test "panfs2ceph command failed: ${output}"
+        fail_test "vast2ceph command failed: ${output}"
         return 1
     fi
 
@@ -255,18 +255,18 @@ test_custom_destination_path() {
 }
 
 test_invalid_custom_destination_path() {
-    start_test "panfs2ceph rejects destination traversal above bucket root"
+    start_test "vast2ceph rejects destination traversal above bucket root"
 
     local test_source_dir="${TEST_OUTPUT_DIR}/invalid_destination/source"
     mkdir -p "${test_source_dir}"
 
-    if timeout 30 "${CEPHTOOLS_BIN}" panfs2ceph \
+    if timeout 30 "${CEPHTOOLS_BIN}" vast2ceph \
         --bucket "${TEST_BUCKET}" \
         --path "${test_source_dir}" \
         --destination_path "../../outside" \
         --log_dir "${TEST_OUTPUT_DIR}/logs_invalid_destination" \
         --dry_run >/dev/null 2>&1; then
-        fail_test "panfs2ceph accepted destination traversal above the bucket root"
+        fail_test "vast2ceph accepted destination traversal above the bucket root"
         return 1
     fi
 
@@ -281,14 +281,14 @@ cleanup_test_outputs() {
 
 # Main test execution
 main() {
-    echo "Starting panfs2ceph path construction fix integration test"
+    echo "Starting vast2ceph path construction fix integration test"
     echo "Test outputs will be isolated in test framework directory"
     
     # Check for real execution request
     if [[ "${1:-}" == "--real" ]] || [[ "${1:-}" == "--e2e" ]]; then
         echo
         echo "🔄 Real execution requested - delegating to E2E test..."
-        exec "${SCRIPT_DIR}/test-panfs2ceph-e2e-real.sh"
+        exec "${SCRIPT_DIR}/test-vast2ceph-e2e-real.sh"
     fi
     
     # Initialize tests with framework (this sets up TEST_OUTPUT_DIR)
@@ -313,13 +313,13 @@ main() {
     
     if [[ $exit_code -eq 0 ]]; then
         echo
-        echo "✅ All panfs2ceph path construction tests passed!"
+        echo "✅ All vast2ceph path construction tests passed!"
         echo "📋 Summary: The fix properly separates bucket names from object paths"
         echo "🎯 Result: rclone destinations are now 'remote:bucket/object/path' instead of 'remote:bucket+object+path'"
         echo "📁 All test artifacts are contained in: ${TEST_OUTPUT_DIR}"
         echo
         echo "💡 To run end-to-end tests with real buckets:"
-        echo "   ${SCRIPT_DIR}/test-panfs2ceph-e2e-real.sh"
+        echo "   ${SCRIPT_DIR}/test-vast2ceph-e2e-real.sh"
         echo "   OR"
         echo "   $0 --real"
     fi
@@ -334,7 +334,7 @@ main() {
 if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
     echo "Usage: $0 [options]"
     echo
-    echo "panfs2ceph path construction fix integration test"
+    echo "vast2ceph path construction fix integration test"
     echo "Tests the fix for BucketAlreadyExists error caused by incorrect path concatenation"
     echo
     echo "Options:"
