@@ -10,22 +10,22 @@
   simplified process substitution example, added --do_not_setpolicy/--log_dir notes
 - [x] Commit `9a26570`
 
-## #3 README.md typo + minor doc fixes (PENDING)
+## #3 README.md typo + minor doc fixes (DONE)
 
-- Fix known typo in readme.md
-- Any small inconsistencies found during audit
+- [x] Fixed `pandfs2ceph` -> `panfs2ceph` and duplicated "data" in readme.md
+- [x] Commit `fc080cd`
 
-## #4 panfs2ceph doc/code alignment (PENDING)
+## #4 panfs2ceph doc/code alignment (DONE)
 
-- Correct package docs to match actual behavior
-- Lean corrections only
+- [x] Removed reference to nonexistent `PREFIX.readme.md` file
+- [x] Commit `0e50d27`
 
-## #5 dd2ceph doc/code alignment (PENDING)
+## #5 dd2ceph doc/code alignment (DONE)
 
-- Correct package docs to match actual behavior
-- Lean corrections only
+- [x] Fixed typos: "strorage", "how to data", "completed my"
+- [x] Commit `c14078a`
 
-## #6 Final packaging / install.md review (PENDING)
+## #6 Final packaging / install.md review (DONE)
 
-- Ensure install.md and build docs are consistent
-- No verbose additions
+- [x] Verified install.md is consistent with makefile (PREFIX, modulefile, docs target)
+- [x] No changes needed
