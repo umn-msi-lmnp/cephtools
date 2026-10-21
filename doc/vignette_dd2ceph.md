@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Data from various UMN core facilities (e.g. UMGC) export data to a special directory called `data_delivery` for short period of time (~ 1 year). This vignette will describe how to data deposited in `data_delivery` can be easily copied to MSI ceph (tier2) for long term strorage.
+Data from various UMN core facilities (e.g. UMGC) export data to a special directory called `data_delivery` for short period of time (~ 1 year). This vignette will describe how data deposited in `data_delivery` can be easily copied to MSI ceph (tier2) for long term storage.
 
 ## Step 1: Create bucket and set a policy _(completed once, preferably by the MSI group PI)_
 
@@ -58,7 +58,7 @@ _The MSI group PI_ (or via sudo) should create a new bucket on ceph, called `dat
    cephtools bucketpolicy -v -b data-delivery-$MYGROUP -p GROUP_READ_WRITE -g $MYGROUP
    ```
 
-## Step 2: Transfer data to ceph _(completed my any group member, repeatedly)_
+## Step 2: Transfer data to ceph _(completed by any group member, repeatedly)_
 
 After the PI's bucket has a group READ/WRITE bucket policy set, _the following methods can be done by any group members_. In fact, the data transfer steps below should be done repeatedly (i.e. after any new datasets are added to `data_delivery` directory). NOTE: the --remote option is optional as cephtools will automatically detect your MSI ceph credentials.
 
