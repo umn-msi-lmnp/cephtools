@@ -183,7 +183,6 @@ plugin_main() {
 
         shift
     done
-    shift $((OPTIND-1))
 
     # Validate required parameters
     if [[ -z "${_group:-}" ]]; then

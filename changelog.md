@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.1] - 2026-10-22
+
+### Fixed
+- `_readlink` no longer leaves the working directory changed after resolving a path.
+- `_check_path_permissions` now cleans up its temp file on early-exit paths (non-existent or unreadable path).
+
+### Removed
+- Removed unused code in `bucketpolicy` plugin, and `slurm-helpers.sh`
+
 ## [4.0.0] - 2026-10-21
 
 ### Changed

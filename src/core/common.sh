@@ -186,7 +186,10 @@ _contains() {
 # Description:
 #   Get absolute path from relative path.
 _readlink() {
-  _target_file="${1}"
+  local _target_file="${1}"
+  local _saved_dir="$(pwd)"
+  local _phys_dir
+  local _result
 
   cd "$(dirname "${_target_file}")"
   _target_file="$(basename "${_target_file}")"
@@ -202,8 +205,9 @@ _readlink() {
   # Compute the canonicalized name by finding the physical path
   # for the directory we're in and appending the target file.
   _phys_dir="$(pwd -P)"
+  cd "${_saved_dir}"
   _result="${_phys_dir}/${_target_file}"
-  printf "%s\\n" "${_result}"
+  printf "%s\n" "${_result}"
 }
 
 # _resolve_group_project_root()
@@ -495,11 +499,13 @@ _check_path_permissions() {
     # Check if path exists and is accessible
     if [[ ! -e "$path" ]]; then
         _warn printf "Path does not exist: %s\\n" "$path"
+        rm -f "$temp_log"
         return 1
     fi
-    
+
     if [[ ! -r "$path" ]]; then
         _warn printf "Cannot read path: %s\\n" "$path"
+        rm -f "$temp_log"
         return 1
     fi
     
@@ -507,6 +513,7 @@ _check_path_permissions() {
     if [[ -d "$path" ]]; then
         if ! ls "$path" >/dev/null 2>&1; then
             _warn printf "Cannot list directory contents: %s\\n" "$path"
+            rm -f "$temp_log"
             return 1
         fi
         _verb printf "✓ Directory is readable: %s\\n" "$path"
