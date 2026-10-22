@@ -323,11 +323,6 @@ _execute_bucketpolicy_workflow() {
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
 
-    # Set S3CMD_CONFIG for MSI environment if not already set
-    if [[ -z "${S3CMD_CONFIG:-}" ]]; then
-        export S3CMD_CONFIG="/etc/msi/s3cfg-generic"
-    fi
-
     # Check s3cmd availability
     if command -v s3cmd &> /dev/null
     then
