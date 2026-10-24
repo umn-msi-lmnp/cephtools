@@ -131,16 +131,16 @@ plugin_main() {
         -d|--dry_run)
             _dry_run="--dry-run"
             ;;
-         -v|--verbose)
-             _verbose=1
-             ;;
-         -e|--delete_empty_dirs)
-             _delete_empty_dirs=1
-             ;;
-         -r|--remote)
-             _remote="$(__get_option_value "${__arg}" "${__val:-}")"
-             shift
-             ;;
+        -v|--verbose)
+            _verbose=1
+            ;;
+        -e|--delete_empty_dirs)
+            _delete_empty_dirs=1
+            ;;
+        -r|--remote)
+            _remote="$(__get_option_value "${__arg}" "${__val:-}")"
+            shift
+            ;;
         -b|--bucket)
             _bucket="$(__validate_bucket_name "$(__get_option_value "${__arg}" "${__val:-}")")"
             shift
@@ -242,10 +242,10 @@ plugin_main() {
     _verb printf "path: %s\\n" "$_path"
     _verb printf "destination_path: %s\\n" "${_destination_path:-<bucket root>}"
     _verb printf "log_dir: %s\\n" "$_log_dir"
-     _verb printf "dry_run: %s\\n" "$_dry_run"
-     _verb printf "verbose: %s\\n" "$_verbose"
-     _verb printf "delete_empty_dirs: %s\\n" "$([[ ${_delete_empty_dirs} -eq 1 ]] && echo "enabled" || echo "disabled")"
-     _verb printf "threads: %s\\n" "$_threads"
+    _verb printf "dry_run: %s\\n" "$_dry_run"
+    _verb printf "verbose: %s\\n" "$_verbose"
+    _verb printf "delete_empty_dirs: %s\\n" "$([[ ${_delete_empty_dirs} -eq 1 ]] && echo "enabled" || echo "disabled")"
+    _verb printf "threads: %s\\n" "$_threads"
 
     # Validate and normalize path
     _root_path_dir=$(readlink -m "${_path}")
@@ -281,8 +281,8 @@ plugin_main() {
         _warn_if_destination_not_empty "${_destination}" "${_dry_run}"
     fi
 
-     # Execute the main workflow
-     _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_destination" "$_destination_path" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads" "$_delete_empty_dirs"
+    # Execute the main workflow
+    _execute_dd2ceph_workflow "$_remote" "$_bucket" "$_destination" "$_destination_path" "$_root_path_dir" "$_log_dir" "$_dry_run" "$_threads" "$_delete_empty_dirs"
 }
 
 ###############################################################################
@@ -332,16 +332,16 @@ _check_s3cmd_access() {
     fi
 }
 
- _execute_dd2ceph_workflow() {
-     local remote="$1"
-     local bucket="$2"
-     local destination="$3"
-     local destination_path="$4"
-     local root_path_dir="$5"
-     local log_dir="$6"
-     local dry_run="$7"
-     local threads="$8"
-     local delete_empty_dirs="$9"
+_execute_dd2ceph_workflow() {
+    local remote="$1"
+    local bucket="$2"
+    local destination="$3"
+    local destination_path="$4"
+    local root_path_dir="$5"
+    local log_dir="$6"
+    local dry_run="$7"
+    local threads="$8"
+    local delete_empty_dirs="$9"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -366,8 +366,8 @@ _check_s3cmd_access() {
     # Check for filenames or pathnames that are too long
     _check_pathname_lengths "${myprefix}"
 
-     # Create the transfer scripts
-     _create_dd2ceph_copy_and_verify_script "${destination}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
+    # Create the transfer scripts
+    _create_dd2ceph_copy_and_verify_script "${destination}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
 
     #######################################################################
     # Print instructions to terminal
@@ -434,16 +434,16 @@ _check_pathname_lengths() {
     fi
 }
 
- _create_dd2ceph_copy_and_verify_script() {
-     local destination="$1"
-     local root_path_dir="$2"
-     local myprefix_dir="$3"
-     local myprefix="$4"
-     local dry_run="$5"
-     local threads="$6"
-     local delete_empty_dirs="$7"
-     local destination_q
-     printf -v destination_q '%q' "${destination}"
+_create_dd2ceph_copy_and_verify_script() {
+    local destination="$1"
+    local root_path_dir="$2"
+    local myprefix_dir="$3"
+    local myprefix="$4"
+    local dry_run="$5"
+    local threads="$6"
+    local delete_empty_dirs="$7"
+    local destination_q
+    printf -v destination_q '%q' "${destination}"
 
     # Create the combined copy and verify script
     cat > "${myprefix}.1_copy_and_verify.slurm" <<EOF
