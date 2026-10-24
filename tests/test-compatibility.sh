@@ -301,8 +301,10 @@ test_locale_support() {
         local locale_info="${LC_ALL:-${LANG:-unknown}}"
         pass_test "Locale setting: $locale_info"
         
-        # Test UTF-8 support (important for file names with special characters)
-        if echo "Test: àáâãäå" | grep -q "àáâãäå" 2>/dev/null; then
+        # Preserve the behavior check while keeping this source file ASCII-only.
+        local utf8_value
+        utf8_value="$(printf '\303\240\303\241\303\242\303\243\303\244\303\245')"
+        if printf 'Test: %s\n' "$utf8_value" | grep -q "$utf8_value" 2>/dev/null; then
             pass_test "UTF-8 character support available"
         else
             fail_test "UTF-8 character support may be limited"
@@ -481,9 +483,20 @@ main() {
     test_path_handling
     test_temporary_directory
     test_git_remote_urls
+    test_ascii_source_policy
     
     # Print results
     print_test_summary
+}
+
+test_ascii_source_policy() {
+    start_test "Tracked source and test files are ASCII-only"
+
+    if bash "$SCRIPT_DIR/test-ascii-policy.sh" >/dev/null; then
+        pass_test "ASCII source policy check passed"
+    else
+        fail_test "ASCII source policy check failed"
+    fi
 }
 
 # Test quoted Git remote conversion without invoking the build substitution.

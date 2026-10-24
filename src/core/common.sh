@@ -58,10 +58,9 @@ _debug() {
   then
     __DEBUG_COUNTER=$((__DEBUG_COUNTER+1))
     {
-      # Prefix debug message with "bug (U+1F41B)"
-      printf "🐛  %s " "${__DEBUG_COUNTER}"
+      printf "DEBUG %s: " "${__DEBUG_COUNTER}"
       "${@}"
-      printf "―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――\\n"
+      printf '%s\n' '------------------------------------------------------------'
     } 1>&2
   fi
 }
@@ -552,7 +551,7 @@ _validate_rclone_connectivity() {
         _warn printf "Cannot access bucket '%s' on remote '%s'.\\n" "$bucket" "$remote"
         _warn printf "This may be normal if the bucket doesn't exist yet - it will be created during transfer.\\n"
     else
-        _info printf "✓ Bucket is accessible: %s:%s\\n" "$remote" "$bucket"
+        _info printf "PASS: Bucket is accessible: %s:%s\\n" "$remote" "$bucket"
     fi
     
     return 0
@@ -753,7 +752,7 @@ _check_bucket_write_permissions() {
             if policy_json=$(s3cmd getpolicy "s3://${bucket}" 2>/dev/null); then
                 # Check for write permissions in policy
                 if echo "$policy_json" | grep -qE '"s3:\*"|"s3:PutObject"|"s3:DeleteObject"'; then
-                    _info printf "✓ Bucket policy allows write operations\\n"
+                    _info printf "PASS: Bucket policy allows write operations\\n"
                     bucket_policy_check=1
                 else
                     _warn printf "Bucket policy may not allow write operations\\n"
@@ -774,7 +773,7 @@ _check_bucket_write_permissions() {
     
     # Try to list bucket contents (requires ListBucket permission)
     if s3cmd ls "s3://${bucket}" >/dev/null 2>&1; then
-        _verb printf "✓ Can list bucket contents\\n"
+        _verb printf "PASS: Can list bucket contents\\n"
         metadata_check=1
         
         # Method 3: Check if we can upload/delete a tiny test marker
@@ -785,12 +784,12 @@ _check_bucket_write_permissions() {
         # Use s3cmd's ability to upload from stdin
         _verb printf "Testing write permissions with temporary test object...\\n"
         if echo "$test_content" | s3cmd put - "s3://${bucket}/${test_key}" >/dev/null 2>&1; then
-            _verb printf "✓ Successfully uploaded test object\\n"
+            _verb printf "PASS: Successfully uploaded test object\\n"
             
             # Clean up immediately
             if s3cmd del "s3://${bucket}/${test_key}" >/dev/null 2>&1; then
-                _verb printf "✓ Successfully deleted test object\\n"
-                _info printf "✓ Bucket write permissions confirmed\\n"
+                _verb printf "PASS: Successfully deleted test object\\n"
+                _info printf "PASS: Bucket write permissions confirmed\\n"
                 return 0
             else
                 _warn printf "Could delete test object, but write permission confirmed\\n"
@@ -835,13 +834,13 @@ _run_preflight_checks() {
         _info printf "1. Checking file permissions...\\n"
         if ! _check_path_permissions "${path}"; then
             if [[ -z "${dry_run}" ]]; then
-                _exit_1 printf "❌ Permission check failed\\n"
+                _exit_1 printf "FAIL: Permission check failed\\n"
                 checks_passed=1
             else
-                _warn printf "⚠️  Permission issues detected, but continuing with dry run\\n"
+                _warn printf "WARNING: Permission issues detected, but continuing with dry run\\n"
             fi
         else
-            _info printf "✅ Permission check passed\\n"
+            _info printf "PASS: Permission check passed\\n"
         fi
     else
         _info printf "1. Skipping permission checks (read-only source)\\n"
@@ -850,21 +849,21 @@ _run_preflight_checks() {
     # 2. Disk space
     _info printf "2. Checking disk space...\\n"
     _check_disk_space "${path}" "${log_dir}"
-    _info printf "✅ Disk space check completed\\n"
+    _info printf "PASS: Disk space check completed\\n"
     
     # 3. rclone version check
     _info printf "3. Checking rclone version...\\n"
     _check_rclone_version
-    _info printf "✅ rclone version check completed\\n"
+    _info printf "PASS: rclone version check completed\\n"
     
     # 4. rclone connectivity (skip in dry run for speed)
     if [[ -z "${dry_run}" ]]; then
         _info printf "4. Testing rclone connectivity...\\n"
         if ! _validate_rclone_connectivity "${remote}" "${bucket}"; then
-            _exit_1 printf "❌ rclone connectivity check failed\\n"
+            _exit_1 printf "FAIL: rclone connectivity check failed\\n"
             checks_passed=1
         else
-            _info printf "✅ rclone connectivity check passed\\n"
+            _info printf "PASS: rclone connectivity check passed\\n"
         fi
     else
         _info printf "4. Skipping rclone connectivity check (dry run mode)\\n"
@@ -874,13 +873,13 @@ _run_preflight_checks() {
     _info printf "4.5. Checking bucket write permissions...\\n"
     if ! _check_bucket_write_permissions "${bucket}" "${dry_run}"; then
         if [[ -z "${dry_run}" ]]; then
-            _exit_1 printf "❌ Bucket write permission check failed\\n"
+            _exit_1 printf "FAIL: Bucket write permission check failed\\n"
             checks_passed=1
         else
-            _warn printf "⚠️  Bucket write permission issues detected, but continuing with dry run\\n"
+            _warn printf "WARNING: Bucket write permission issues detected, but continuing with dry run\\n"
         fi
     else
-        _info printf "✅ Bucket write permission check passed\\n"
+        _info printf "PASS: Bucket write permission check passed\\n"
     fi
     
     # 5. Estimate transfer size and time
@@ -910,13 +909,13 @@ _run_preflight_checks() {
         _info printf "   Estimated transfer time: <1 hour\\n"
     fi
     
-    _info printf "✅ Transfer analysis completed\\n"
+    _info printf "PASS: Transfer analysis completed\\n"
     
     _info printf "\\n=== Pre-flight Check Summary ===\\n"
     if [[ $checks_passed -eq 0 ]]; then
-        _info printf "✅ All pre-flight checks passed - ready to proceed\\n"
+        _info printf "PASS: All pre-flight checks passed - ready to proceed\\n"
     else
-        _exit_1 printf "❌ Some pre-flight checks failed - review issues above\\n"
+        _exit_1 printf "FAIL: Some pre-flight checks failed - review issues above\\n"
     fi
     
     return $checks_passed

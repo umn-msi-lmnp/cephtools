@@ -287,7 +287,7 @@ main() {
     # Check for real execution request
     if [[ "${1:-}" == "--real" ]] || [[ "${1:-}" == "--e2e" ]]; then
         echo
-        echo "🔄 Real execution requested - delegating to E2E test..."
+        echo "Real execution requested - delegating to E2E test..."
         exec "${SCRIPT_DIR}/test-vast2ceph-e2e-real.sh"
     fi
     
@@ -313,12 +313,12 @@ main() {
     
     if [[ $exit_code -eq 0 ]]; then
         echo
-        echo "✅ All vast2ceph path construction tests passed!"
-        echo "📋 Summary: The fix properly separates bucket names from object paths"
-        echo "🎯 Result: rclone destinations are now 'remote:bucket/object/path' instead of 'remote:bucket+object+path'"
-        echo "📁 All test artifacts are contained in: ${TEST_OUTPUT_DIR}"
+        echo "All vast2ceph path construction tests passed!"
+        echo "Summary: The fix properly separates bucket names from object paths"
+        echo "Result: rclone destinations are now 'remote:bucket/object/path' instead of 'remote:bucket+object+path'"
+        echo "All test artifacts are contained in: ${TEST_OUTPUT_DIR}"
         echo
-        echo "💡 To run end-to-end tests with real buckets:"
+        echo "To run end-to-end tests with real buckets:"
         echo "   ${SCRIPT_DIR}/test-vast2ceph-e2e-real.sh"
         echo "   OR"
         echo "   $0 --real"

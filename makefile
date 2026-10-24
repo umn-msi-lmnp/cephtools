@@ -59,7 +59,7 @@ CORE_FILES := src/core/common.sh \
 
 # Top-level Targets
 .PHONY: all clean plugins core docs test validate-plugins list-plugins show-config comprehensive-test
-.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e test-credentials
+.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e test-credentials test-ascii
 
 # Default target - build everything
 all: version core plugins validate-plugins docs
@@ -130,7 +130,7 @@ validate-plugins: plugins
 				echo "ERROR: Plugin $$plugin_name missing plugin_describe function"; \
 				exit 1; \
 			fi; \
-			echo "✓ Plugin $$plugin_name validated"; \
+			echo "PASS: Plugin $$plugin_name validated"; \
 		else \
 			echo "ERROR: Plugin $$plugin_name missing plugin.sh file"; \
 			exit 1; \
@@ -167,7 +167,7 @@ comprehensive-test: all
 		./$(BUILD)/bin/cephtools help $$plugin >/dev/null || echo "ERROR: Help failed for $$plugin"; \
 	done
 	@echo ""
-	@echo "All comprehensive tests completed ✅"
+	@echo "All comprehensive tests completed"
 
 # Helper targets for development
 list-plugins:
@@ -229,6 +229,9 @@ test-permissions: all test-setup
 
 test-credentials:
 	@bash tests/test-rclone-credentials.sh
+
+test-ascii:
+	@bash tests/test-ascii-policy.sh
 
 test-vignette-e2e: all test-setup
 	@echo "Running complete vignette workflow end-to-end test..."

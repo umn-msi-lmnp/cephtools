@@ -434,7 +434,7 @@ if [[ \$unreadable_count -gt 0 ]]; then
     echo "These files may not be transferred successfully"
 fi
 
-echo "✓ Source directory accessibility verified"
+echo "PASS: Source directory accessibility verified"
 
 # Perform the transfer
 echo "Starting transfer at \$(date)"

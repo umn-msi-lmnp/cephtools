@@ -60,11 +60,11 @@ run_test() {
     echo -e "${YELLOW}Testing:${NC} $test_name"
     
     if $test_function; then
-        echo -e "  ${GREEN}✓${NC} $test_name"
+        echo -e "  ${GREEN}PASS${NC}: $test_name"
         TESTS_PASSED=$((TESTS_PASSED + 1))
         return 0
     else
-        echo -e "  ${RED}✗${NC} $test_name"
+        echo -e "  ${RED}FAIL${NC}: $test_name"
         log_error "$test_name failed"
         TESTS_FAILED=$((TESTS_FAILED + 1))
         return 1
@@ -420,10 +420,10 @@ print_test_summary() {
     echo -e "  ${RED}Failed: $TESTS_FAILED${NC}"
     
     if [[ $TESTS_FAILED -eq 0 ]]; then
-        echo -e "${GREEN}All tests passed! ✅${NC}"
+        echo -e "${GREEN}All tests passed!${NC}"
         return 0
     else
-        echo -e "${RED}Some tests failed! ❌${NC}"
+        echo -e "${RED}Some tests failed!${NC}"
         return 1
     fi
 }

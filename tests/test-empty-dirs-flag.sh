@@ -616,10 +616,10 @@ print_test_summary() {
     echo -e "  ${RED}Failed: $TEST_FAILED${NC}"
     
     if [[ $TEST_FAILED -eq 0 ]]; then
-        echo -e "${GREEN}All empty directory flag tests passed! ✅${NC}"
+        echo -e "${GREEN}All empty directory flag tests passed!${NC}"
         return 0
     else
-        echo -e "${RED}Some empty directory flag tests failed! ❌${NC}"
+        echo -e "${RED}Some empty directory flag tests failed!${NC}"
         return 1
     fi
 }

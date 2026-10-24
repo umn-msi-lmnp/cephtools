@@ -49,11 +49,11 @@ run_test_suite() {
     
     # Run the test suite
     if bash "$script_path"; then
-        echo -e "${GREEN}✅ $suite_name PASSED${NC}"
+        echo -e "${GREEN}PASS: $suite_name${NC}"
         PASSED_SUITES=$((PASSED_SUITES + 1))
         return 0
     else
-        echo -e "${RED}❌ $suite_name FAILED${NC}"
+        echo -e "${RED}FAIL: $suite_name${NC}"
         FAILED_SUITES+=("$suite_name")
         return 1
     fi
@@ -158,14 +158,14 @@ print_overall_summary() {
         echo
         echo -e "${RED}Failed test suites:${NC}"
         for suite in "${FAILED_SUITES[@]}"; do
-            echo -e "  ${RED}• $suite${NC}"
+            echo -e "  ${RED}- $suite${NC}"
         done
         echo
-        echo -e "${RED}Some tests failed! ❌${NC}"
+        echo -e "${RED}Some tests failed!${NC}"
         return 1
     else
         echo
-        echo -e "${GREEN}All test suites passed! ✅${NC}"
+        echo -e "${GREEN}All test suites passed!${NC}"
         return 0
     fi
 }

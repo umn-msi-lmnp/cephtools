@@ -524,7 +524,7 @@ if [[ ! -r "${root_path_dir}" ]]; then
     exit 1
 fi
 
-echo "✓ Source directory is accessible"
+echo "PASS: Source directory is accessible"
 
 # Perform the transfer
 echo "Starting dd2ceph transfer at \$(date)"

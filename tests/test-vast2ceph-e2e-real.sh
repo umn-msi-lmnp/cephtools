@@ -35,35 +35,35 @@ check_real_s3_prerequisites() {
     
     # Check s3cmd
     if ! command -v s3cmd >/dev/null 2>&1; then
-        echo "❌ s3cmd not found"
+        echo "FAIL: s3cmd not found"
         return 1
     fi
     
     # Check rclone
     if ! command -v rclone >/dev/null 2>&1; then
-        echo "❌ rclone not found"
+        echo "FAIL: rclone not found"
         return 1
     fi
     
     # Check s3info for credentials
     if ! command -v s3info >/dev/null 2>&1; then
-        echo "❌ s3info not found (needed for MSI S3 credentials)"
+        echo "FAIL: s3info not found (needed for MSI S3 credentials)"
         return 1
     fi
     
     # Test s3info access
     if ! s3info --keys >/dev/null 2>&1; then
-        echo "❌ s3info cannot access credentials"
+        echo "FAIL: s3info cannot access credentials"
         return 1
     fi
     
     # Test basic S3 connectivity
     if ! timeout 10 s3cmd ls >/dev/null 2>&1; then
-        echo "❌ Cannot connect to S3 service"
+        echo "FAIL: Cannot connect to S3 service"
         return 1
     fi
     
-    echo "✅ All prerequisites met"
+    echo "PASS: All prerequisites met"
     return 0
 }
 
@@ -77,12 +77,12 @@ setup_test_environment() {
     # Create unique test bucket
     echo "Creating test bucket: ${TEST_BUCKET}"
     if ! timeout 30 s3cmd mb "s3://${TEST_BUCKET}" 2>/dev/null; then
-        echo "❌ Failed to create test bucket: ${TEST_BUCKET}"
+        echo "FAIL: Failed to create test bucket: ${TEST_BUCKET}"
         return 1
     fi
     TEST_BUCKETS+=("${TEST_BUCKET}")
     
-    echo "✅ Test environment ready"
+    echo "PASS: Test environment ready"
     echo "   Test bucket: ${TEST_BUCKET}"
     echo "   Output directory: ${TEST_OUTPUTS_DIR}"
     return 0
@@ -116,7 +116,7 @@ create_test_data() {
     
     TEST_TEMP_DIRS+=("${test_data_dir}")
     
-    echo "✅ Test data created: ${test_data_dir}"
+    echo "PASS: Test data created: ${test_data_dir}"
     echo "   Files: $(find "${test_data_dir}" -type f | wc -l)"
     echo "   Directories: $(find "${test_data_dir}" -type d | wc -l)"
     
@@ -153,7 +153,7 @@ test_vast2ceph_default_behavior_real_execution() {
             local copy_script="${script_dir}/$(basename "${test_data_dir}").1_copy_and_verify.slurm"
             
             if [[ -f "$copy_script" ]]; then
-                echo "📋 Generated script: $copy_script"
+                echo "Generated script: $copy_script"
                 
                 # Verify script uses custom empty directory handling
                 if grep -q "Using custom empty directory handling" "$copy_script"; then
@@ -180,7 +180,7 @@ test_vast2ceph_default_behavior_real_execution() {
                 fi
                 
                 # Execute the actual rclone command to test custom empty directory handling
-                echo "🚀 Executing real rclone command with custom empty directory handling..."
+                echo "Executing real rclone command with custom empty directory handling..."
                 
                 # We'll simulate the custom logic by extracting and running the main commands
                 # Set up rclone credentials
@@ -205,7 +205,7 @@ test_vast2ceph_default_behavior_real_execution() {
                     
                     local successful_transfers=$(grep -c "INFO.*Copied\|INFO.*Making directory" "$rclone_log" 2>/dev/null || echo "0")
                     
-                    echo "📊 Execution Results:"
+                    echo "Execution results:"
                     echo "   Custom empty dir handling: SUCCESS"
                     echo "   Successful operations: $successful_transfers"
                     echo "   No S3 compatibility issues (no --s3-directory-markers used)"
@@ -214,7 +214,7 @@ test_vast2ceph_default_behavior_real_execution() {
                     pass_test "Custom empty directory handling works without S3 errors"
                 else
                     fail_test "Custom empty directory handling execution failed"
-                    echo "📋 Log excerpt:"
+                    echo "Log excerpt:"
                     head -20 "$rclone_log"
                     return 1
                 fi
@@ -261,7 +261,7 @@ test_vast2ceph_delete_empty_dirs_real_execution() {
             local copy_script="${script_dir}/$(basename "${test_data_dir}").1_copy_and_verify.slurm"
             
             if [[ -f "$copy_script" ]]; then
-                echo "📋 Generated script: $copy_script"
+                echo "Generated script: $copy_script"
                 
                 # Verify script correctly skips empty directory handling
                 if grep -q "Skipping empty directories.*--delete_empty_dirs flag set" "$copy_script"; then
@@ -280,7 +280,7 @@ test_vast2ceph_delete_empty_dirs_real_execution() {
                 fi
                 
                 # Execute the actual rclone command
-                echo "🚀 Executing real rclone command without s3-directory-markers..."
+                echo "Executing real rclone command without s3-directory-markers..."
                 
                 # Extract the rclone command from the script
                 local rclone_cmd
@@ -310,7 +310,7 @@ test_vast2ceph_delete_empty_dirs_real_execution() {
                 local successful_transfers=$(grep -c "INFO.*Copied\|INFO.*Making directory" "$rclone_log" 2>/dev/null || echo "0")
                 local files_copied=$(grep -c "INFO.*Copied" "$rclone_log" 2>/dev/null || echo "0")
                 
-                echo "📊 Execution Results:"
+                echo "Execution results:"
                 echo "   Exit code: $rclone_exit_code"
                 echo "   Files copied: $files_copied"
                 echo "   Successful operations: $successful_transfers"
@@ -325,7 +325,7 @@ test_vast2ceph_delete_empty_dirs_real_execution() {
                 fi
                 
                 # Verify files actually exist in bucket
-                echo "🔍 Verifying files exist in bucket..."
+                echo "Verifying files exist in bucket..."
                 local bucket_files
                 if bucket_files=$(timeout 30 s3cmd ls "s3://${TEST_BUCKET}" --recursive 2>/dev/null); then
                     local file_count=$(echo "$bucket_files" | grep -c "test_data_no_empty" || echo "0")
@@ -448,7 +448,7 @@ test_path_construction_with_real_execution() {
 ###############################################################################
 
 cleanup_test_resources() {
-    echo "🧹 Cleaning up test resources..."
+    echo "Cleaning up test resources..."
     
     # Clean up test buckets
     for bucket in "${TEST_BUCKETS[@]}"; do
@@ -484,23 +484,23 @@ cleanup_test_resources() {
         echo "Test outputs cleaned up."
     fi
     
-    echo "✅ Cleanup completed"
+    echo "PASS: Cleanup completed"
 }
 
 show_test_summary() {
     echo
-    echo "🎯 Test Summary"
+    echo "Test Summary"
     echo "=============="
     echo "This test validates:"
-    echo "• Path construction fix works with real bucket execution"
-    echo "• Default behavior uses custom empty directory handling (no S3 compatibility issues)"
-    echo "• --delete_empty_dirs flag correctly skips empty directory handling"
-    echo "• End-to-end transfer with actual file verification"
+    echo "- Path construction fix works with real bucket execution"
+    echo "- Default behavior uses custom empty directory handling (no S3 compatibility issues)"
+    echo "- --delete_empty_dirs flag correctly skips empty directory handling"
+    echo "- End-to-end transfer with actual file verification"
     echo
     echo "Test artifacts:"
-    echo "• Generated SLURM scripts: ${TEST_OUTPUTS_DIR}/logs_*/"
-    echo "• rclone execution logs: ${TEST_OUTPUTS_DIR}/rclone_*.log"
-    echo "• Test bucket used: ${TEST_BUCKET}"
+    echo "- Generated SLURM scripts: ${TEST_OUTPUTS_DIR}/logs_*/"
+    echo "- rclone execution logs: ${TEST_OUTPUTS_DIR}/rclone_*.log"
+    echo "- Test bucket used: ${TEST_BUCKET}"
     echo
 }
 
@@ -509,18 +509,18 @@ show_test_summary() {
 ###############################################################################
 
 main() {
-    echo "🧪 Starting vast2ceph End-to-End Real Bucket Tests"
+    echo "Starting vast2ceph End-to-End Real Bucket Tests"
     echo "=================================================="
     
     # Check if we can run real tests
     if ! check_real_s3_prerequisites; then
         echo
-        echo "❌ Prerequisites not met for real S3 testing"
+        echo "FAIL: Prerequisites not met for real S3 testing"
         echo "This test requires:"
-        echo "• s3cmd configured for MSI S3"
-        echo "• rclone available"
-        echo "• s3info for credentials"
-        echo "• Network access to S3 service"
+        echo "- s3cmd configured for MSI S3"
+        echo "- rclone available"
+        echo "- s3info for credentials"
+        echo "- Network access to S3 service"
         echo
         echo "Run the mock version instead: ./test-vast2ceph-path-fix.sh"
         exit 1
@@ -528,7 +528,7 @@ main() {
     
     # Set up test environment
     if ! setup_test_environment; then
-        echo "❌ Failed to set up test environment"
+        echo "FAIL: Failed to set up test environment"
         exit 1
     fi
     
@@ -539,7 +539,7 @@ main() {
     trap cleanup_test_resources EXIT
     
     echo
-    echo "🚀 Running End-to-End Tests..."
+    echo "Running End-to-End Tests..."
     echo
     
     # Run tests in order
@@ -548,7 +548,7 @@ main() {
     
     # Test default behavior with new custom empty directory handling
     echo
-    echo "✅  Testing default behavior with custom empty directory handling..."
+    echo "Testing default behavior with custom empty directory handling..."
     test_vast2ceph_default_behavior_real_execution
     
     # Print results

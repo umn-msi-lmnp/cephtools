@@ -36,50 +36,50 @@ TEST_TEMP_DIRS=()
 ###############################################################################
 
 check_vignette_prerequisites() {
-    echo "🔍 Checking prerequisites for vignette end-to-end testing..."
+    echo "Checking prerequisites for vignette end-to-end testing..."
     
     # Check cephtools binary
     if [[ ! -x "$CEPHTOOLS_BIN" ]]; then
-        echo "❌ cephtools binary not found or not executable: $CEPHTOOLS_BIN"
+        echo "FAIL: cephtools binary not found or not executable: $CEPHTOOLS_BIN"
         return 1
     fi
     
     # Check s3cmd
     if ! command -v s3cmd >/dev/null 2>&1; then
-        echo "❌ s3cmd not found"
+        echo "FAIL: s3cmd not found"
         return 1
     fi
     
     # Check rclone
     if ! command -v rclone >/dev/null 2>&1; then
-        echo "❌ rclone not found"
+        echo "FAIL: rclone not found"
         return 1
     fi
     
     # Check s3info for credentials
     if ! command -v s3info >/dev/null 2>&1; then
-        echo "❌ s3info not found (needed for MSI S3 credentials)"
+        echo "FAIL: s3info not found (needed for MSI S3 credentials)"
         return 1
     fi
     
     # Test s3info access
     if ! s3info --keys >/dev/null 2>&1; then
-        echo "❌ s3info cannot access credentials"
+        echo "FAIL: s3info cannot access credentials"
         return 1
     fi
     
     # Test basic S3 connectivity
     if ! timeout 10 s3cmd ls >/dev/null 2>&1; then
-        echo "❌ Cannot connect to S3 service"
+        echo "FAIL: Cannot connect to S3 service"
         return 1
     fi
     
-    echo "✅ All prerequisites met"
+    echo "PASS: All prerequisites met"
     return 0
 }
 
 setup_vignette_test_environment() {
-    echo "🔧 Setting up vignette test environment..."
+    echo "Setting up vignette test environment..."
     
     # Create test outputs directory
     mkdir -p "${TEST_OUTPUTS_DIR}"
@@ -91,7 +91,7 @@ setup_vignette_test_environment() {
     TEST_TEMP_DIRS+=("${test_data_dir}")
     
     # Create realistic project structure with various file types
-    echo "📁 Creating test project data structure..."
+    echo "Creating test project data structure..."
     mkdir -p "${test_data_dir}"/{data,scripts,results,empty_dir,subdir/{nested_empty,with_files}}
     
     # Create test files
@@ -106,10 +106,10 @@ setup_vignette_test_environment() {
     dd if=/dev/zero of="${test_data_dir}/data/large_file.bin" bs=1024 count=100 2>/dev/null
     
     # Verify empty directories exist (important for testing directory markers)
-    [[ -d "${test_data_dir}/empty_dir" ]] || { echo "❌ Empty directory creation failed"; return 1; }
-    [[ -d "${test_data_dir}/subdir/nested_empty" ]] || { echo "❌ Nested empty directory creation failed"; return 1; }
+    [[ -d "${test_data_dir}/empty_dir" ]] || { echo "FAIL: Empty directory creation failed"; return 1; }
+    [[ -d "${test_data_dir}/subdir/nested_empty" ]] || { echo "FAIL: Nested empty directory creation failed"; return 1; }
     
-    echo "✅ Test project data created at: ${test_data_dir}"
+    echo "PASS: Test project data created at: ${test_data_dir}"
     echo "   - Files: $(find "${test_data_dir}" -type f | wc -l)"
     echo "   - Empty dirs: $(find "${test_data_dir}" -type d -empty | wc -l)"
     
@@ -124,7 +124,7 @@ setup_vignette_test_environment() {
 test_step1_create_bucket() {
     start_test "Step 1: Create bucket (following vignette)"
     
-    echo "🪣 Creating test bucket: ${TEST_BUCKET}"
+    echo "Creating test bucket: ${TEST_BUCKET}"
     if timeout 30 s3cmd mb "s3://${TEST_BUCKET}" 2>/dev/null; then
         TEST_BUCKETS+=("${TEST_BUCKET}")
         
@@ -145,7 +145,7 @@ test_step1_create_bucket() {
 test_step2_set_bucket_policy() {
     start_test "Step 2: Set bucket policy (following vignette)"
     
-    echo "🔒 Setting GROUP_READ bucket policy..."
+    echo "Setting GROUP_READ bucket policy..."
     cd "${TEST_OUTPUTS_DIR}"
     
     # Run cephtools bucketpolicy as described in vignette
@@ -182,7 +182,7 @@ test_step2_set_bucket_policy() {
 test_step3_generate_scripts() {
     start_test "Step 3: Generate vast2ceph scripts (following vignette)"
     
-    echo "📝 Generating vast2ceph transfer scripts..."
+    echo "Generating vast2ceph transfer scripts..."
     cd "${TEST_OUTPUTS_DIR}"
     
     # Run vast2ceph as described in vignette
@@ -230,12 +230,12 @@ test_step3_generate_scripts() {
 test_step4_verify_script_flags() {
     start_test "Step 4: Verify correct rclone flags in scripts"
     
-    echo "🔍 Verifying rclone command flags..."
+    echo "Verifying rclone command flags..."
     
     # Check script 1 (copy) has correct flags
     if grep -q "\-\-create-empty-src-dirs" "$SCRIPT1_PATH" && 
        grep -q "\-\-s3-directory-markers" "$SCRIPT1_PATH"; then
-        echo "✅ Script 1 (copy) has correct directory handling flags"
+        echo "PASS: Script 1 (copy) has correct directory handling flags"
     else
         fail_test "Script 1 missing required directory flags"
         return 1
@@ -247,14 +247,14 @@ test_step4_verify_script_flags() {
             fail_test "Script 2 (delete) should not have directory marker flags on purge commands"
             return 1
         else
-            echo "✅ Script 2 (delete) correctly omits directory flags on purge"
+            echo "PASS: Script 2 (delete) correctly omits directory flags on purge"
         fi
     fi
     
     # Check script 3 (restore) has --create-empty-src-dirs but NOT --s3-directory-markers
     if grep -q "\-\-create-empty-src-dirs" "$SCRIPT3_PATH"; then
         if ! grep -q "\-\-s3-directory-markers" "$SCRIPT3_PATH"; then
-            echo "✅ Script 3 (restore) has correct flags (--create-empty-src-dirs only)"
+            echo "PASS: Script 3 (restore) has correct flags (--create-empty-src-dirs only)"
         else
             fail_test "Script 3 (restore) should not have --s3-directory-markers flag"
             return 1
@@ -271,7 +271,7 @@ test_step4_verify_script_flags() {
 test_step5_execute_script1() {
     start_test "Step 5: Execute script 1 (copy and verify)"
     
-    echo "📤 Executing copy and verify script..."
+    echo "Executing copy and verify script..."
     
     # Extract and execute the rclone commands from script 1
     local temp_script="${TEST_OUTPUTS_DIR}/extracted_script1.sh"
@@ -290,11 +290,11 @@ test_step5_execute_script1() {
         file_count=$(s3cmd ls "s3://${TEST_BUCKET}" --recursive | wc -l)
         
         if [[ $file_count -gt 0 ]]; then
-            echo "✅ Files successfully transferred to bucket ($file_count objects)"
+            echo "PASS: Files successfully transferred to bucket ($file_count objects)"
             
             # Check if empty directories were handled correctly
             if s3cmd ls "s3://${TEST_BUCKET}" --recursive | grep -q "/$"; then
-                echo "✅ Directory markers found in bucket (empty dirs preserved)"
+                echo "PASS: Directory markers found in bucket (empty dirs preserved)"
             fi
             
             pass_test "Script 1 execution successful - files copied and verified"
@@ -312,11 +312,11 @@ test_step5_execute_script1() {
 test_step6_verify_permissions() {
     start_test "Step 6: Verify bucket policy permissions work"
     
-    echo "🔐 Testing bucket policy permissions..."
+    echo "Testing bucket policy permissions..."
     
     # Test that we can read from the bucket (should work with GROUP_READ policy)
     if timeout 30 s3cmd ls "s3://${TEST_BUCKET}" --recursive >/dev/null 2>&1; then
-        echo "✅ Read access confirmed (GROUP_READ policy working)"
+        echo "PASS: Read access confirmed (GROUP_READ policy working)"
         pass_test "Bucket policy permissions verified"
         return 0
     else
@@ -328,7 +328,7 @@ test_step6_verify_permissions() {
 test_step7_execute_script3_restore() {
     start_test "Step 7: Execute script 3 (restore) - test only"
     
-    echo "📥 Testing restore script (without deleting original)..."
+    echo "Testing restore script (without deleting original)..."
     
     # Create a different restore target to avoid conflicts
     local restore_target="${TEST_OUTPUTS_DIR}/restored_data"
@@ -353,10 +353,10 @@ test_step7_execute_script3_restore() {
         restored_dirs=$(find "$restore_target" -type d -empty | wc -l)
         
         if [[ $restored_files -gt 0 ]]; then
-            echo "✅ Files restored successfully ($restored_files files)"
+            echo "PASS: Files restored successfully ($restored_files files)"
             
             if [[ $restored_dirs -gt 0 ]]; then
-                echo "✅ Empty directories restored ($restored_dirs empty dirs)"
+                echo "PASS: Empty directories restored ($restored_dirs empty dirs)"
             fi
             
             pass_test "Script 3 (restore) test successful"
@@ -376,7 +376,7 @@ test_step7_execute_script3_restore() {
 ###############################################################################
 
 cleanup_vignette_test() {
-    echo "🧹 Cleaning up test resources..."
+    echo "Cleaning up test resources..."
     
     # Clean up test buckets
     for bucket in "${TEST_BUCKETS[@]}"; do
@@ -400,14 +400,14 @@ cleanup_vignette_test() {
         fi
     done
     
-    echo "✅ Cleanup completed"
+    echo "PASS: Cleanup completed"
 }
 
 # Trap to ensure cleanup happens
 trap cleanup_vignette_test EXIT
 
 main() {
-    echo "🚀 Starting Comprehensive Vignette vast2ceph End-to-End Test"
+    echo "Starting Comprehensive Vignette vast2ceph End-to-End Test"
     echo "Test: $TEST_NAME"
     echo "Timestamp: $TEST_TIMESTAMP"
     echo "Bucket: $TEST_BUCKET"
@@ -417,13 +417,13 @@ main() {
     
     # Check prerequisites
     if ! check_vignette_prerequisites; then
-        echo "❌ Prerequisites check failed"
+        echo "FAIL: Prerequisites check failed"
         exit 1
     fi
     
     # Setup test environment
     if ! setup_vignette_test_environment; then
-        echo "❌ Test environment setup failed"
+        echo "FAIL: Test environment setup failed"
         exit 1
     fi
     
@@ -439,18 +439,18 @@ main() {
     # Print summary
     echo ""
     echo "================================================================"
-    echo "🎉 Comprehensive Vignette End-to-End Test PASSED"
+    echo "Comprehensive Vignette End-to-End Test PASSED"
     echo "================================================================"
-    echo "✅ Bucket creation: SUCCESS"
-    echo "✅ Bucket policy setup: SUCCESS"  
-    echo "✅ Script generation: SUCCESS"
-    echo "✅ Flag verification: SUCCESS"
-    echo "✅ Data transfer (script 1): SUCCESS"
-    echo "✅ Permission verification: SUCCESS"
-    echo "✅ Data restore (script 3): SUCCESS"
+    echo "PASS: Bucket creation"
+    echo "PASS: Bucket policy setup"
+    echo "PASS: Script generation"
+    echo "PASS: Flag verification"
+    echo "PASS: Data transfer (script 1)"
+    echo "PASS: Permission verification"
+    echo "PASS: Data restore (script 3)"
     echo ""
-    echo "📊 Test artifacts saved to: $TEST_OUTPUTS_DIR"
-    echo "🪣 Test bucket: $TEST_BUCKET (will be cleaned up)"
+    echo "Test artifacts saved to: $TEST_OUTPUTS_DIR"
+    echo "Test bucket: $TEST_BUCKET (will be cleaned up)"
     echo ""
     echo "This test validates the complete workflow described in:"
     echo "   doc/vignette_vast2ceph.md"

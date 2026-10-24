@@ -72,9 +72,9 @@ pass_test() {
     local message="${1:-}"
     TEST_PASSED=$((TEST_PASSED + 1))
     if [[ -n "$message" ]]; then
-        echo -e "    ${GREEN}✓${NC} $message"
+        echo -e "    ${GREEN}PASS${NC}: $message"
     else
-        echo -e "    ${GREEN}✓${NC} $CURRENT_TEST"
+        echo -e "    ${GREEN}PASS${NC}: $CURRENT_TEST"
     fi
 }
 
@@ -82,7 +82,7 @@ pass_test() {
 fail_test() {
     local message="$1"
     TEST_FAILED=$((TEST_FAILED + 1))
-    echo -e "    ${RED}✗${NC} $CURRENT_TEST"
+    echo -e "    ${RED}FAIL${NC}: $CURRENT_TEST"
     echo -e "      ${RED}Error:${NC} $message"
     return 1
 }
@@ -96,10 +96,10 @@ print_test_summary() {
     echo -e "  ${RED}Failed: $TEST_FAILED${NC}"
     
     if [[ $TEST_FAILED -eq 0 ]]; then
-        echo -e "${GREEN}All tests passed! ✅${NC}"
+        echo -e "${GREEN}All tests passed!${NC}"
         return 0
     else
-        echo -e "${RED}Some tests failed! ❌${NC}"
+        echo -e "${RED}Some tests failed!${NC}"
         return 1
     fi
 }

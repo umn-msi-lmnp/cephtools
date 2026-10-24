@@ -21,7 +21,7 @@ if [[ ! -f "${CEPHTOOLS_BIN}" ]]; then
   echo "ERROR: cephtools binary not found. Run 'make' first."
   exit 1
 fi
-echo "✓ Binary exists"
+echo "PASS: Binary exists"
 
 # Test 2: Basic help command
 echo "Testing help command..."
@@ -29,7 +29,7 @@ if ! "${CEPHTOOLS_BIN}" help >/dev/null 2>&1; then
   echo "ERROR: Help command failed"
   exit 1
 fi
-echo "✓ Help command works"
+echo "PASS: Help command works"
 
 # Test 3: Version command
 echo "Testing version command..."
@@ -37,7 +37,7 @@ if ! "${CEPHTOOLS_BIN}" version >/dev/null 2>&1; then
   echo "ERROR: Version command failed"
   exit 1
 fi
-echo "✓ Version command works"
+echo "PASS: Version command works"
 
 # Test 4: Subcommands list
 echo "Testing subcommands list..."
@@ -45,7 +45,7 @@ if ! "${CEPHTOOLS_BIN}" subcommands >/dev/null 2>&1; then
   echo "ERROR: Subcommands command failed"
   exit 1
 fi
-echo "✓ Subcommands command works"
+echo "PASS: Subcommands command works"
 
 # Test 5: Plugin discovery
 echo "Testing plugin discovery..."
@@ -53,7 +53,7 @@ plugin_count=$("${CEPHTOOLS_BIN}" subcommands --raw | wc -l)
 if [[ ${plugin_count} -eq 0 ]]; then
   echo "WARNING: No plugins discovered"
 else
-  echo "✓ Discovered ${plugin_count} plugin(s)"
+  echo "PASS: Discovered ${plugin_count} plugin(s)"
 fi
 
 # Test 6: Test each plugin's help
@@ -65,9 +65,9 @@ while IFS= read -r plugin; do
       echo "  ERROR: Help failed for plugin ${plugin}"
       exit 1
     fi
-    echo "  ✓ Help works for plugin: ${plugin}"
+    echo "  PASS: Help works for plugin: ${plugin}"
   fi
 done < <("${CEPHTOOLS_BIN}" subcommands --raw)
 
 echo ""
-echo "All tests passed! ✅"
+echo "All tests passed!"
