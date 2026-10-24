@@ -142,6 +142,20 @@ _verb() {
 # Utility Functions
 ###############################################################################
 
+# Return an option's value or explain why it is missing.
+__get_option_value() {
+    local option="${1:-}"
+    local value="${2:-}"
+
+    if [[ -z "$value" ]]; then
+        _exit_1 printf "%s requires a valid argument. Did you forget to define a variable?\n" "$option"
+    elif [[ "$value" == -* ]]; then
+        _exit_1 printf "%s requires a valid argument (got '%s' which looks like another option).\n" "$option" "$value"
+    fi
+
+    printf "%s\n" "$value"
+}
+
 # Read a heredoc into a caller's variable without failing at end of input.
 heredoc2var() {
     IFS='\n' read -r -d '' "$1" || true

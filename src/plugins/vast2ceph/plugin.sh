@@ -85,26 +85,6 @@ plugin_main() {
     local _delete_empty_dirs=0
     local _threads="16"
 
-    # __get_option_value()
-    #
-    # Usage:
-    #   __get_option_value <option> <value>
-    #
-    # Description:
-    #  Given a flag (e.g., -e | --example) return the value or exit 1 if value
-    #  is blank or appears to be another option.
-    __get_option_value() {
-      local __arg="${1:-}"
-      local __val="${2:-}"
-      
-      if [[ -n "${__val:-}" ]] && [[ ! "${__val:-}" =~ ^- ]]
-      then
-        printf "%s\\n" "${__val}"
-      else
-        _exit_1 printf "%s requires a valid argument.\\n" "${__arg}"
-      fi
-    }
-
     # Note: __validate_bucket_name() is now defined in common.sh
 
     # For flags (i.e. no corresponding value), do not shift inside the case testing

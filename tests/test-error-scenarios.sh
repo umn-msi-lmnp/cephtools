@@ -102,6 +102,39 @@ test_invalid_threads() {
     pass_test "All four plugins reject invalid thread counts before setup"
 }
 
+test_missing_option_values() {
+    start_test "Shared option-value errors across plugins"
+
+    local plugin option output
+    for plugin in vast2ceph dd2ceph dd2dr filesinbackup bucketpolicy; do
+        case "$plugin" in
+            vast2ceph) option=--remote ;;
+            bucketpolicy) option=--policy ;;
+            *) option=--group ;;
+        esac
+
+        if output=$("$CEPHTOOLS_BIN" "$plugin" "$option" 2>&1); then
+            fail_test "$plugin accepted $option without a value"
+            return 1
+        fi
+        if [[ "$output" != *"$option requires a valid argument. Did you forget to define a variable?"* ]]; then
+            fail_test "$plugin did not explain the missing $option value: $output"
+            return 1
+        fi
+
+        if output=$("$CEPHTOOLS_BIN" "$plugin" "$option" --verbose 2>&1); then
+            fail_test "$plugin accepted --verbose as the $option value"
+            return 1
+        fi
+        if [[ "$output" != *"$option requires a valid argument (got '--verbose' which looks like another option)."* ]]; then
+            fail_test "$plugin did not identify --verbose as another option: $output"
+            return 1
+        fi
+    done
+
+    pass_test "All five plugins report missing and option-like values"
+}
+
 test_bucket_name_validation() {
     start_test "Bucket name validation"
     
@@ -526,6 +559,7 @@ main() {
     test_missing_dependencies
     test_invalid_arguments
     test_invalid_threads
+    test_missing_option_values
     test_bucket_name_validation
     test_nonexistent_paths
     test_project_root_resolution

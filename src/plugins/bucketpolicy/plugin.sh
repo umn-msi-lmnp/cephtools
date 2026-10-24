@@ -85,30 +85,6 @@ plugin_main() {
     local _log_dir=
     local _log_dir_provided=0
 
-    # __get_option_value()
-    #
-    # Usage:
-    #   __get_option_value <option> <value>
-    #
-    # Description:
-    #  Given a flag (e.g., -e | --example) return the value or exit 1 if value
-    #  is blank or appears to be another option.
-    __get_option_value() {
-      local __arg="${1:-}"
-      local __val="${2:-}"
-      
-      if [[ -n "${__val:-}" ]] && [[ ! "${__val:-}" =~ ^- ]]
-      then
-        printf "%s\\n" "${__val}"
-      else
-        if [[ -z "${__val:-}" ]]; then
-          _exit_1 printf "%s requires a valid argument. Did you forget to define a variable?\\n" "${__arg}"
-        else
-          _exit_1 printf "%s requires a valid argument (got '%s' which looks like another option).\\n" "${__arg}" "${__val}"
-        fi
-      fi
-    }
-
     # __validate_bucket_name()
     #
     # Usage:
