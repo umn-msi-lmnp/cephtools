@@ -166,7 +166,8 @@ plugin_main() {
             shift
             ;;
         -t|--threads)
-            _threads="$(__get_option_value "${__arg}" "${__val:-}")"
+            _validate_threads "${__val:-}"
+            _threads="${__val}"
             shift
             ;;
         --endopts)

@@ -147,6 +147,13 @@ heredoc2var() {
     IFS='\n' read -r -d '' "$1" || true
 }
 
+# Accept only positive decimal thread counts without shell arithmetic overflow.
+_validate_threads() {
+    if [[ ! "${1:-}" =~ ^[0-9]*[1-9][0-9]*$ ]]; then
+        _exit_1 printf "Option --threads requires an integer >= 1.\n"
+    fi
+}
+
 # _function_exists()
 #
 # Usage:

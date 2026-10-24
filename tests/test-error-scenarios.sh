@@ -82,6 +82,26 @@ test_invalid_arguments() {
     fi
 }
 
+test_invalid_threads() {
+    start_test "Invalid thread counts are rejected by every plugin"
+
+    local plugin value output
+    for plugin in vast2ceph dd2ceph dd2dr filesinbackup; do
+        for value in "" 0 00 -1 abc 1.5; do
+            if output=$("$CEPHTOOLS_BIN" "$plugin" --threads "$value" 2>&1); then
+                fail_test "$plugin accepted --threads '$value'"
+                return 1
+            fi
+            if [[ "$output" != *"--threads requires an integer >= 1"* ]]; then
+                fail_test "$plugin did not explain invalid --threads '$value': $output"
+                return 1
+            fi
+        done
+    done
+
+    pass_test "All four plugins reject invalid thread counts before setup"
+}
+
 test_bucket_name_validation() {
     start_test "Bucket name validation"
     
@@ -505,6 +525,7 @@ main() {
     # Common error scenarios
     test_missing_dependencies
     test_invalid_arguments
+    test_invalid_threads
     test_bucket_name_validation
     test_nonexistent_paths
     test_project_root_resolution

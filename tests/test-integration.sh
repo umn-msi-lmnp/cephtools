@@ -288,7 +288,7 @@ test_dd2dr_workflow() {
     cd "$output_dir"
     
     # Run dd2dr
-    "$CEPHTOOLS_BIN" dd2dr --group testgroup --log_dir "$output_dir" --dry_run >/dev/null 2>&1
+    "$CEPHTOOLS_BIN" dd2dr --group testgroup --log_dir "$output_dir" --threads 2 --dry_run >/dev/null 2>&1
     
     cd "$original_dir"
     
@@ -303,6 +303,7 @@ test_dd2dr_workflow() {
 
         assert_contains "$(cat "$slurm_script")" "data_delivery" "References data_delivery"
         assert_contains "$(cat "$slurm_script")" "disaster_recovery" "References disaster_recovery"
+        assert_contains "$(cat "$slurm_script")" "#SBATCH --cpus-per-task=2" "Uses the requested thread count"
     else
         fail_test "No dd2dr SLURM script created"
     fi
