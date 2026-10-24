@@ -633,6 +633,24 @@ test_bucketpolicy_generated_only_result() {
     pass_test "Generated-only output clearly states that the bucket was not changed"
 }
 
+test_bucketpolicy_requires_msiproject_for_default_log_dir() {
+    start_test "bucketpolicy requires MSIPROJECT for the default log directory"
+
+    local output
+    if output=$(env -u MSIPROJECT -u TEST_OUTPUT_DIR "$CEPHTOOLS_BIN" bucketpolicy \
+        --bucket test-bucket --policy NONE --do_not_setpolicy 2>&1); then
+        fail_test "bucketpolicy succeeded without MSIPROJECT or a log directory"
+        return 1
+    fi
+
+    if [[ "$output" != *"MSIPROJECT not set"* ]]; then
+        fail_test "Missing MSIPROJECT did not produce an explicit error: $output"
+        return 1
+    fi
+
+    pass_test "Missing MSIPROJECT produces an explicit error"
+}
+
 test_bucketpolicy_apply_failure() {
     start_test "bucketpolicy fails when policy application fails"
 
@@ -870,6 +888,7 @@ main() {
     test_bucketpolicy_workflow
     test_bucketpolicy_makes_bucket_once
     test_bucketpolicy_generated_only_result
+    test_bucketpolicy_requires_msiproject_for_default_log_dir
     test_bucketpolicy_apply_failure
     test_bucketpolicy_rejects_unresolved_user
     test_bucketpolicy_normalizes_user_list

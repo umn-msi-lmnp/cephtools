@@ -245,7 +245,7 @@ plugin_main() {
             _log_dir="$(_resolve_group_project_root "$_group")/shared/cephtools/bucketpolicy"
         else
             # Otherwise use current user's MSIPROJECT
-            _log_dir="$MSIPROJECT/shared/cephtools/bucketpolicy"
+            _log_dir="${MSIPROJECT:?MSIPROJECT not set}/shared/cephtools/bucketpolicy"
         fi
     fi
 
