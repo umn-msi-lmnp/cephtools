@@ -1,7 +1,7 @@
 build/
 
 # Test outputs and temporary files
-tests_outputs/
+test_outputs/
 *.log
 *.tmp
 *_test_*
