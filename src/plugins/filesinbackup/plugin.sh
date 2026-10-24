@@ -79,36 +79,6 @@ plugin_main() {
     local _threads="8"
     local _md5sum=0
 
-    # __validate_bucket_name()
-    #
-    # Usage:
-    #   __validate_bucket_name <bucket_name>
-    #
-    # Description:
-    #   Validates bucket name format and removes common problematic patterns
-    __validate_bucket_name() {
-      local bucket_name="${1:-}"
-      
-      if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be empty\\n"
-      fi
-      
-      # Remove trailing slash if present
-      bucket_name="${bucket_name%/}"
-      
-      # Check if bucket name is now empty after removing slash
-      if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be just a slash. Please provide a valid bucket name.\\n"
-      fi
-      
-      # Warn about other potential issues
-      if [[ "$bucket_name" == *"/"* ]]; then
-        _warn printf "Bucket name contains slashes which may cause issues: '%s'\\n" "$bucket_name"
-      fi
-      
-      printf "%s\\n" "$bucket_name"
-    }
-
     # Parse command line arguments
     while ((${#}))
     do
@@ -127,7 +97,7 @@ plugin_main() {
             shift
             ;;
         -b|--bucket)
-            _bucket="$(__validate_bucket_name "$(__get_option_value "${__arg}" "${__val:-}")")"
+            _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
             _bucket_provided=1
             shift
             ;;
@@ -186,6 +156,7 @@ plugin_main() {
     if [[ $_bucket_provided -eq 0 ]]; then
         _bucket="data-delivery-${_group}"
     fi
+    _bucket="$(__validate_bucket_name "$_bucket")"
     
     if [[ $_disaster_recovery_dir_provided -eq 0 ]]; then
         _disaster_recovery_dir="${_project_root}/shared/disaster_recovery"

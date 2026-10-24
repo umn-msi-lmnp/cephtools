@@ -85,46 +85,6 @@ plugin_main() {
     local _log_dir=
     local _log_dir_provided=0
 
-    # __validate_bucket_name()
-    #
-    # Usage:
-    #   __validate_bucket_name <bucket_name>
-    #
-    # Description:
-    #   Validates bucket name format and removes common problematic patterns
-    __validate_bucket_name() {
-      local bucket_name="${1:-}"
-      
-      if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be empty. Check that your variable is defined (e.g., export BUCKET_NAME=my-bucket).\\n"
-      fi
-      
-      # Remove trailing slash if present
-      bucket_name="${bucket_name%/}"
-      
-      # Check if bucket name is now empty after removing slash
-      if [[ -z "$bucket_name" ]]; then
-        _exit_1 printf "Bucket name cannot be just a slash. Please provide a valid bucket name.\\n"
-      fi
-      
-      # Basic S3 bucket name validation
-      if [[ ${#bucket_name} -lt 3 ]] || [[ ${#bucket_name} -gt 63 ]]; then
-        _exit_1 printf "Bucket name must be between 3 and 63 characters long: '%s'\\n" "$bucket_name"
-      fi
-      
-      # Check for invalid characters (basic check)
-      if [[ "$bucket_name" =~ [^a-zA-Z0-9._-] ]]; then
-        _exit_1 printf "Bucket name contains invalid characters. Use only letters, numbers, dots, hyphens, and underscores: '%s'\\n" "$bucket_name"
-      fi
-      
-      # Warn about other potential issues
-      if [[ "$bucket_name" == *"/"* ]]; then
-        _warn printf "Bucket name contains slashes which may cause issues: '%s'\\n" "$bucket_name"
-      fi
-      
-      printf "%s\\n" "$bucket_name"
-    }
-
     # Parse command line arguments
     while ((${#}))
     do

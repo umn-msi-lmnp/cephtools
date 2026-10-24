@@ -364,9 +364,12 @@ __validate_bucket_name() {
     _exit_1 printf "Bucket name cannot be just a slash. Please provide a valid bucket name.\\n"
   fi
   
-  # Warn about other potential issues
-  if [[ "$bucket_name" == *"/"* ]]; then
-    _warn printf "Bucket name contains slashes which may cause issues: '%s'\\n" "$bucket_name"
+  if [[ ${#bucket_name} -lt 3 || ${#bucket_name} -gt 63 ]]; then
+    _exit_1 printf "Bucket name must be between 3 and 63 characters long: '%s'\\n" "$bucket_name"
+  fi
+
+  if [[ "$bucket_name" =~ [^a-zA-Z0-9._-] ]]; then
+    _exit_1 printf "Bucket name contains invalid characters. Use only letters, numbers, dots, hyphens, and underscores: '%s'\\n" "$bucket_name"
   fi
   
   printf "%s\\n" "$bucket_name"

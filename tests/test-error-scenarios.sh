@@ -169,6 +169,30 @@ test_bucket_name_validation() {
     else
         pass_test "Empty bucket name correctly rejected"
     fi
+
+    local bucket actual plugin
+    for bucket in abc test-bucket Abc def_ghi abc.def "$(printf '%063d' 0)"; do
+        actual=$(bash -c 'source "$1"; __validate_bucket_name "$2"' bash "$PROJECT_ROOT/src/core/common.sh" "$bucket")
+        if [[ "$actual" != "$bucket" ]]; then
+            fail_test "Valid bucket '$bucket' was changed or rejected"
+            return 1
+        fi
+    done
+    actual=$(bash -c 'source "$1"; __validate_bucket_name "$2"' bash "$PROJECT_ROOT/src/core/common.sh" 'test-bucket/')
+    if [[ "$actual" != test-bucket ]]; then
+        fail_test "Trailing slash was not normalized"
+        return 1
+    fi
+
+    for bucket in ab 'bad bucket' 'bad/bucket' 'bad:bucket' "$(printf '%064d' 0)"; do
+        for plugin in bucketpolicy vast2ceph dd2ceph filesinbackup; do
+            if "$CEPHTOOLS_BIN" "$plugin" --bucket "$bucket" >/dev/null 2>&1; then
+                fail_test "$plugin accepted invalid bucket '$bucket'"
+                return 1
+            fi
+        done
+    done
+    pass_test "All bucket-consuming plugins enforce the shared compatibility rules"
 }
 
 test_nonexistent_paths() {

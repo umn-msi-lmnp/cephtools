@@ -122,7 +122,7 @@ plugin_main() {
             shift
             ;;
         -b|--bucket)
-            _bucket="$(__validate_bucket_name "$(__get_option_value "${__arg}" "${__val:-}")")"
+            _bucket="$(__get_option_value "${__arg}" "${__val:-}")"
             shift
             ;;
         -g|--group)
@@ -180,6 +180,7 @@ plugin_main() {
     if [[ -z "${_bucket:-}" ]]; then
         _bucket="data-delivery-${_group}"
     fi
+    _bucket="$(__validate_bucket_name "$_bucket")"
     
     if [[ $_path_provided -eq 0 ]]; then
         _path="${_project_root}/data_delivery"
