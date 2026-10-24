@@ -202,20 +202,7 @@ plugin_main() {
     fi
 
     # Setup rclone credentials if using default remote
-    if [[ "$_remote" == "myremote" ]]; then
-        if command -v s3info >/dev/null 2>&1; then
-            export RCLONE_CONFIG_MYREMOTE_TYPE=s3
-            export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
-            RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID="$(s3info --keys | awk '{print $1}')"
-            RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY="$(s3info --keys | awk '{print $2}')"
-            export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY
-            export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
-            export RCLONE_CONFIG_MYREMOTE_ACL=private
-            export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
-        else
-            _exit_1 printf "s3info failed\\n"
-        fi
-    fi
+    _setup_rclone_credentials "$_remote"
 
     _verb printf "Program options used:\\n"
     _verb printf "group: %s\\n" "$_group"
@@ -349,7 +336,7 @@ _execute_dd2ceph_workflow() {
     _check_pathname_lengths "${myprefix}"
 
     # Create the transfer scripts
-    _create_dd2ceph_copy_and_verify_script "${destination}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}"
+    _create_dd2ceph_copy_and_verify_script "${destination}" "${root_path_dir}" "${myprefix_dir}" "${myprefix}" "${dry_run}" "${threads}" "${delete_empty_dirs}" "${remote}"
 
     #######################################################################
     # Print instructions to terminal
@@ -420,6 +407,7 @@ _create_dd2ceph_copy_and_verify_script() {
     local dry_run="$5"
     local threads="$6"
     local delete_empty_dirs="$7"
+    local remote="$8"
     local destination_q
     printf -v destination_q '%q' "${destination}"
 
@@ -521,15 +509,7 @@ echo ""
 umask 0007
 
 # Set up credentials for myremote
-$(if command -v s3info >/dev/null 2>&1; then
-    echo "export RCLONE_CONFIG_MYREMOTE_TYPE=s3"
-    echo "export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE"
-    echo "export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=\$(s3info --keys | awk '{print \$1}')"
-    echo "export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=\$(s3info --keys | awk '{print \$2}')"
-    echo "export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu"
-    echo "export RCLONE_CONFIG_MYREMOTE_ACL=private"
-    echo "export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph"
-fi)
+$(_render_rclone_credentials "$remote")
 
 # Change to working directory
 cd ${myprefix_dir}

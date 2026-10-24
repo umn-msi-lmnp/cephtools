@@ -59,7 +59,7 @@ CORE_FILES := src/core/common.sh \
 
 # Top-level Targets
 .PHONY: all clean plugins core docs test validate-plugins list-plugins show-config comprehensive-test
-.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e
+.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e test-credentials
 
 # Default target - build everything
 all: version core plugins validate-plugins docs
@@ -226,6 +226,9 @@ test-permissions: all test-setup
 	@echo "Running file permission handling tests..."
 	@chmod +x tests/test-permission-handling.sh
 	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/test-permission-handling.sh
+
+test-credentials:
+	@bash tests/test-rclone-credentials.sh
 
 test-vignette-e2e: all test-setup
 	@echo "Running complete vignette workflow end-to-end test..."

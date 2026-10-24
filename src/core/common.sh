@@ -297,17 +297,73 @@ _setup_aws_credentials() {
 # Description:
 #   Set up rclone credentials for temporary remote configuration
 _setup_rclone_credentials() {
-  if command -v s3info >/dev/null 2>&1; then
-    RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID="$(s3info --keys | awk '{print $1}')"
-    RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY="$(s3info --keys | awk '{print $2}')"
-    export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY
-    export RCLONE_CONFIG_MYREMOTE_TYPE="s3"
-    export RCLONE_CONFIG_MYREMOTE_PROVIDER="Ceph"
-    export RCLONE_CONFIG_MYREMOTE_ENDPOINT="https://s3.msi.umn.edu"
-    _debug printf "Rclone credentials configured\\n"
-  else
-    _warn printf "s3info command not available for rclone credential setup\\n"
-  fi
+    local remote="${1:-}"
+    local key_output
+    local access_key
+    local secret_key
+
+    if [[ "$remote" != "myremote" ]]; then
+        return 0
+    fi
+    if ! command -v s3info >/dev/null 2>&1; then
+        _exit_1 printf "s3info is required to configure the myremote rclone remote.\\n"
+    fi
+    if ! key_output="$(s3info --keys)"; then
+        _exit_1 printf "s3info --keys failed while configuring the myremote rclone remote.\\n"
+    fi
+    IFS=$' \t' read -r access_key secret_key _ <<< "$key_output"
+    if [[ -z "$access_key" || -z "$secret_key" ]]; then
+        _exit_1 printf "s3info --keys did not return an access key and secret key.\\n"
+    fi
+
+    export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+    export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+    export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID="$access_key"
+    export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY="$secret_key"
+    export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+    export RCLONE_CONFIG_MYREMOTE_ACL=private
+    export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+    _debug printf "Rclone credentials configured for myremote\\n"
+}
+
+_render_rclone_credentials() {
+    local remote="${1:-}"
+
+    if [[ "$remote" != "myremote" ]]; then
+        return 0
+    fi
+
+    cat <<'CREDENTIALS'
+# Configure the ephemeral myremote remote at job runtime.
+if ! command -v s3info >/dev/null 2>&1; then
+    echo "ERROR: s3info is required to configure myremote" >&2
+    exit 1
+fi
+if ! RCLONE_KEY_OUTPUT="$(s3info --keys)"; then
+    echo "ERROR: s3info --keys failed while configuring myremote" >&2
+    exit 1
+fi
+IFS=$' \t' read -r RCLONE_ACCESS_KEY RCLONE_SECRET_KEY _ <<< "$RCLONE_KEY_OUTPUT"
+if [[ -z "$RCLONE_ACCESS_KEY" || -z "$RCLONE_SECRET_KEY" ]]; then
+    echo "ERROR: s3info --keys returned incomplete credentials" >&2
+    exit 1
+fi
+export RCLONE_CONFIG_MYREMOTE_TYPE=s3
+export RCLONE_CONFIG_MYREMOTE_ENV_AUTH=FALSE
+export RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID="$RCLONE_ACCESS_KEY"
+export RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY="$RCLONE_SECRET_KEY"
+export RCLONE_CONFIG_MYREMOTE_ENDPOINT=s3.msi.umn.edu
+export RCLONE_CONFIG_MYREMOTE_ACL=private
+export RCLONE_CONFIG_MYREMOTE_PROVIDER=Ceph
+unset RCLONE_KEY_OUTPUT RCLONE_ACCESS_KEY RCLONE_SECRET_KEY
+CREDENTIALS
+}
+
+_write_rclone_credentials() {
+    local script="${1:-}"
+    local remote="${2:-}"
+
+    _render_rclone_credentials "$remote" >> "$script"
 }
 
 # _check_rclone_version()
