@@ -202,7 +202,6 @@ _execute_dd2dr_workflow() {
     cd "$work_dir"
 
     # Create comprehensive dd2dr SLURM script with full functionality
-    local timestamp="$(date +"%Y-%m-%d-%H%M%S")-$(date +"%N" | cut -c1-6)"
     _create_comprehensive_dd2dr_script "$group" "$data_delivery_path" "$disaster_recovery_path" "$work_dir" "$dry_run" "$threads" "$timestamp"
 
     #######################################################################

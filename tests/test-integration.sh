@@ -782,6 +782,13 @@ test_filename_consistency() {
         else
             fail_test "Inconsistent filename patterns: $filesinbackup_name vs $dd2dr_name"
         fi
+
+        local dd2dr_dir_name=$(basename "$(dirname "$dd2dr_script")")
+        if [[ "$dd2dr_dir_name" == "dd2dr_${dd2dr_name%.slurm}" ]]; then
+            pass_test "dd2dr script and working directory share a timestamp"
+        else
+            fail_test "dd2dr script and working directory timestamps differ: $dd2dr_name vs $dd2dr_dir_name"
+        fi
     else
         fail_test "Could not find SLURM scripts from both plugins"
     fi
