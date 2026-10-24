@@ -345,6 +345,40 @@ test_single_file_permissions() {
     fi
 }
 
+test_newline_filename_permissions() {
+    start_test "Permission check handles newline filenames"
+
+    local test_dir="$TEST_OUTPUT_DIR/newline_name"
+    mkdir -p "$test_dir"
+    printf 'content\n' > "$test_dir/line"$'\n'"break.txt"
+    source "$PROJECT_ROOT/src/core/common.sh"
+
+    if _check_path_permissions "$test_dir" >/dev/null 2>&1; then
+        pass_test "Permission inventory preserves newline filenames"
+    else
+        fail_test "Permission check failed for an accessible newline filename"
+    fi
+}
+
+test_find_traversal_failure() {
+    start_test "Permission check reports find traversal failure"
+
+    local test_dir="$TEST_OUTPUT_DIR/find_failure"
+    mkdir -p "$test_dir"
+    source "$PROJECT_ROOT/src/core/common.sh"
+    find() {
+        return 1
+    }
+
+    if _check_path_permissions "$test_dir" >/dev/null 2>&1; then
+        unset -f find
+        fail_test "Permission check accepted an incomplete inventory"
+    else
+        unset -f find
+        pass_test "Permission check rejects an incomplete inventory"
+    fi
+}
+
 ###############################################################################
 # Test Suite Execution
 ###############################################################################
@@ -372,6 +406,8 @@ run_permission_tests() {
     # Edge case tests
     test_empty_directory_permissions
     test_single_file_permissions
+    test_newline_filename_permissions
+    test_find_traversal_failure
     
     print_test_summary
 }

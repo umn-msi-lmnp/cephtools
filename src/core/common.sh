@@ -510,17 +510,22 @@ _validate_rclone_connectivity() {
 # Description:
 #   Performs comprehensive permission checks on the given path and its contents.
 #   Returns 0 if all checks pass, 1 if issues are found.
-_check_path_permissions() {
+_check_path_permissions() (
     local path="${1:-}"
     local issues_found=0
-    local temp_log=$(mktemp)
     local readable_count=0
     local unreadable_count=0
     local total_count=0
+    local warning_count=0
+    local traversal_failed=0
+    local item
+    local item_accessible
+    local temp_dir
+    local inventory
+    local issue_log
     
     if [[ -z "$path" ]]; then
         _exit_1 printf "Path cannot be empty for permission check\\n"
-        return 1
     fi
     
     _info printf "Checking file permissions for: %s\\n" "$path"
@@ -528,106 +533,84 @@ _check_path_permissions() {
     # Check if path exists and is accessible
     if [[ ! -e "$path" ]]; then
         _warn printf "Path does not exist: %s\\n" "$path"
-        rm -f "$temp_log"
         return 1
     fi
 
-    if [[ ! -r "$path" ]]; then
-        _warn printf "Cannot read path: %s\\n" "$path"
-        rm -f "$temp_log"
-        return 1
-    fi
-    
-    # Check if we can list directory contents
-    if [[ -d "$path" ]]; then
-        if ! ls "$path" >/dev/null 2>&1; then
-            _warn printf "Cannot list directory contents: %s\\n" "$path"
-            rm -f "$temp_log"
-            return 1
-        fi
-        _verb printf "✓ Directory is readable: %s\\n" "$path"
-    fi
-    
     # Comprehensive file permission scan
     _info printf "Scanning file permissions (this may take a while for large directories)...\\n"
-    
-    # Create temporary files for counting
-    local temp_readable=$(mktemp)
-    local temp_unreadable=$(mktemp)
-    
-    # Find all items and check permissions
-    find "$path" -type f -o -type d 2>/dev/null | while IFS= read -r item; do
-        # Check if we can read the item
-        if [[ -r "$item" ]]; then
-            echo "1" >> "$temp_readable"
-        else
-            echo "1" >> "$temp_unreadable"
-            printf "%s\\n" "$item" >> "$temp_log"
-            
-            # Show first few unreadable items immediately
-            local current_unreadable_count=$(wc -l < "$temp_unreadable" 2>/dev/null || echo "0")
-            if [[ $current_unreadable_count -le 5 ]]; then
-                _warn printf "Cannot read: %s\\n" "$item"
-            fi
-        fi
-        
-        # For directories, also check if we can list contents
-        if [[ -d "$item" && -r "$item" ]]; then
-            if ! ls "$item" >/dev/null 2>&1; then
-                printf "DIR_LIST_FAIL: %s\\n" "$item" >> "$temp_log"
-                local current_unreadable_count=$(wc -l < "$temp_unreadable" 2>/dev/null || echo "0")
-                if [[ $current_unreadable_count -le 5 ]]; then
-                    _warn printf "Cannot list directory: %s\\n" "$item"
-                fi
-            fi
-        fi
-    done
-    
-    # Count results
-    readable_count=$(wc -l < "$temp_readable" 2>/dev/null || echo "0")
-    unreadable_count=$(wc -l < "$temp_unreadable" 2>/dev/null || echo "0")
-    total_count=$((readable_count + unreadable_count))
-    
-    # Set issues_found flag
-    if [[ $unreadable_count -gt 0 ]]; then
+
+    temp_dir="$(mktemp -d)"
+    inventory="${temp_dir}/inventory"
+    issue_log="${temp_dir}/issues"
+    : > "$issue_log"
+    trap 'rm -rf "$temp_dir"' EXIT
+
+    if ! find "$path" \( -type f -o -type d \) -print0 > "$inventory"; then
+        traversal_failed=1
         issues_found=1
+        _warn printf "Could not completely traverse path: %s\\n" "$path"
     fi
-    
-    # Clean up temporary count files
-    rm -f "$temp_readable" "$temp_unreadable"
+
+    while IFS= read -r -d '' item; do
+        total_count=$((total_count + 1))
+        item_accessible=1
+
+        if [[ -d "$item" ]]; then
+            if [[ ! -r "$item" || ! -x "$item" ]] || ! ls -A -- "$item" >/dev/null 2>&1; then
+                item_accessible=0
+            fi
+        elif [[ ! -r "$item" ]]; then
+            item_accessible=0
+        fi
+
+        if [[ $item_accessible -eq 1 ]]; then
+            readable_count=$((readable_count + 1))
+        else
+            unreadable_count=$((unreadable_count + 1))
+            issues_found=1
+            printf '%s\0' "$item" >> "$issue_log"
+            if [[ $warning_count -lt 5 ]]; then
+                _warn printf "Cannot read, search, or list: %s\\n" "$item"
+                warning_count=$((warning_count + 1))
+            fi
+        fi
+    done < "$inventory"
     
     # Report results
     _info printf "Permission scan complete:\\n"
     _info printf "  Total items: %d\\n" "$total_count"
     _info printf "  Readable: %d\\n" "$readable_count"
     _info printf "  Unreadable: %d\\n" "$unreadable_count"
+    if [[ $traversal_failed -eq 1 ]]; then
+        _warn printf "  Traversal complete: no\\n"
+    fi
     
     if [[ $issues_found -eq 1 ]]; then
-        _warn printf "Found %d files/directories with permission issues\\n" "$unreadable_count"
+        _warn printf "Found %d inaccessible files/directories\\n" "$unreadable_count"
         
         # Show summary of unreadable items
-        if [[ -s "$temp_log" ]]; then
-            local log_lines=$(wc -l < "$temp_log")
+        if [[ -s "$issue_log" ]]; then
+            local log_count=0
             _warn printf "Unreadable items logged. First 10:\\n"
-            head -10 "$temp_log" | while IFS= read -r line; do
-                _warn printf "  %s\\n" "$line"
-            done
-            
-            if [[ $log_lines -gt 10 ]]; then
-                _warn printf "  ... and %d more (check logs for details)\\n" $((log_lines - 10))
+            while IFS= read -r -d '' item; do
+                log_count=$((log_count + 1))
+                if [[ $log_count -le 10 ]]; then
+                    _warn printf "  %s\\n" "$item"
+                fi
+            done < "$issue_log"
+
+            if [[ $log_count -gt 10 ]]; then
+                _warn printf "  ... and %d more\\n" $((log_count - 10))
             fi
         fi
         
         _warn printf "Permission issues detected. These files will not be transferred.\\n"
     else
-        _info printf "✓ All files and directories are readable\\n"
+        _info printf "All files and directories are accessible\\n"
     fi
-    
-    # Clean up
-    rm -f "$temp_log"
-    
+
     return $issues_found
-}
+)
 
 # _check_disk_space()
 #
