@@ -322,7 +322,7 @@ validate_slurm_script() {
     
     # Check for required SLURM directives
     assert_contains "$(cat "$script_file")" "#SBATCH" "SLURM script contains SBATCH directives"
-    assert_contains "$(cat "$script_file")" "#!/bin/bash" "SLURM script has bash shebang"
+    assert_contains "$(cat "$script_file")" "#!/usr/bin/env bash" "SLURM script has portable bash shebang"
     
     # Check that script is executable
     if [[ ! -x "$script_file" ]]; then
