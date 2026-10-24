@@ -16,11 +16,24 @@ GIT_REMOTE=""
 VERSION_SHORT=""
 
 # Computed values
-if [[ $GIT_REMOTE == git@github.com:* ]]; then
-  GIT_WEB_URL="https://github.com/$(echo $GIT_REMOTE | sed 's|git@github.com:||;s|.git||')"
-elif [[ $GIT_REMOTE == git@github.umn.edu:* ]]; then
-  GIT_WEB_URL="https://github.umn.edu/$(echo $GIT_REMOTE | sed 's|git@github.umn.edu:||;s|.git||')"
-else
-  GIT_WEB_URL=$GIT_REMOTE
-fi
+_git_remote_to_web_url() {
+    local remote="${1:-}"
+    local remote_path
+
+    case "$remote" in
+        git@github.com:*)
+            remote_path="${remote#git@github.com:}"
+            printf 'https://github.com/%s\n' "${remote_path%.git}"
+            ;;
+        git@github.umn.edu:*)
+            remote_path="${remote#git@github.umn.edu:}"
+            printf 'https://github.umn.edu/%s\n' "${remote_path%.git}"
+            ;;
+        *)
+            printf '%s\n' "$remote"
+            ;;
+    esac
+}
+
+GIT_WEB_URL="$(_git_remote_to_web_url "$GIT_REMOTE")"
 GIT_LATEST_COMMIT_LINK="${GIT_WEB_URL}/commit/${GIT_LATEST_COMMIT}"

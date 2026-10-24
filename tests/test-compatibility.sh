@@ -480,9 +480,45 @@ main() {
     # Cross-platform features
     test_path_handling
     test_temporary_directory
+    test_git_remote_urls
     
     # Print results
     print_test_summary
+}
+
+# Test quoted Git remote conversion without invoking the build substitution.
+test_git_remote_urls() {
+    start_test "Git remote URL normalization"
+
+    local remote expected actual
+    local -a remotes=(
+        'git@github.com:org/repo.git'
+        'git@github.umn.edu:org/repo.git'
+        'https://example.org/repo.git'
+        'git@github.com:org/git-tools.git'
+        'https://example.org/a b/*'
+        ''
+    )
+    local -a expected_urls=(
+        'https://github.com/org/repo'
+        'https://github.umn.edu/org/repo'
+        'https://example.org/repo.git'
+        'https://github.com/org/git-tools'
+        'https://example.org/a b/*'
+        ''
+    )
+    local index
+    for index in "${!remotes[@]}"; do
+        remote="${remotes[index]}"
+        expected="${expected_urls[index]}"
+        actual=$(bash -c 'source "$1"; _git_remote_to_web_url "$2"' bash "$PROJECT_ROOT/src/core/version.sh" "$remote")
+        if [[ "$actual" != "$expected" ]]; then
+            fail_test "Incorrect URL for '$remote': '$actual'"
+            return 1
+        fi
+    done
+
+    pass_test "SSH remotes are normalized and other remotes remain unchanged"
 }
 
 # Run tests if script is executed directly
