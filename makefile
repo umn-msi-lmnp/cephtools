@@ -55,7 +55,7 @@ PLUGIN_TARGETS := $(PLUGIN_NAMES:%=$(BUILD)/share/plugins/%/plugin.sh)
 CORE_FILES := src/core/common.sh \
               src/core/version.sh \
               src/core/plugin-loader.sh \
-              src/core/cephtools-simple.sh
+               src/core/cephtools.sh
 
 # Top-level Targets
 .PHONY: all clean plugins core docs test validate-plugins list-plugins show-config comprehensive-test
@@ -88,7 +88,7 @@ $(BUILD)/bin/cephtools: $(CORE_FILES) $(VERSION_FILE)
 	echo '' >> $@
 	cat src/core/plugin-loader.sh >> $@
 	echo '' >> $@
-	cat src/core/cephtools-simple.sh >> $@
+	cat src/core/cephtools.sh >> $@
 	chmod +x $@
 
 # Plugin system
