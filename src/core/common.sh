@@ -142,6 +142,11 @@ _verb() {
 # Utility Functions
 ###############################################################################
 
+# Read a heredoc into a caller's variable without failing at end of input.
+heredoc2var() {
+    IFS='\n' read -r -d '' "$1" || true
+}
+
 # _function_exists()
 #
 # Usage:

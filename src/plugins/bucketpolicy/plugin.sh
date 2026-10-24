@@ -445,10 +445,6 @@ _execute_bucketpolicy_workflow() {
     # Print instructions to terminal
     #######################################################################
 
-    # Use a temp function to create multi-line string without affecting exit code
-    # https://stackoverflow.com/a/8088167/2367748
-    heredoc2var(){ IFS='\n' read -r -d '' ${1} || true; }
-    
     local instructions_message
     heredoc2var instructions_message << HEREDOC
 
