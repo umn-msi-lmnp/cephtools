@@ -189,11 +189,16 @@ plugin_main() {
         _exit_1 printf "Option '--bucket' is required.\\n"
     fi
 
-    # Validate policy option
+    # Decode the preset into its independent principal and access choices.
+    local _principal_scope
+    local _access_level
     case "${_policy}" in
-        "NONE"|"GROUP_READ"|"GROUP_READ_WRITE"|"OTHERS_READ"|"LIST_READ"|"LIST_READ_WRITE")
-            # Valid policy
-            ;;
+        NONE) _principal_scope=NONE; _access_level=NONE ;;
+        GROUP_READ) _principal_scope=GROUP; _access_level=READ ;;
+        GROUP_READ_WRITE) _principal_scope=GROUP; _access_level=READ_WRITE ;;
+        LIST_READ) _principal_scope=LIST; _access_level=READ ;;
+        LIST_READ_WRITE) _principal_scope=LIST; _access_level=READ_WRITE ;;
+        OTHERS_READ) _principal_scope=OTHERS; _access_level=READ ;;
         *)
             plugin_describe
             _exit_1 printf "Invalid policy option: %s\\n" "${_policy}"
@@ -201,12 +206,12 @@ plugin_main() {
     esac
 
     # Check policy-specific requirements
-    if [[ "${_policy}" =~ ^GROUP_ ]] && [[ -z "${_group:-}" ]]; then
+    if [[ "$_principal_scope" == GROUP ]] && [[ -z "${_group:-}" ]]; then
         _group="$(id -ng)"
         _verb printf "No group specified, using current group: %s\\n" "${_group}"
     fi
 
-    if [[ "${_policy}" =~ ^LIST_ ]] && [[ -z "${_list:-}" ]]; then
+    if [[ "$_principal_scope" == LIST ]] && [[ -z "${_list:-}" ]]; then
         plugin_describe
         _exit_1 printf "LIST policies require --list option with comma-separated user list\\n"
     fi
@@ -235,7 +240,7 @@ plugin_main() {
     _verb printf "do_not_setpolicy: %s\\n" "$([[ ${_do_not_setpolicy} -eq 1 ]] && echo "yes" || echo "no")"
 
     # Execute the main workflow
-    _execute_bucketpolicy_workflow "$_bucket" "$_policy" "$_group" "$_list" "$_make_bucket" "$_do_not_setpolicy" "$_log_dir"
+    _execute_bucketpolicy_workflow "$_bucket" "$_policy" "$_group" "$_list" "$_make_bucket" "$_do_not_setpolicy" "$_log_dir" "$_principal_scope" "$_access_level"
 }
 
 ###############################################################################
@@ -295,6 +300,8 @@ _execute_bucketpolicy_workflow() {
     local _make_bucket="$5"
     local _do_not_setpolicy="$6"
     local _log_dir="$7"
+    local _principal_scope="$8"
+    local _access_level="$9"
 
     # Set umask to create files with 660 (rw-rw----) and dirs with 770 (rwxrwx---)
     umask 0007
@@ -338,11 +345,11 @@ _execute_bucketpolicy_workflow() {
     local _users_with_access
     local _all_ceph_username_string=""
 
-    if [[ "${_policy}" == "NONE" ]]
+    if [[ "$_principal_scope" == NONE ]]
     then
         _users_with_access="None (policy removed)"
         # Skip user collection for NONE policy
-    elif [[ "${_policy}" =~ ^.*GROUP.*$ ]]
+    elif [[ "$_principal_scope" == GROUP ]]
     then
         local _group_entry
         if ! _group_entry="$(getent group "${_group}")"; then
@@ -353,10 +360,10 @@ _execute_bucketpolicy_workflow() {
         local _username_ceph_msi=()
         _resolve_policy_users "${_username_msi_csv}" _username_ceph_msi _all_ceph_username_string
         _users_with_access=("${_username_ceph_msi[@]}")
-    elif [[ "${_policy}" =~ ^.*OTHERS.*$ ]]
+    elif [[ "$_principal_scope" == OTHERS ]]
     then
         _users_with_access="All MSI users and the entire public Internet"
-    elif [[ "${_policy}" =~ ^.*LIST.*$ ]]
+    elif [[ "$_principal_scope" == LIST ]]
     then
         # Read in the specific users in the list
         local _username_msi_csv
@@ -374,8 +381,7 @@ _execute_bucketpolicy_workflow() {
         _users_with_access=("${_username_ceph_msi[@]}")
     fi
 
-    # Generate the policy JSON using original structure
-    _generate_policy_json_original "$_policy" "$_bucket" "$_all_ceph_username_string" "$_bucket_policy"
+    _generate_policy_json "$_principal_scope" "$_access_level" "$_bucket" "$_all_ceph_username_string" "$_bucket_policy"
 
     # Apply the policy if requested
     local _policy_result
@@ -384,7 +390,7 @@ _execute_bucketpolicy_workflow() {
     then
         _policy_result="Policy files generated; bucket policy was not changed."
     else
-        if _contains "${_policy}" "NONE"
+        if [[ "$_principal_scope" == NONE ]]
         then
             if s3cmd delpolicy "s3://${_bucket}" &>/dev/null
             then
@@ -405,7 +411,7 @@ _execute_bucketpolicy_workflow() {
     fi
 
     # Create summary readme
-    if [[ "${_policy}" == "NONE" ]] || [[ "${_policy}" =~ ^.*OTHERS.*$ ]]; then
+    if [[ "$_principal_scope" == NONE || "$_principal_scope" == OTHERS ]]; then
         # For NONE and OTHERS policies, _users_with_access is a string, not an array
         _generate_readme "$_policy" "$_bucket" "$_curr_date_time" "$_do_not_setpolicy" "$_users_with_access" "$_bucket_policy_readme" "$_policy_result"
     else
@@ -617,129 +623,21 @@ See all "Actions" listed in the policy JSON file:
 HEREDOC
 }
 
-_generate_policy_json_original() {
-    local _policy="$1"
-    local _bucket="$2"
-    local _all_ceph_username_string="$3"
-    local _bucket_policy="$4"
+_generate_policy_json() {
+    local principal_scope="$1"
+    local access_level="$2"
+    local bucket="$3"
+    local principals="$4"
+    local policy_file="$5"
+    local actions
 
-    if _contains "${_policy}" "NONE"
-    then
-        tee "${_bucket_policy}" << HEREDOC > /dev/null
-
-HEREDOC
-    elif _contains "${_policy}" "GROUP_READ"
-    then
-        tee "${_bucket_policy}" << HEREDOC > /dev/null
-{
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Effect": "Allow",
-        "Principal": {"AWS": [
-            ${_all_ceph_username_string}
-        ]},
-        "Action": [
-            "s3:ListBucket",
-            "s3:ListBucketVersions",
-            "s3:GetBucketAcl",
-            "s3:GetBucketCORS",
-            "s3:GetBucketLocation",
-            "s3:GetBucketLogging",
-            "s3:GetBucketNotification",
-            "s3:GetBucketPolicy",
-            "s3:GetBucketTagging",
-            "s3:GetBucketVersioning",
-            "s3:GetBucketWebsite",
-            "s3:GetObjectAcl",
-            "s3:GetObject",
-            "s3:GetObjectVersionAcl",
-            "s3:GetObjectVersion"
-        ],
-        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
-        }
-    ]
-}
-
-HEREDOC
-    elif _contains "${_policy}" "GROUP_READ_WRITE"
-    then
-        tee "${_bucket_policy}" << HEREDOC > /dev/null
-{
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Effect": "Allow",
-        "Principal": {"AWS": [
-            ${_all_ceph_username_string}
-        ]},
-        "Action": [
-            "s3:*"
-        ],
-        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
-        }
-    ]
-}
-
-HEREDOC
-    elif _contains "${_policy}" "LIST_READ"
-    then
-        tee "${_bucket_policy}" << HEREDOC > /dev/null
-{
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Effect": "Allow",
-        "Principal": {"AWS": [
-            ${_all_ceph_username_string}
-        ]},
-        "Action": [
-            "s3:ListBucket",
-            "s3:ListBucketVersions",
-            "s3:GetBucketAcl",
-            "s3:GetBucketCORS",
-            "s3:GetBucketLocation",
-            "s3:GetBucketLogging",
-            "s3:GetBucketNotification",
-            "s3:GetBucketPolicy",
-            "s3:GetBucketTagging",
-            "s3:GetBucketVersioning",
-            "s3:GetBucketWebsite",
-            "s3:GetObjectAcl",
-            "s3:GetObject",
-            "s3:GetObjectVersionAcl",
-            "s3:GetObjectVersion"
-        ],
-        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
-        }
-    ]
-}
-
-HEREDOC
-    elif _contains "${_policy}" "LIST_READ_WRITE"
-    then
-        tee "${_bucket_policy}" << HEREDOC > /dev/null
-{
-    "Version": "2012-10-17",
-    "Statement": [
-    {
-        "Effect": "Allow",
-        "Principal": {"AWS": [
-            ${_all_ceph_username_string}
-        ]},
-        "Action": [
-            "s3:*"
-        ],
-        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
-        }
-    ]
-}
-
-
-HEREDOC
-    elif _contains "${_policy}" "OTHERS_READ"
-    then
-        tee "${_bucket_policy}" << HEREDOC > /dev/null
+    case "$principal_scope" in
+        NONE)
+            printf '\n' > "$policy_file"
+            return
+            ;;
+        OTHERS)
+            tee "$policy_file" << HEREDOC > /dev/null
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -751,13 +649,63 @@ HEREDOC
             "s3:GetObject",
             "s3:GetObjectVersion"
         ],
-        "Resource": ["arn:aws:s3:::${_bucket}/*", "arn:aws:s3:::${_bucket}"]
+        "Resource": ["arn:aws:s3:::${bucket}/*", "arn:aws:s3:::${bucket}"]
         }
     ]
 }
 
 HEREDOC
-    else
-        _exit_1 printf "The '--policy' option is not recognized."
-    fi
+            return
+            ;;
+        GROUP|LIST)
+            ;;
+        *)
+            _exit_1 printf "Unrecognized policy principal scope: %s\n" "$principal_scope"
+            ;;
+    esac
+
+    case "$access_level" in
+        READ)
+            actions='"s3:ListBucket",
+            "s3:ListBucketVersions",
+            "s3:GetBucketAcl",
+            "s3:GetBucketCORS",
+            "s3:GetBucketLocation",
+            "s3:GetBucketLogging",
+            "s3:GetBucketNotification",
+            "s3:GetBucketPolicy",
+            "s3:GetBucketTagging",
+            "s3:GetBucketVersioning",
+            "s3:GetBucketWebsite",
+            "s3:GetObjectAcl",
+            "s3:GetObject",
+            "s3:GetObjectVersionAcl",
+            "s3:GetObjectVersion"'
+            ;;
+        READ_WRITE)
+            actions='"s3:*"'
+            ;;
+        *)
+            _exit_1 printf "Unrecognized policy access level: %s\n" "$access_level"
+            ;;
+    esac
+
+    tee "$policy_file" << HEREDOC > /dev/null
+{
+    "Version": "2012-10-17",
+    "Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {"AWS": [
+            ${principals}
+        ]},
+        "Action": [
+            ${actions}
+        ],
+        "Resource": ["arn:aws:s3:::${bucket}/*", "arn:aws:s3:::${bucket}"]
+        }
+    ]
+}
+
+HEREDOC
 }

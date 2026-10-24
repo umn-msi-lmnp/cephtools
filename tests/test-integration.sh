@@ -555,6 +555,70 @@ test_bucketpolicy_workflow() {
     fi
 }
 
+test_bucketpolicy_preset_semantics() {
+    start_test "bucketpolicy presets combine principal scope and access level"
+
+    setup_full_mock_environment
+
+    local policy_dir="$TEST_OUTPUT_DIR/bucketpolicy_presets"
+    local preset output_dir group_read group_read_write list_read list_read_write others_read none_policy
+    local -a options=()
+    mkdir -p "$policy_dir"
+
+    for preset in GROUP_READ GROUP_READ_WRITE LIST_READ LIST_READ_WRITE OTHERS_READ NONE; do
+        output_dir="$policy_dir/$preset"
+        mkdir -p "$output_dir"
+        options=()
+        case "$preset" in
+            GROUP_*) options=(--group testgroup) ;;
+            LIST_*) options=(--list user1,user2,user3) ;;
+        esac
+
+        if ! "$CEPHTOOLS_BIN" bucketpolicy --bucket test-bucket --policy "$preset" \
+            "${options[@]}" --do_not_setpolicy --log_dir "$output_dir" >/dev/null 2>&1; then
+            fail_test "Failed to generate $preset policy"
+            return 1
+        fi
+        if ! grep -qF "policy=$preset" "$output_dir/test-bucket.bucket_policy_readme.md"; then
+            fail_test "The $preset preset name was not preserved in the README"
+            return 1
+        fi
+    done
+
+    group_read="$policy_dir/GROUP_READ/test-bucket.bucket_policy.json"
+    group_read_write="$policy_dir/GROUP_READ_WRITE/test-bucket.bucket_policy.json"
+    list_read="$policy_dir/LIST_READ/test-bucket.bucket_policy.json"
+    list_read_write="$policy_dir/LIST_READ_WRITE/test-bucket.bucket_policy.json"
+    others_read="$policy_dir/OTHERS_READ/test-bucket.bucket_policy.json"
+    none_policy="$policy_dir/NONE/test-bucket.bucket_policy.json"
+
+    if ! cmp -s "$group_read" "$list_read" || ! cmp -s "$group_read_write" "$list_read_write"; then
+        fail_test "Group and list policies differ for the same users and access level"
+        return 1
+    fi
+    if ! grep -qF '"s3:ListBucket"' "$group_read" ||
+        ! grep -qF '"s3:GetObject"' "$group_read" ||
+        grep -qF '"s3:*"' "$group_read" ||
+        ! grep -qF '"s3:*"' "$group_read_write" ||
+        ! grep -qF 'arn:aws:iam:::user/uid=user1' "$group_read"; then
+        fail_test "Named-user READ and READ_WRITE actions or principals are incorrect"
+        return 1
+    fi
+    if ! grep -qF '"Principal": "*"' "$others_read" ||
+        ! grep -qF '"s3:GetObject"' "$others_read" ||
+        grep -qF '"s3:ListBucket"' "$others_read" ||
+        grep -qF '"s3:*"' "$others_read"; then
+        fail_test "OTHERS_READ grants more than public object-read access"
+        return 1
+    fi
+    if [[ -n "$(tr -d '[:space:]' < "$none_policy")" ]]; then
+        fail_test "NONE should generate an empty policy file"
+        return 1
+    fi
+
+    pass_test "All six presets preserve their names and expected permissions"
+}
+
 test_bucketpolicy_makes_bucket_once() {
     start_test "bucketpolicy creates a missing bucket once"
 
@@ -887,6 +951,7 @@ main() {
     
     # bucketpolicy tests
     test_bucketpolicy_workflow
+    test_bucketpolicy_preset_semantics
     test_bucketpolicy_makes_bucket_once
     test_bucketpolicy_generated_only_result
     test_bucketpolicy_requires_msiproject_for_default_log_dir
