@@ -11,6 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
 BUILD_DIR="${PROJECT_ROOT}/build"
 CEPHTOOLS_BIN="${BUILD_DIR}/bin/cephtools"
+COMPLETION_FILE="${BUILD_DIR}/share/bash-completion/completions/cephtools"
 
 echo "Running plugin tests..."
 echo "Project root: ${PROJECT_ROOT}"
@@ -68,6 +69,82 @@ while IFS= read -r plugin; do
     echo "  PASS: Help works for plugin: ${plugin}"
   fi
 done < <("${CEPHTOOLS_BIN}" subcommands --raw)
+
+# Test 7: Bash completion
+echo "Testing Bash completion..."
+if [[ ! -f "${COMPLETION_FILE}" ]]; then
+  echo "ERROR: Bash completion file not found"
+  exit 1
+fi
+
+if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+  completion_test_dir=$(mktemp --directory "${TMPDIR:-/tmp}/cephtools-completion.XXXXXX")
+  trap 'rm -rf "${completion_test_dir}"' EXIT
+  mkdir -p "${completion_test_dir}/completions"
+  ln -s "${COMPLETION_FILE}" "${completion_test_dir}/completions/cephtools"
+
+  if ! BASH_COMPLETION_USER_DIR="${completion_test_dir}" bash --noprofile --norc -c '
+    source /usr/share/bash-completion/bash_completion
+    __load_completion cephtools
+    complete -p cephtools | grep -q -- "complete -F _cephtools cephtools"
+
+    COMP_WORDS=(cephtools buc)
+    COMP_CWORD=1
+    _cephtools
+    [[ " ${COMPREPLY[*]} " == *" bucketpolicy "* ]]
+  '; then
+    echo "ERROR: Bash did not load completion from the standard per-user location"
+    exit 1
+  fi
+else
+  echo "WARNING: bash-completion is unavailable; skipping lazy-loading test"
+fi
+
+# shellcheck source=/dev/null
+source "${COMPLETION_FILE}"
+
+COMP_WORDS=(cephtools buc)
+COMP_CWORD=1
+_cephtools
+if [[ " ${COMPREPLY[*]} " != *" bucketpolicy "* ]]; then
+  echo "ERROR: Subcommand completion did not offer bucketpolicy"
+  exit 1
+fi
+
+COMP_WORDS=(cephtools bucketpolicy --p)
+COMP_CWORD=2
+_cephtools
+if [[ " ${COMPREPLY[*]} " != *" --policy "* ]]; then
+  echo "ERROR: Option completion did not offer --policy"
+  exit 1
+fi
+
+COMP_WORDS=(cephtools bucketpolicy --policy GROUP_)
+COMP_CWORD=3
+_cephtools
+if [[ " ${COMPREPLY[*]} " != *" GROUP_READ "* ]] || \
+   [[ " ${COMPREPLY[*]} " != *" GROUP_READ_WRITE "* ]]; then
+  echo "ERROR: Policy value completion did not offer GROUP policies"
+  exit 1
+fi
+
+COMP_WORDS=(cephtools vast2ceph --path "${PROJECT_ROOT}/s")
+COMP_CWORD=3
+_cephtools
+if [[ " ${COMPREPLY[*]} " != *" ${PROJECT_ROOT}/src "* ]]; then
+  echo "ERROR: Directory completion did not offer src"
+  exit 1
+fi
+
+COMP_WORDS=(cephtools vast2ceph -p "${PROJECT_ROOT}/s")
+COMP_CWORD=3
+_cephtools
+if [[ " ${COMPREPLY[*]} " != *" ${PROJECT_ROOT}/src "* ]]; then
+  echo "ERROR: Short path option completion did not offer src"
+  exit 1
+fi
+
+echo "PASS: Bash completion works"
 
 echo ""
 echo "All tests passed!"

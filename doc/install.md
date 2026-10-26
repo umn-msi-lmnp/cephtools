@@ -4,11 +4,10 @@
 
 ## Introduction
 
-There are three ways to install and use cephtools:
+There are two ways to install and use cephtools:
 
 1. **Download a pre-built release** (Recommended) - Download a release tarball or zip file from GitHub, extract it, and use it immediately. No build process required.
 2. **Clone the repo and build** - For developers or users who need specific commits or want to customize the tool.
-3. **Load a module** - Only available for members of the `lmnp` MSI project.
 
 Cephtools is not installed in a common location that is accessible to all MSI users like MSI-supported software. Choose the installation method that best fits your needs.
 
@@ -19,7 +18,7 @@ This is the easiest way to install cephtools. Pre-built releases are available o
 ### Download a Release
 
 1. Visit the [releases page](https://github.com/umn-msi-lmnp/cephtools/releases) to see all available versions
-2. Download either the `.tar.gz` or `.zip` file for your desired version
+2. Download either the `.tar.gz` file for your desired version
 3. Extract the archive:
 
 ```bash
@@ -29,9 +28,6 @@ wget "https://github.com/umn-msi-lmnp/cephtools/releases/download/${CEPHTOOLS_VE
 
 # Extract the tar.gz file
 tar -xzf "cephtools-${CEPHTOOLS_VERSION}.tar.gz"
-
-# Or, for zip files
-# unzip "cephtools-${CEPHTOOLS_VERSION}.zip"
 ```
 
 ### Update your PATH variable
@@ -41,24 +37,30 @@ Add the cephtools `bin` directory to your PATH:
 ```bash
 # If you extracted in your current directory
 export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
-
-# Or specify the full path
-export PATH="/path/to/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
 ```
 
 To make this permanent, add the export command to your `~/.bashrc` file:
 
 ```bash
-echo 'export CEPHTOOLS_VERSION=@SEMANTIC_VERSION@' >> ~/.bashrc
-echo 'export PATH="/path/to/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"' >> ~/.bashrc
+echo 'export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"' >> ~/.bashrc
 source ~/.bashrc
+```
+
+Enable Bash completion:
+
+```bash
+CEPHTOOLS_BIN="$(command -v cephtools)"
+CEPHTOOLS_ROOT="$(cd "$(dirname "${CEPHTOOLS_BIN}")/.." && pwd)"
+
+mkdir -p "${HOME}/.local/share/bash-completion/completions"
+ln -sfn "${CEPHTOOLS_ROOT}/share/bash-completion/completions/cephtools" "${HOME}/.local/share/bash-completion/completions/cephtools"
+source "${HOME}/.local/share/bash-completion/completions/cephtools"
 ```
 
 ### Verify installation
 
 ```bash
 cephtools --help
-cephtools --version
 ```
 
 ## Method 2: Clone the Repo and Build
@@ -72,8 +74,11 @@ This method is recommended for developers or users who need access to specific c
 
 ```bash
 git clone git@github.com:umn-msi-lmnp/cephtools.git
-# OR, if you do not have ssh key set up, try the https approach:
+
+# Or, if you do not have ssh key set up, try the https approach:
 # git clone https://github.com/umn-msi-lmnp/cephtools.git
+
+# Change into the source dir
 cd cephtools
 ```
 
@@ -116,37 +121,16 @@ Update your PATH variable to include the cephtools bin directory:
 export PATH="${PWD}/build/bin:${PATH}"
 
 # Or, if you specified a PREFIX
-export PATH="${PREFIX}/bin:${PATH}"
+export PATH="PREFIX/bin:${PATH}"
 ```
 
-If you are still located in the `cephtools` directory and you built the tool with default build prefix (`./build`), you can use the modulefile:
+Enable Bash completion:
 
 ```bash
-module load ./modulefile
-module unload ./modulefile
+CEPHTOOLS_BIN="$(command -v cephtools)"
+CEPHTOOLS_ROOT="$(cd "$(dirname "${CEPHTOOLS_BIN}")/.." && pwd)"
+
+mkdir -p "${HOME}/.local/share/bash-completion/completions"
+ln -sfn "${CEPHTOOLS_ROOT}/share/bash-completion/completions/cephtools" "${HOME}/.local/share/bash-completion/completions/cephtools"
+source "${HOME}/.local/share/bash-completion/completions/cephtools"
 ```
-
-
-
-
-## Method 3: Load a Module (`lmnp` MSI project members only)
-
-Cephtools is installed as a module inside the `lmnp` MSI project space. Only members of this project can access files in that project. Therefore, this approach will only work for lmnp project members.
-
-### Load the default version
-
-```bash
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools
-```
-
-### Check available versions or load a specific version
-
-```bash
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module avail cephtools
-
-MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH" module load cephtools/@SEMANTIC_VERSION@
-```
-
-> Technical note:
->
-> If you include `MODULEPATH="/projects/standard/lmnp/knut0297/software/modulesfiles:$MODULEPATH"` before running the `module` commands (e.g. `avail`, `load`, etc.), the `MODULEPATH` variable will be prepended to include this personal modulefile path, in addition to the default MSI modulefile paths normally included in the `MODULEPATH` variable. Doing this will not export or permanently change your `MODULEPATH` variable -- it only changes your `MODULEPATH` variable for the single `module` command, run on the same line.

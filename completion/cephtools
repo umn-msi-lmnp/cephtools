@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+
+_cephtools_complete_words() {
+    local words="$1"
+    local current="$2"
+
+    mapfile -t COMPREPLY < <(compgen -W "$words" -- "$current")
+}
+
+_cephtools_complete_directories() {
+    local current="$1"
+
+    mapfile -t COMPREPLY < <(compgen -d -- "$current")
+    compopt -o filenames 2>/dev/null || true
+}
+
+_cephtools_complete_files() {
+    local current="$1"
+
+    mapfile -t COMPREPLY < <(compgen -f -- "$current")
+    compopt -o filenames 2>/dev/null || true
+}
+
+_cephtools() {
+    local current="${COMP_WORDS[COMP_CWORD]:-}"
+    local previous="${COMP_WORDS[COMP_CWORD - 1]:-}"
+    local subcommand="${COMP_WORDS[1]:-}"
+    local commands="help version subcommands bucketpolicy dd2ceph dd2dr filesinbackup vast2ceph"
+    local options=
+
+    COMPREPLY=()
+
+    if ((COMP_CWORD == 1)); then
+        _cephtools_complete_words "$commands -h --help --version" "$current"
+        return
+    fi
+
+    if [[ "$subcommand" == help ]]; then
+        if ((COMP_CWORD == 2)); then
+            _cephtools_complete_words "bucketpolicy dd2ceph dd2dr filesinbackup vast2ceph" "$current"
+        fi
+        return
+    fi
+
+    if [[ "$subcommand" == subcommands ]]; then
+        if ((COMP_CWORD == 2)); then
+            _cephtools_complete_words "--raw" "$current"
+        fi
+        return
+    fi
+
+    if [[ "$subcommand" == bucketpolicy && "$previous" =~ ^(-p|--policy)$ ]]; then
+        _cephtools_complete_words \
+            "NONE GROUP_READ GROUP_READ_WRITE OTHERS_READ LIST_READ LIST_READ_WRITE" \
+            "$current"
+        return
+    fi
+
+    if [[ "$subcommand" == bucketpolicy && "$previous" =~ ^(-l|--list)$ ]]; then
+        _cephtools_complete_files "$current"
+        return
+    fi
+
+    case "$previous" in
+        -p|--path|-l|--log_dir|-d|--disaster_recovery_dir)
+            if [[ "$previous" == -d && "$subcommand" != filesinbackup ]]; then
+                return
+            fi
+            _cephtools_complete_directories "$current"
+            return
+            ;;
+    esac
+
+    local word
+    for word in "${COMP_WORDS[@]:2}"; do
+        if [[ "$word" == --endopts ]]; then
+            return
+        fi
+    done
+
+    case "$subcommand" in
+        bucketpolicy)
+            options="-b --bucket -m --make_bucket -p --policy -g --group -n --do_not_setpolicy -l --list --log_dir -v --verbose --endopts"
+            ;;
+        dd2ceph)
+            options="-r --remote -g --group -b --bucket -p --path -o --destination_path -l --log_dir -d --dry_run -e --delete_empty_dirs -v --verbose -t --threads --endopts"
+            ;;
+        dd2dr)
+            options="-g --group -l --log_dir -d --dry_run -v --verbose -t --threads --endopts"
+            ;;
+        filesinbackup)
+            options="-r --remote -b --bucket -g --group -d --disaster_recovery_dir -l --log_dir -v --verbose -t --threads -m --md5sum --endopts"
+            ;;
+        vast2ceph)
+            options="-r --remote -b --bucket -p --path -o --destination_path -l --log_dir -d --dry_run -e --delete_empty_dirs -t --threads -v --verbose --endopts"
+            ;;
+        *)
+            return
+            ;;
+    esac
+
+    if [[ -z "$current" || "$current" == -* ]]; then
+        _cephtools_complete_words "$options" "$current"
+    fi
+}
+
+complete -F _cephtools cephtools

@@ -58,11 +58,11 @@ CORE_FILES := src/core/common.sh \
                src/core/cephtools.sh
 
 # Top-level Targets
-.PHONY: all clean plugins core docs test validate-plugins list-plugins show-config comprehensive-test
+.PHONY: all clean plugins core completion docs test validate-plugins list-plugins show-config comprehensive-test
 .PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e test-credentials test-ascii
 
 # Default target - build everything
-all: version core plugins validate-plugins docs
+all: version core plugins validate-plugins completion docs
 
 # Core framework with proper separation
 core: $(BUILD)/bin/cephtools
@@ -106,6 +106,13 @@ $(BUILD)/share/plugins/%/plugin.sh: src/plugins/%/plugin.sh $(VERSION_FILE)
 	    -e 's|@GIT_WEB_URL@|$(GIT_WEB_URL)|g' \
 	    $< > $@
 	chmod +x $@
+
+# Bash completion
+completion: $(BUILD)/share/bash-completion/completions/cephtools
+
+$(BUILD)/share/bash-completion/completions/cephtools: completion/cephtools
+	mkdir -p $(dir $@)
+	cp $< $@
 
 # Documentation
 docs:
