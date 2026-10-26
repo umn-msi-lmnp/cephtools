@@ -46,7 +46,7 @@ echo 'export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"' >> ~/.bas
 source ~/.bashrc
 ```
 
-Enable Bash completion:
+Enable Bash command line completion for cephtools commands and options:
 
 ```bash
 CEPHTOOLS_BIN="$(command -v cephtools)"
@@ -124,7 +124,7 @@ export PATH="${PWD}/build/bin:${PATH}"
 export PATH="PREFIX/bin:${PATH}"
 ```
 
-Enable Bash completion:
+Enable Bash command line completion for cephtools commands and options:
 
 ```bash
 CEPHTOOLS_BIN="$(command -v cephtools)"
