@@ -6,7 +6,7 @@
 
 There are two ways to install and use cephtools:
 
-1. **Download a pre-built release** (Recommended) - Download a release tarball or zip file from GitHub, extract it, and use it immediately. No build process required.
+1. **Download a pre-built release** (Recommended) - Download a release tarball from GitHub, extract it, and use it immediately. No build process required.
 2. **Clone the repo and build** - For developers or users who need specific commits or want to customize the tool.
 
 Cephtools is not installed in a common location that is accessible to all MSI users like MSI-supported software. Choose the installation method that best fits your needs.
@@ -18,7 +18,7 @@ This is the easiest way to install cephtools. Pre-built releases are available o
 ### Download a Release
 
 1. Visit the [releases page](https://github.com/umn-msi-lmnp/cephtools/releases) to see all available versions
-2. Download either the `.tar.gz` file for your desired version
+2. Download the `.tar.gz` file for your desired version
 3. Extract the archive:
 
 ```bash
@@ -42,7 +42,7 @@ export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
 To make this permanent, add the export command to your `~/.bashrc` file:
 
 ```bash
-echo 'export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"' >> ~/.bashrc
+echo "export PATH=\"${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:\${PATH}\"" >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -121,7 +121,14 @@ Update your PATH variable to include the cephtools bin directory:
 export PATH="${PWD}/build/bin:${PATH}"
 
 # Or, if you specified a PREFIX
-export PATH="PREFIX/bin:${PATH}"
+export PATH="/my/fav/build/dir/bin:${PATH}"
+```
+
+To make the default build path permanent, add the export command to your `~/.bashrc` file:
+
+```bash
+echo "export PATH=\"${PWD}/build/bin:\${PATH}\"" >> ~/.bashrc
+source ~/.bashrc
 ```
 
 Enable Bash command line completion for cephtools commands and options:
