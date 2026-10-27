@@ -167,6 +167,19 @@ test_s3cmd_bucket_creation() {
 
 test_module_system() {
     start_test "Module system availability"
+
+    if ! type module >/dev/null 2>&1; then
+        for init_script in \
+            /etc/profile.d/modules.sh \
+            /usr/share/Modules/init/bash \
+            /usr/share/modules/init/bash; do
+            if [[ -f "${init_script}" ]]; then
+                # shellcheck source=/dev/null
+                source "${init_script}"
+                break
+            fi
+        done
+    fi
     
     assert_command_exists "module"
     

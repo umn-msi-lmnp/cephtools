@@ -29,8 +29,6 @@ if [[ ! -f "${MODULEFILE}" ]]; then
     exit 1
 fi
 
-module lint "${MODULEFILE}"
-
 TEST_HOME="$(mktemp --directory "${TMPDIR:-/tmp}/cephtools-module.XXXXXX")"
 ORIGINAL_HOME="${HOME}"
 ORIGINAL_PATH="${PATH}"

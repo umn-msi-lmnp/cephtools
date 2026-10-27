@@ -98,8 +98,8 @@ test_path_construction_fix() {
             return 1
         fi
     else
-        fail_test "vast2ceph command failed"
         echo "Output: $output"
+        fail_test "vast2ceph command failed"
         return 1
     fi
 }
@@ -293,6 +293,12 @@ main() {
     
     # Initialize tests with framework (this sets up TEST_OUTPUT_DIR)
     init_tests "$TEST_NAME"
+
+    if [[ "$(type -t module 2>/dev/null || true)" == "function" ]]; then
+        unset -f module
+    fi
+    create_mock_command "module" "" 0
+    create_mock_command "rclone" "rclone v1.71.0" 0
     
     # Create mock s3info command
     create_mock_command "s3info" "test_access_key test_secret_key" 0

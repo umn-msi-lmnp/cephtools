@@ -450,6 +450,10 @@ test_concurrent_operations() {
     start_test "Concurrent operation scenarios"
     
     setup_mock_cephtools
+    if [[ "$(type -t module 2>/dev/null || true)" == "function" ]]; then
+        unset -f module
+    fi
+    create_mock_command "module" "" 0
     create_mock_command "rclone" "" 0
     create_mock_command "s3info" "AKIA1234567890 abcdef1234567890abcdef1234567890abcdef12" 0
     
@@ -465,10 +469,10 @@ test_concurrent_operations() {
     local pid2=$!
     
     # Wait for both to complete
-    wait $pid1
-    local exit1=$?
-    wait $pid2  
-    local exit2=$?
+    local exit1=0
+    local exit2=0
+    wait "$pid1" || exit1=$?
+    wait "$pid2" || exit2=$?
     
     # At least one should succeed, or both should handle concurrency appropriately
     if [[ $exit1 -eq 0 ]] || [[ $exit2 -eq 0 ]]; then
