@@ -32,8 +32,6 @@ fi
 TEST_HOME="$(mktemp --directory "${TMPDIR:-/tmp}/cephtools-module.XXXXXX")"
 ORIGINAL_HOME="${HOME}"
 ORIGINAL_PATH="${PATH}"
-EXPECTED_VERSION="$("${BUILD_DIR}/bin/cephtools" version)"
-LOAD_OUTPUT_FILE="${TEST_HOME}/module-load-output"
 module_loaded=false
 
 cleanup() {
@@ -47,15 +45,8 @@ cleanup() {
 trap cleanup EXIT
 
 HOME="${TEST_HOME}"
-module load "${MODULEFILE}" >"${LOAD_OUTPUT_FILE}" 2>&1
+module load "${MODULEFILE}"
 module_loaded=true
-
-LOAD_OUTPUT="$(<"${LOAD_OUTPUT_FILE}")"
-EXPECTED_MESSAGE="cephtools version ${EXPECTED_VERSION} is loaded. Use tab completion to see options: 'cephtools <TAB><TAB>'"
-if [[ "${LOAD_OUTPUT}" != *"${EXPECTED_MESSAGE}"* ]]; then
-    printf 'ERROR: module load did not print the expected message\n' >&2
-    exit 1
-fi
 
 if [[ "$(command -v cephtools)" != "${BUILD_DIR}/bin/cephtools" ]]; then
     printf 'ERROR: modulefile did not expose the built cephtools executable\n' >&2

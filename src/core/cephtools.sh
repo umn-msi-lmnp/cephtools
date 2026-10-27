@@ -32,6 +32,8 @@ help() {
     printf "Options:\n"
     printf "  -h --help  Display this help information.\n"
     printf "  --version  Display version information.\n\n"
+    printf "Tab completion:\n"
+    printf "  Use tab completion to see options: 'cephtools <TAB><TAB>'\n\n"
     printf "Help:\n"
     printf "  %s help [<subcommand>]\n\n" "${_ME}"
     printf "Available subcommands:\n"

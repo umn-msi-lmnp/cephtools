@@ -39,7 +39,7 @@ cd "cephtools-${CEPHTOOLS_VERSION}"
 module load ./modulefile
 ```
 
-The modulefile adds the cephtools `bin` directory to `PATH` and enables Bash command completion.
+The modulefile adds the cephtools `bin` directory to `PATH` and enables Bash command completion. Use tab completion to see options: `cephtools <TAB><TAB>`.
 
 To load cephtools automatically in future Bash sessions, add a `module load` command containing the absolute modulefile path to `~/.bashrc`:
 
@@ -117,7 +117,9 @@ module load ./build/modulefile
 module load /my/fav/build/dir/modulefile
 ```
 
-The modulefile updates `PATH` and enables Bash command completion. To load the default build automatically in future Bash sessions, add its absolute modulefile path to `~/.bashrc`:
+The modulefile updates `PATH` and enables Bash command completion. Use tab completion to see options: `cephtools <TAB><TAB>`.
+
+To load the default build automatically in future Bash sessions, add its absolute modulefile path to `~/.bashrc`:
 
 ```bash
 CEPHTOOLS_ROOT="$(cd build && pwd -P)"
