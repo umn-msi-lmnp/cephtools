@@ -70,6 +70,13 @@ run_basic_tests() {
         "Basic framework functionality and plugin discovery"
 }
 
+run_modulefile_tests() {
+    run_test_suite \
+        "Modulefile Tests" \
+        "$SCRIPT_DIR/test-modulefile.sh" \
+        "Environment Modules PATH and Bash completion integration"
+}
+
 run_dependency_tests() {
     run_test_suite \
         "Dependency Validation" \
@@ -206,6 +213,7 @@ show_usage() {
     echo
     echo "Test suites (run all if none specified):"
     echo "  basic             Basic plugin functionality tests"
+    echo "  modulefile        Environment Modules integration tests"
     echo "  dependencies      Dependency validation tests"
     echo "  integration       Integration tests with mocks"
     echo "  errors            Error scenario tests"
@@ -253,7 +261,7 @@ main() {
                 skip_build=true
                 shift
                 ;;
-            basic|dependencies|integration|errors|compatibility|real-s3|empty-dirs|permissions|path-fix|e2e-real|vignette-e2e)
+            basic|modulefile|dependencies|integration|errors|compatibility|real-s3|empty-dirs|permissions|path-fix|e2e-real|vignette-e2e)
                 specific_tests+=("$1")
                 shift
                 ;;
@@ -303,13 +311,16 @@ main() {
     
     # Run specified tests or all tests
     if [[ ${#specific_tests[@]} -eq 0 ]]; then
-        specific_tests=(basic dependencies integration errors compatibility empty-dirs permissions path-fix real-s3)
+        specific_tests=(basic modulefile dependencies integration errors compatibility empty-dirs permissions path-fix real-s3)
     fi
     
     for test_name in "${specific_tests[@]}"; do
         case $test_name in
             basic)
                 run_basic_tests || overall_success=false
+                ;;
+            modulefile)
+                run_modulefile_tests || overall_success=false
                 ;;
             dependencies)
                 run_dependency_tests || overall_success=false

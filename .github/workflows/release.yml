@@ -5,18 +5,42 @@ on:
     tags:
       - '*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate release version
+        run: |
+          set -euo pipefail
+          source version.txt
+          if [[ "${GITHUB_REF_NAME}" != "${SEMANTIC_VERSION}" ]]; then
+              printf 'ERROR: release tag %s does not match version %s\n' "${GITHUB_REF_NAME}" "${SEMANTIC_VERSION}" >&2
+              exit 1
+          fi
+
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes environment-modules
+
       - name: Run make
         run: make
 
+      - name: Run tests
+        run: |
+          make test-ascii
+          bash tests/run-all-tests.sh --skip-build \
+              basic modulefile dependencies integration errors compatibility \
+              empty-dirs permissions path-fix
+
       - name: Check for unresolved placeholders
         run: |
-          if grep -r "@SEMANTIC_VERSION@\|@VERSION_SHORT@\|@BUILD_DATE@" build/doc/ build/bin/ build/share/; then
+          if grep --recursive --line-number --extended-regexp '@[A-Z][A-Z0-9_]*@' build; then
             echo "ERROR: Unresolved version placeholders found in build output"
             exit 1
           fi
@@ -24,23 +48,40 @@ jobs:
 
       - name: Package artifacts
         run: |
-          mkdir -p release-package/cephtools-${{ github.ref_name }}
-          cp -r build/bin release-package/cephtools-${{ github.ref_name }}/
-          cp -r build/share release-package/cephtools-${{ github.ref_name }}/
-          cp build/version.txt release-package/cephtools-${{ github.ref_name }}/
-          cp license.txt release-package/cephtools-${{ github.ref_name }}/
-          cp readme.md release-package/cephtools-${{ github.ref_name }}/
-          cp -r build/doc release-package/cephtools-${{ github.ref_name }}/doc
+          set -euo pipefail
+          package_dir="release-package/cephtools-${GITHUB_REF_NAME}"
+          mkdir -p release-package
+          cp --recursive build "${package_dir}"
+
+          for required_path in \
+              bin/cephtools \
+              doc/install.md \
+              share/bash-completion/completions/cephtools \
+              share/plugins \
+              modulefile \
+              version.txt \
+              readme.md \
+              license.txt; do
+              test -e "${package_dir}/${required_path}"
+          done
+
           cd release-package
-          tar -czf ../cephtools-${{ github.ref_name }}.tar.gz cephtools-${{ github.ref_name }}/
-          zip -r ../cephtools-${{ github.ref_name }}.zip cephtools-${{ github.ref_name }}/
+          tar -czf "../cephtools-${GITHUB_REF_NAME}.tar.gz" "cephtools-${GITHUB_REF_NAME}/"
+          zip -r "../cephtools-${GITHUB_REF_NAME}.zip" "cephtools-${GITHUB_REF_NAME}/"
+
+      - name: Verify release archives
+        run: |
+          set -euo pipefail
+          package_root="cephtools-${GITHUB_REF_NAME}"
+          tar -tzf "${package_root}.tar.gz" | grep --fixed-strings --line-regexp "${package_root}/modulefile" >/dev/null
+          unzip -Z1 "${package_root}.zip" | grep --fixed-strings --line-regexp "${package_root}/modulefile" >/dev/null
 
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ github.ref_name }} \
-            cephtools-${{ github.ref_name }}.tar.gz \
-            cephtools-${{ github.ref_name }}.zip \
-            --title "${{ github.ref_name }}" \
-            --notes "Release ${{ github.ref_name }}"
+          gh release create "${GITHUB_REF_NAME}" \
+            "cephtools-${GITHUB_REF_NAME}.tar.gz" \
+            "cephtools-${GITHUB_REF_NAME}.zip" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes "Release ${GITHUB_REF_NAME}"

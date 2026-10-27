@@ -19,7 +19,13 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ Plugin discovery mechanism
 - ✅ Individual plugin help display
 
-#### 2. Dependency Validation (`test-dependencies.sh`)
+#### 2. Modulefile Tests (`test-modulefile.sh`)
+- ✅ **PATH Setup**: Exposes the built cephtools executable
+- ✅ **Bash Completion**: Loads and registers command completion
+- ✅ **Unload Cleanup**: Restores PATH and removes completion definitions
+- ✅ **Home Isolation**: Does not create per-user completion files
+
+#### 3. Dependency Validation (`test-dependencies.sh`)
 - ✅ **System Commands**: bash, date, mkdir, chmod, find, grep, awk, sed, etc.
 - ✅ **MSI Commands**: s3info, getent availability
 - ✅ **rclone**: Version checking (≥1.67.0), remote validation, bucket access
@@ -29,7 +35,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Environment Variables**: MSIPROJECT, USER validation
 - ✅ **Plugin-Specific Dependencies**: Per-plugin dependency validation
 
-#### 3. Integration Tests (`test-integration.sh`)
+#### 4. Integration Tests (`test-integration.sh`)
 - ✅ **dd2ceph**: Complete workflow, credential setup in SLURM scripts
 - ✅ **dd2dr**: Complete workflow, quota checking logic  
 - ✅ **filesinbackup**: Complete workflow, file comparison logic
@@ -37,7 +43,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **bucketpolicy**: Bucket operations and policy management
 - ✅ **Cross-Plugin Consistency**: Filename patterns, SLURM directives
 
-#### 4. Error Scenario Tests (`test-error-scenarios.sh`)
+#### 5. Error Scenario Tests (`test-error-scenarios.sh`)
 - ✅ **Missing Dependencies**: Tool unavailability handling
 - ✅ **Invalid Arguments**: Required parameter validation
 - ✅ **Path Issues**: Non-existent paths, permission problems
@@ -48,7 +54,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **System Issues**: Module loading, concurrent operations
 - ✅ **Data Integrity**: Corrupted configuration handling
 
-#### 5. System Compatibility (`test-compatibility.sh`) 
+#### 6. System Compatibility (`test-compatibility.sh`)
 - ✅ **Shell Compatibility**: Bash features, array support
 - ✅ **System Commands**: Essential command availability
 - ✅ **Filesystem**: Directory/file creation, permissions
@@ -60,7 +66,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Resource Limits**: File descriptors, process limits
 - ✅ **Path Handling**: Cross-platform path resolution
 
-#### 6. Empty Directory Flag Tests (`test-empty-dirs-flag.sh`)
+#### 7. Empty Directory Flag Tests (`test-empty-dirs-flag.sh`)
 - ✅ **Mock Tests**: SLURM script generation with custom empty directory handling
 - ✅ **Real Ceph Tests**: End-to-end validation of marker file-based empty directory preservation
 - ✅ **vast2ceph Plugin**: Default custom handling and --delete_empty_dirs flag
@@ -68,7 +74,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Marker File Validation**: Verification of .cephtools_empty_dir_marker files
 - ✅ **S3 Compatibility**: Ensures no problematic --s3-directory-markers flags are used
 
-#### 7. Permission Handling Tests (`test-permission-handling.sh`)
+#### 8. Permission Handling Tests (`test-permission-handling.sh`)
 - ✅ **Permission Detection**: Validates _check_path_permissions function
 - ✅ **Failure Scenarios**: Tests with unreadable files and directories
 - ✅ **Plugin Integration**: Full vast2ceph plugin behavior with permission issues
@@ -77,7 +83,7 @@ Comprehensive testing framework for cephtools with extensive coverage of functio
 - ✅ **Edge Cases**: Empty directories, single files, completely inaccessible paths
 - ✅ **File Counting**: Verifies accurate reporting of readable/unreadable items
 
-#### 8. Complete Vignette Workflow Tests (`test-vignette-vast2ceph-e2e.sh`)
+#### 9. Complete Vignette Workflow Tests (`test-vignette-vast2ceph-e2e.sh`)
 - ✅ **Full Workflow**: Complete vignette_vast2ceph.md workflow validation
 - ✅ **Bucket Creation**: Real MSI Ceph bucket creation and cleanup
 - ✅ **Bucket Policy**: GROUP_READ policy setup and permission verification
@@ -96,6 +102,7 @@ make test-all
 
 # Run specific test suites
 make test-quick          # Basic functionality only
+make test-modulefile     # Environment Modules integration
 make test-deps          # Dependency validation
 make test-integration   # Integration tests  
 make test-errors        # Error scenarios

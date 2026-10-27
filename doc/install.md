@@ -30,32 +30,25 @@ wget "https://github.com/umn-msi-lmnp/cephtools/releases/download/${CEPHTOOLS_VE
 tar -xzf "cephtools-${CEPHTOOLS_VERSION}.tar.gz"
 ```
 
-### Update your PATH variable
+### Load the cephtools module
 
-Add the cephtools `bin` directory to your PATH:
-
-```bash
-# If you extracted in your current directory
-export PATH="${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:${PATH}"
-```
-
-To make this permanent, add the export command to your `~/.bashrc` file:
+Change into the extracted release directory and load its modulefile:
 
 ```bash
-echo "export PATH=\"${PWD}/cephtools-${CEPHTOOLS_VERSION}/bin:\${PATH}\"" >> ~/.bashrc
-source ~/.bashrc
+cd "cephtools-${CEPHTOOLS_VERSION}"
+module load ./modulefile
 ```
 
-Enable Bash command line completion for cephtools commands and options:
+The modulefile adds the cephtools `bin` directory to `PATH` and enables Bash command completion.
+
+To load cephtools automatically in future Bash sessions, add a `module load` command containing the absolute modulefile path to `~/.bashrc`:
 
 ```bash
-CEPHTOOLS_BIN="$(command -v cephtools)"
-CEPHTOOLS_ROOT="$(cd "$(dirname "${CEPHTOOLS_BIN}")/.." && pwd)"
-
-mkdir -p "${HOME}/.local/share/bash-completion/completions"
-ln -sfn "${CEPHTOOLS_ROOT}/share/bash-completion/completions/cephtools" "${HOME}/.local/share/bash-completion/completions/cephtools"
-source "${HOME}/.local/share/bash-completion/completions/cephtools"
+CEPHTOOLS_ROOT="$(pwd -P)"
+printf 'module load "%s/modulefile"\n' "${CEPHTOOLS_ROOT}" >> "${HOME}/.bashrc"
 ```
+
+Keep the extracted release at that location after adding it to `~/.bashrc`. Moving or deleting the directory will invalidate the saved modulefile path. Open a new Bash session or source `~/.bashrc` to apply the permanent configuration to the current session.
 
 ### Verify installation
 
@@ -112,32 +105,23 @@ If you want to build the program in a different location, specify a build/instal
 make PREFIX=/my/fav/build/dir
 ```
 
-### Update your PATH variable
+### Load the cephtools module
 
-Update your PATH variable to include the cephtools bin directory:
+Load the modulefile produced by the build:
 
 ```bash
-# If you built the tool with default build prefix
-export PATH="${PWD}/build/bin:${PATH}"
+# If you built the tool with the default build prefix
+module load ./build/modulefile
 
 # Or, if you specified a PREFIX
-export PATH="/my/fav/build/dir/bin:${PATH}"
+module load /my/fav/build/dir/modulefile
 ```
 
-To make the default build path permanent, add the export command to your `~/.bashrc` file:
+The modulefile updates `PATH` and enables Bash command completion. To load the default build automatically in future Bash sessions, add its absolute modulefile path to `~/.bashrc`:
 
 ```bash
-echo "export PATH=\"${PWD}/build/bin:\${PATH}\"" >> ~/.bashrc
-source ~/.bashrc
+CEPHTOOLS_ROOT="$(cd build && pwd -P)"
+printf 'module load "%s/modulefile"\n' "${CEPHTOOLS_ROOT}" >> "${HOME}/.bashrc"
 ```
 
-Enable Bash command line completion for cephtools commands and options:
-
-```bash
-CEPHTOOLS_BIN="$(command -v cephtools)"
-CEPHTOOLS_ROOT="$(cd "$(dirname "${CEPHTOOLS_BIN}")/.." && pwd)"
-
-mkdir -p "${HOME}/.local/share/bash-completion/completions"
-ln -sfn "${CEPHTOOLS_ROOT}/share/bash-completion/completions/cephtools" "${HOME}/.local/share/bash-completion/completions/cephtools"
-source "${HOME}/.local/share/bash-completion/completions/cephtools"
-```
+Keep the build directory at that location after adding it to `~/.bashrc`. For a custom `PREFIX`, use the absolute path to that prefix instead. Open a new Bash session or source `~/.bashrc` to apply the permanent configuration to the current session.

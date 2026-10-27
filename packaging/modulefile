@@ -1,0 +1,13 @@
+#%Module#######################################################################
+
+# Find the current cephtools root path, from the dirname that this file is located in
+set cephtools_root [file dirname [file normalize [module-info name]]]
+
+prepend-path PATH "${cephtools_root}/bin"
+# This will export bash functions into the current shell, so cephtools tab-completion works
+source-sh bash "${cephtools_root}/share/bash-completion/completions/cephtools"
+
+if {[module-info mode load]} {
+    set cephtools_version [string trim [exec [file join $cephtools_root bin cephtools] version]]
+    puts stderr "cephtools version ${cephtools_version} is loaded. Use tab completion to see options: 'cephtools <TAB><TAB>'"
+}

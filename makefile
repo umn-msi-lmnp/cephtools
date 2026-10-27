@@ -14,8 +14,8 @@ BUILD      := $(DESTDIR)$(PREFIX)
 
 .PHONY: version .FORCE
 
-# Read semantic version from version.txt file in src/
-SEMANTIC_VERSION := $(shell source src/version.txt && echo $$SEMANTIC_VERSION)
+# Read semantic version from the repository version file
+SEMANTIC_VERSION := $(shell source version.txt && echo $$SEMANTIC_VERSION)
 
 # Generate essential version info (enhanced from current)
 GIT_COMMIT_SHORT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -30,7 +30,7 @@ BUILD_DATE := $(shell date -Iseconds)
 VERSION_SHORT := $(SEMANTIC_VERSION)_$(GIT_COMMIT_SHORT)$(GIT_DIRTY)
 
 # Write out version info
-VERSION_FILE := $(PREFIX)/version.txt
+VERSION_FILE := $(BUILD)/version.txt
 
 $(VERSION_FILE): .FORCE
 	@mkdir -p $(dir $@)
@@ -58,11 +58,11 @@ CORE_FILES := src/core/common.sh \
                src/core/cephtools.sh
 
 # Top-level Targets
-.PHONY: all clean plugins core completion docs test validate-plugins list-plugins show-config comprehensive-test
-.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-empty-dirs test-vignette-e2e test-credentials test-ascii
+.PHONY: all clean plugins core completion docs distribution test validate-plugins list-plugins show-config comprehensive-test
+.PHONY: test-all test-deps test-integration test-errors test-compatibility test-quick test-modulefile test-empty-dirs test-vignette-e2e test-credentials test-ascii
 
 # Default target - build everything
-all: version core plugins validate-plugins completion docs
+all: version core plugins validate-plugins completion docs distribution
 
 # Core framework with proper separation
 core: $(BUILD)/bin/cephtools
@@ -111,6 +111,21 @@ $(BUILD)/share/plugins/%/plugin.sh: src/plugins/%/plugin.sh $(VERSION_FILE)
 completion: $(BUILD)/share/bash-completion/completions/cephtools
 
 $(BUILD)/share/bash-completion/completions/cephtools: completion/cephtools
+	mkdir -p $(dir $@)
+	cp $< $@
+
+# Distribution metadata and module integration
+distribution: $(BUILD)/modulefile $(BUILD)/readme.md $(BUILD)/license.txt
+
+$(BUILD)/modulefile: packaging/modulefile
+	mkdir -p $(dir $@)
+	cp $< $@
+
+$(BUILD)/readme.md: readme.md
+	mkdir -p $(dir $@)
+	cp $< $@
+
+$(BUILD)/license.txt: license.txt
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -199,6 +214,9 @@ test-quick: all test-setup
 	@chmod +x tests/run-all-tests.sh
 	@CEPHTOOLS_TEST_OUTPUT_DIR="$(PWD)/test_outputs" tests/run-all-tests.sh basic
 
+test-modulefile: all
+	@bash tests/test-modulefile.sh
+
 test-deps: all test-setup
 	@echo "Running dependency validation tests..."
 	@chmod +x tests/test-dependencies.sh
@@ -250,6 +268,7 @@ test-help:
 	@echo "Available test targets:"
 	@echo "  test-all          - Run all test suites (comprehensive)"
 	@echo "  test-quick        - Run basic functionality tests only"
+	@echo "  test-modulefile   - Run Environment Modules integration tests"
 	@echo "  test-deps         - Run dependency validation tests"
 	@echo "  test-integration  - Run integration tests with mocks"
 	@echo "  test-errors       - Run error scenario tests"

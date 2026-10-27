@@ -2,7 +2,7 @@
 # Version - Template for Build-Time Substitution
 # ---------------------------------------------------------------------
 
-# Semantic version (manually maintained in src/version.txt)
+# Semantic version (manually maintained in version.txt)
 SEMANTIC_VERSION=""
 
 # Build-time information (populated by makefile)
