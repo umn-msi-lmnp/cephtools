@@ -38,7 +38,7 @@ which cephtools
 
 ## Create a bucket
 
-After a bucket is created (that you own), a bucket policy can be applied.
+After a bucket is created (that you own), a bucket policy can be applied. *Note*: the `bucketpolicy` command can make a bucket for you, if you use the `--make_bucket` or `-m` flag.  
 
 What should I name my bucket? The [Ceph bucket naming rules](https://docs.ceph.com/en/latest/radosgw/s3/bucketops/) can be found here.
 
